@@ -27,14 +27,19 @@ class Layer:
     def __repr__(self) -> str:
         return f"Weights: {self.weights}\nBiases: {self.biases}"
 
-    #isnt this technically forward pass
+    
     def forward(self, inputs:list):
         res = []
-
+        self.last_z = []
         for weights, bias in zip(self.weights, self.biases):
+            self.last_z.append(forward(inputs, weights, bias, False))
             res.append(forward(inputs, weights, bias, activation=self.activation))
-        
+
+        self.last_input = inputs
+        self.last_output = res
+
         return res
 
-    def backward(self):
+    def backward(self, err_signal:list, lr = 1e-3):
+        for idx
         pass
