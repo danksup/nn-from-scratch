@@ -20,6 +20,7 @@ def forward_pass(inputs:list, all_weights:list, biases:list) -> list:
     
     return res
 
+#TODO update docstring
 def backward_pass(inputs:list, hidden_outputs:list, prediction:float, actual:float, output_weights:list, hidden_weights:list, output_biases:list, hidden_biases:list, lr=0.01, activation=leaky_relu_derivative):
     '''
     inputs = list of inputs
