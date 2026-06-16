@@ -8,8 +8,10 @@ class Layer:
         n_neuron = number of neurons
         m_weight = number of weights per neuron
         activation = activation unit
+        activation_derivative = activation unit derivative
         '''
         self.n = n_neuron
+        self.m = m_weight
         self.weights = []
         self.biases = []
         self.activation = activation
@@ -30,6 +32,9 @@ class Layer:
 
     
     def forward(self, inputs:list):
+        '''
+        compute layer output and some values needed for layer.backward()
+        '''
         res = []
         self.last_z = []
         for weights, bias in zip(self.weights, self.biases):
@@ -41,7 +46,11 @@ class Layer:
 
         return res
 
-    def backward(self, err_signal:list, lr = 1e-3):
+    def backward(self, err_signal:list, lr = 1e-3) -> list:
+        '''
+        backprop and update weights and biases
+        returns error contribution (blame signal) of previous layer
+        '''
         previous_error = [0] * len(self.last_input)
 
         for i in range(self.n):
