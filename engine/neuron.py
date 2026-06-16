@@ -20,7 +20,7 @@ def forward_pass(inputs:list, all_weights:list, biases:list) -> list:
     
     return res
 
-#TODO update docstring
+#deprecated
 def backward_pass(inputs:list, hidden_outputs:list, prediction:float, actual:float, output_weights:list, hidden_weights:list, output_biases:list, hidden_biases:list, lr=0.01, activation=leaky_relu_derivative):
     '''
     inputs = list of inputs
@@ -31,6 +31,7 @@ def backward_pass(inputs:list, hidden_outputs:list, prediction:float, actual:flo
     biases2, all biases: current biases
     lr: learning rate
     '''
+    raise DeprecationWarning("no")
     output_error = 2 * (prediction - actual) 
 
     #update output layers
