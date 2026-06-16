@@ -3,7 +3,7 @@ import engine.activations as unit
 from engine.neuron import forward
 
 class Layer:
-    def __init__(self, n_neuron:int, m_weight:int, activation=unit.leaky_relu) -> None:
+    def __init__(self, n_neuron:int, m_weight:int, activation=unit.leaky_relu, activation_derivative = unit.leaky_relu_derivative) -> None:
         '''
         n_neuron = number of neurons
         m_weight = number of weights per neuron
@@ -13,6 +13,7 @@ class Layer:
         self.weights = []
         self.biases = []
         self.activation = activation
+        self.activation_derivative = activation_derivative
 
         for _ in range(n_neuron):
             weight_row = []
@@ -41,5 +42,17 @@ class Layer:
         return res
 
     def backward(self, err_signal:list, lr = 1e-3):
-        for idx
-        pass
+        previous_error = [0] * len(self.last_input)
+
+        for i in range(self.n):
+            current_neuron_error = err_signal[i] * self.activation_derivative(self.last_z[i])
+
+            for ix in range(len(self.weights[i])):
+                previous_error[ix] += current_neuron_error * self.weights[i][ix]
+                d_weight = current_neuron_error * self.last_input[ix]
+                self.weights[i][ix] -= lr * d_weight
+            
+            self.biases[i] -= lr * current_neuron_error
+        
+        return previous_error
+        
