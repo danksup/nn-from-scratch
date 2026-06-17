@@ -1,4 +1,5 @@
 from engine.layer import Layer
+import json
 
 class Model:
     def __init__(self) -> None:
@@ -7,13 +8,19 @@ class Model:
     def __repr__(self) -> str:
         str_layers = ""
         for i in self.layers:
-            str_layers += i + "\n" 
+            str_layers += str(i) + "\n" 
         return str_layers
     
     def add_layer(self, layer:Layer) -> None:
+        """
+        add layer object.
+        """
         self.layers.append(layer)
 
-    def forward(self, inputs:list):
+    def forward(self, inputs:list) -> list:
+        '''
+        inputs = list of inputs
+        '''
         output = inputs
         for layer in self.layers:
             output = layer.forward(output)
@@ -42,7 +49,6 @@ class Model:
         lr = learning rate, how big a step the model takes when adjusting weights.
         print_loss: output loss
         '''
-        res = []
         for i in range(epochs):
             for x,actual in data:
                 self.forward([x])
@@ -54,12 +60,64 @@ class Model:
                     print(f"x={x} | pred={pred[0]:.2f} | actual={actual}")
                 print("---")
     
-    def count_params(self):
+    def count_params(self) -> int:
+        """
+        count how many parameters this model has.
+        """
         total_params = 0
         for layer in self.layers:
             total_params += layer.n * layer.m  + len(layer.biases)
         
         return total_params
-      
+    
+    def save(self, filename:str):
+        """
+        save model into a JSON file.
+        """
+        model = {
+            "layers": []
+        }
+        for layer in self.layers:
+            model["layers"].append(
+                 {
+                    "n":layer.n,
+                    "m":layer.m,
+                    "weights":layer.weights,
+                    "biases":layer.biases,
+                }
+            )
+        filename = f'models/model_{str(self.count_params())}_{filename}.json'
+        with open(filename, 'w', encoding='utf-8') as file:
+            json.dump(model, file, indent=4)
+    
+    def load(self, filename:str) -> "Model":
+        """
+        load model from a JSON file
+        """
+        try:
+            with open(filename, "r") as file:
+                model = json.load(file)
+
+            self.layers = []
+            for layer in model["layers"]:
+                current = Layer(layer["n"], layer["m"])
+                current.weights = layer["weights"]
+                current.biases = layer["biases"]
+                self.add_layer(current)
+            
+            return self
+
+        except FileNotFoundError:
+            raise FileNotFoundError("kys")
+        except json.JSONDecodeError:
+            raise ValueError("ks")
+
+    def predict(self, data):
+        return self.forward(data)
+
+
+        
+
+    
 
         
