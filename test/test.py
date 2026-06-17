@@ -1,4 +1,5 @@
 from engine.tokenizer import Tokenizer
+from engine.embedding import Embedding
 
 t = Tokenizer()
 
@@ -7,9 +8,8 @@ t.save("test")
 
 u = Tokenizer().load("tokens/char_level_vocab_test.json")
 
-print(u.chartoid)
-print(u.idtochar)
+
 
 x = u.encode("hello world")
-print(x)
-print(u.decode(x))
+print(len(x))
+a = Embedding(len(u.chartoid), 8).forward(x)
