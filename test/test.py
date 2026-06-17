@@ -1,15 +1,9 @@
 from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
-
-t = Tokenizer()
-
-t.encode("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM[]\\;',./{}|:\"<>?~`1234567890!@#$%^&*()-=_+ ")
-t.save("test")
+from engine.dataloader import DataLoader
 
 u = Tokenizer().load("tokens/char_level_vocab_test.json")
+farewell = "/Users/rama/Desktop/project1/data/a_farewell_to_arms.txt"
+print(u.decode([95]))
+a = DataLoader(farewell, u)
 
-
-
-x = u.encode("hello world")
-print(len(x))
-a = Embedding(len(u.chartoid), 8).forward(x)

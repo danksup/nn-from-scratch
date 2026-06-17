@@ -1,5 +1,9 @@
 from engine.layer import Layer
+from engine.losses import cross_entropy_gradient, cross_entropy
 import json
+from engine.activations import softmax
+from engine.embedding import Embedding
+from engine.dataloader import DataLoader
 
 class Model:
     def __init__(self) -> None:
@@ -28,22 +32,16 @@ class Model:
         self.last_output = output
         return output
     
-    def backward(self, actual:list, lr:float=1e-3):
+    def backward(self, err_signal:list, lr:float=1e-3):
         '''
         Args:
-            actual: list of actual answer from database
+            err_signal: gradient
             lr: learning rate, how big a step the model takes when adjusting weights.
         '''
-        predictions = self.last_output
-        err_signal = []
-        for i, prediction in enumerate(predictions):
-            initial_error = 2 * (prediction - actual[i])
-            err_signal.append(initial_error)
-
         for layer in self.layers[::-1]:
             err_signal = layer.backward(err_signal, lr)
 
-    def train(self, data:list, epochs:int, lr:float=1e-3, print_loss:bool=False):
+    def train(self, dataloader:DataLoader, embeding:Embedding, epochs:int, lr:float=1e-3, print_loss:bool=False):
         '''
         Args:
             data: dataset, ex: [(1,1), (2,4), (3,9)] -> x^2
@@ -52,15 +50,24 @@ class Model:
             print_loss: output loss
         '''
         for i in range(epochs):
-            for x,actual in data:
-                self.forward([x])
-                self.backward([actual], lr)
+            total_loss = 0.0
+
+            count = 0
+            for context, next_token in dataloader.get_pairs():
+                embedded = embeding.forward(context)
+                flat = [val for vec in embedded for val in vec]
+                scores = self.forward(flat)
+                probs = softmax(scores)
+
+                loss = cross_entropy(probs, next_token)
+                total_loss += loss
+                count += 1
+
+                err_signal = cross_entropy_gradient(probs, next_token)
+                self.backward(err_signal, lr)
         
             if print_loss and i % 100 == 0:
-                for x, actual in data:
-                    pred = self.forward([x])
-                    print(f"x={x} | pred={pred[0]:.2f} | actual={actual}")
-                print("---")
+                print(f"epoch={i} | avg_loss={total_loss / count:.4f}")
     
     def count_params(self) -> int:
         """
@@ -114,8 +121,12 @@ class Model:
         except json.JSONDecodeError:
             raise ValueError("decode eror")
 
-    def predict(self, data):
-        return self.forward(data)
+    def predict(self, context, embedding):
+        embedded = embedding.forward(context)
+        flat = [val for vec in embedded for val in vec]
+        scores = self.forward(flat)
+        probs = softmax(scores)
+        return probs.index(max(probs))
 
 
         

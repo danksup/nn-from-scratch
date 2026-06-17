@@ -1,4 +1,5 @@
 import random
+import json
 
 class Embedding:
     def __init__(self, n:int, embed_dim:int) -> None:
@@ -6,6 +7,27 @@ class Embedding:
     
     def forward(self, token_list:list[int]):
         ''' loopup and convert to the vector for each token id'''
-        print(token_list)
-        print(self.lookup_table)
         return [self.lookup_table[i] for i in token_list]
+
+    def save(self, filename:str):
+        '''
+        save the embedding
+        '''
+        lookup = {"lookuptable": self.lookup_table}
+        with open(f"embeds/{filename}.json", "w") as f:
+            json.dump(lookup, f, indent=4)
+
+    def load(self, filename:str):
+        """
+        load the embedding
+        """
+        try:
+            self.lookup_table = []
+            with open(filename, 'r') as f:
+                self.lookup_table = json.load(f)["lookuptable"]
+
+            return self
+        except FileNotFoundError:
+            raise FileNotFoundError("file not found")
+        except json.JSONDecodeError:
+            raise ValueError("decode eror")

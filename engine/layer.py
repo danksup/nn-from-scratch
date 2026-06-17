@@ -39,8 +39,11 @@ class Layer:
         res = []
         self.last_z = []
         for weights, bias in zip(self.weights, self.biases):
-            self.last_z.append(forward(inputs, weights, bias, False))
-            res.append(forward(inputs, weights, bias, activation=self.activation))
+            self.last_z.append(forward(inputs, weights, bias, active=False))
+            if self.activation is not None:
+                res.append(forward(inputs, weights, bias, activation=self.activation))
+            else:
+                res.append(forward(inputs, weights, bias, active=False))
 
         self.last_input = inputs
         self.last_output = res
@@ -55,7 +58,10 @@ class Layer:
         previous_error = [0] * len(self.last_input)
 
         for i in range(self.n):
-            current_neuron_error = err_signal[i] * self.activation_derivative(self.last_z[i])
+            if self.activation_derivative is not None:
+                current_neuron_error = err_signal[i] * self.activation_derivative(self.last_z[i])
+            else:
+                current_neuron_error = err_signal[i] 
 
             for ix in range(len(self.weights[i])):
                 previous_error[ix] += current_neuron_error * self.weights[i][ix]
