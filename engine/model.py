@@ -110,9 +110,9 @@ class Model:
             return self
 
         except FileNotFoundError:
-            raise FileNotFoundError("kys")
+            raise FileNotFoundError("file not found")
         except json.JSONDecodeError:
-            raise ValueError("ks")
+            raise ValueError("decode eror")
 
     def predict(self, data):
         return self.forward(data)
