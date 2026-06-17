@@ -30,8 +30,9 @@ class Model:
     
     def backward(self, actual:list, lr:float=1e-3):
         '''
-        actual = list of actual answer from database
-        lr = learning rate, how big a step the model takes when adjusting weights.
+        Args:
+            actual: list of actual answer from database
+            lr: learning rate, how big a step the model takes when adjusting weights.
         '''
         predictions = self.last_output
         err_signal = []
@@ -44,10 +45,11 @@ class Model:
 
     def train(self, data:list, epochs:int, lr:float=1e-3, print_loss:bool=False):
         '''
-        data: dataset, ex: [(1,1), (2,4), (3,9)] -> x^2
-        epochs: one complete pass of training
-        lr = learning rate, how big a step the model takes when adjusting weights.
-        print_loss: output loss
+        Args:
+            data: dataset, ex: [(1,1), (2,4), (3,9)] -> x^2
+            epochs: one complete pass of training
+            lr = learning rate, how big a step the model takes when adjusting weights.
+            print_loss: output loss
         '''
         for i in range(epochs):
             for x,actual in data:

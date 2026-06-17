@@ -5,10 +5,11 @@ from engine.neuron import forward
 class Layer:
     def __init__(self, n_neuron:int, m_weight:int, activation=unit.leaky_relu, activation_derivative = unit.leaky_relu_derivative) -> None:
         '''
-        n_neuron = number of neurons
-        m_weight = number of weights per neuron
-        activation = activation unit
-        activation_derivative = activation unit derivative
+        Args:
+            n_neuron: number of neurons
+            m_weight: number of weights per neuron
+            activation: activation unit
+            activation_derivative: activation unit derivative
         '''
         self.n = n_neuron
         self.m = m_weight
@@ -48,7 +49,7 @@ class Layer:
 
     def backward(self, err_signal:list, lr = 1e-3) -> list:
         '''
-        backprop and update weights and biases
+        backprop and update weights and biases.
         returns error contribution (blame signal) of previous layer
         '''
         previous_error = [0] * len(self.last_input)
