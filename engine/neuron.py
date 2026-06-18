@@ -1,4 +1,4 @@
-from .activations import relu, relu_derivative, leaky_relu, leaky_relu_derivative
+from .activations import leaky_relu, leaky_relu_derivative
 from .utils import dot
 
 

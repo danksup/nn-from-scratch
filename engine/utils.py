@@ -1,12 +1,11 @@
+import numpy as np
+
 def dot(u:list,v:list) -> float:
     """
     dot product
     """
-    total = 0
-    for i in range(len(u)):
-        total += u[i] * v[i]
-
-    return total
+    
+    return np.dot(u,v)
 
 def diff(func,x,h=1e-5) -> float:
     """differentiate"""

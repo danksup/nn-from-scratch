@@ -5,7 +5,7 @@ class Tokenizer:
         self.idtochar = {0:"<PAD>"}
         self.chartoid = {"<PAD>":0}
 
-    #what if i want a different method of splitting like maybe world level 
+    #TODO maybe what if i want a different method of splitting like maybe world level 
     def split_input(self, char:str) -> list[str]:
         """character level tokenizer"""
         return list(char)
@@ -58,7 +58,7 @@ class Tokenizer:
             "idtochar":self.idtochar,
             "chartoid":self.chartoid
         }
-        filename = f"tokens/char_level_vocab_{filename}.json"
+        filename = f"artifacts/tokens/char_level_vocab_{filename}.json"
         with open(filename, "w") as f:
             json.dump(vocab, f, indent=4)
     

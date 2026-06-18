@@ -4,6 +4,7 @@ import json
 from engine.activations import softmax
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
+import numpy as np
 
 class Model:
     def __init__(self) -> None:
@@ -21,7 +22,7 @@ class Model:
         """
         self.layers.append(layer)
 
-    def forward(self, inputs:list) -> list:
+    def forward(self, inputs:np.ndarray) -> np.ndarray:
         '''
         inputs = list of inputs
         '''
@@ -32,7 +33,7 @@ class Model:
         self.last_output = output
         return output
     
-    def backward(self, err_signal:list, lr:float=1e-3):
+    def backward(self, err_signal:np.ndarray, lr:float=1e-3):
         '''
         Args:
             err_signal: gradient
@@ -41,7 +42,7 @@ class Model:
         for layer in self.layers[::-1]:
             err_signal = layer.backward(err_signal, lr)
 
-    def train(self, dataloader:DataLoader, embeding:Embedding, epochs:int, lr:float=1e-3, print_loss:bool=False):
+    def train(self, dataloader:DataLoader, embedding:Embedding, epochs:int, lr:float=1e-3, print_loss:bool=False, batch_size:int=32):
         '''
         Args:
             data: dataset, ex: [(1,1), (2,4), (3,9)] -> x^2
@@ -53,20 +54,22 @@ class Model:
             total_loss = 0.0
 
             count = 0
-            for context, next_token in dataloader.get_pairs():
-                embedded = embeding.forward(context)
-                flat = [val for vec in embedded for val in vec]
-                scores = self.forward(flat)
-                probs = softmax(scores)
+            for batch in dataloader.get_pairs(batch_size):
+                contexts = [pair[0] for pair in batch]
+                next_tokens = [pair[1] for pair in batch]
+                
+                embedded = embedding.lookup_table[contexts]  # shape (batch, context_size, embed_dim)
+                flat = embedded.reshape(len(contexts), -1)             
+                batch_scores = self.forward(flat)
+                batch_gradient = np.array(cross_entropy_gradient(softmax(batch_scores), next_tokens)) 
 
-                loss = cross_entropy(probs, next_token)
+                loss = np.sum(cross_entropy(softmax(batch_scores), next_tokens))
                 total_loss += loss
-                count += 1
+                count += len(batch)
 
-                err_signal = cross_entropy_gradient(probs, next_token)
-                self.backward(err_signal, lr)
+                self.backward(batch_gradient, lr)
         
-            if print_loss and i % 100 == 0:
+            if print_loss:
                 print(f"epoch={i} | avg_loss={total_loss / count:.4f}")
     
     def count_params(self) -> int:
@@ -91,11 +94,11 @@ class Model:
                  {
                     "n":layer.n,
                     "m":layer.m,
-                    "weights":layer.weights,
-                    "biases":layer.biases,
+                    "weights":layer.weights.tolist(),
+                    "biases":layer.biases.tolist(),
                 }
             )
-        filename = f'models/model_{str(self.count_params())}_{filename}.json'
+        filename = f'artifacts/models/model_{str(self.count_params())}_{filename}.json'
         with open(filename, 'w', encoding='utf-8') as file:
             json.dump(model, file, indent=4)
     
@@ -110,8 +113,8 @@ class Model:
             self.layers = []
             for layer in model["layers"]:
                 current = Layer(layer["n"], layer["m"])
-                current.weights = layer["weights"]
-                current.biases = layer["biases"]
+                current.weights = np.array(layer["weights"])
+                current.biases = np.array(layer["biases"])
                 self.add_layer(current)
             
             return self
@@ -121,12 +124,12 @@ class Model:
         except json.JSONDecodeError:
             raise ValueError("decode eror")
 
-    def predict(self, context, embedding):
+    def predict(self, context:np.ndarray, embedding:Embedding) -> tuple[np.ndarray, int]:
         embedded = embedding.forward(context)
-        flat = [val for vec in embedded for val in vec]
+        flat = embedded.flatten()
         scores = self.forward(flat)
         probs = softmax(scores)
-        return probs.index(max(probs))
+        return probs, int(probs.argmax())
 
 
         
