@@ -49,32 +49,46 @@ class Tokenizer:
             decoded += self.idtochar[i]
 
         return decoded
+    
+    def to_dict(self) -> dict:
+        vocab = {
+            "idtochar":self.idtochar,
+            "chartoid":self.chartoid
+        }
+        return vocab
 
     def save(self, filename:str):
         """
         save the token
         """
-        vocab = {
-            "idtochar":self.idtochar,
-            "chartoid":self.chartoid
-        }
-        filename = f"artifacts/tokens/char_level_vocab_{filename}.json"
+        vocab = self.to_dict()
+        filename = f"artifacts/tokens/tokenizer_char_level_{filename}.json"
         with open(filename, "w") as f:
             json.dump(vocab, f, indent=4)
     
-    def load(self, filename:str):
+    @classmethod
+    def from_dict(cls,thing) -> "Tokenizer":
+        tokenizer = cls()
+        tokenizer.idtochar = {}
+        tokenizer.chartoid = {}
+        for token_id, char in thing["idtochar"].items():   
+            tokenizer.idtochar[int(token_id)] = char
+        for char, id in thing["chartoid"].items():   
+            tokenizer.chartoid[char] = int(id)
+
+        return tokenizer
+
+    def load(self, filename:str) -> "Tokenizer":
         """
         load the token
         """
         try:
-            self.idtochar = {}
-            self.chartoid = {}
             with open(filename, 'r') as f:
                 vocab = json.load(f)
-            for id, char in vocab["idtochar"].items():   
-                self.idtochar[int(id)] = char
-            for char, id in vocab["chartoid"].items():   
-                self.chartoid[char] = int(id)
+            
+            tokenizer = Tokenizer.from_dict(vocab)
+            self.chartoid = tokenizer.chartoid
+            self.idtochar = tokenizer.idtochar
 
             return self
         except FileNotFoundError:

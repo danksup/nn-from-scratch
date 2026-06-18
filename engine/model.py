@@ -12,15 +12,45 @@ class Model:
 
     def __repr__(self) -> str:
         str_layers = ""
-        for i in self.layers:
-            str_layers += str(i) + "\n" 
+        for idx,i in enumerate(self.layers):
+            str_layers += f"layer{idx}:{str(len(i))} neurons"  + "\n"
+        str_layers += f"total layer: {len(self.layers)}, params: {self.count_params()}" 
         return str_layers
     
     def add_layer(self, layer:Layer) -> None:
         """
-        add layer object.
+        add a layer object to the model.
         """
         self.layers.append(layer)
+    
+    def add_layers(self, layers:list[Layer]) -> None:
+        '''
+        add multiple layers to the model.
+        '''
+        self.layers.extend(layers)
+
+    @classmethod
+    def build(cls, input_size:int, output_size:int, hidden_layer_size:int=1, base_width:int=512) -> "Model":
+        '''
+        Args:
+            input_size: input size
+            output_size: output size
+            hidden_layer_size: number or hidden layers
+            base_width: number of neurons per hidden layer
+        construct a brand new model
+        '''
+        count = 1
+        model = cls()
+
+        #hidden layer
+        model.add_layer(Layer.hidden(base_width, input_size))
+
+        for _ in range(count,hidden_layer_size):
+            model.add_layer(Layer.hidden(base_width,base_width))
+
+        #output layer
+        model.add_layer(Layer.output(output_size, base_width))
+        return model
 
     def forward(self, inputs:np.ndarray) -> np.ndarray:
         '''
@@ -61,15 +91,17 @@ class Model:
                 embedded = embedding.lookup_table[contexts]  # shape (batch, context_size, embed_dim)
                 flat = embedded.reshape(len(contexts), -1)             
                 batch_scores = self.forward(flat)
-                batch_gradient = np.array(cross_entropy_gradient(softmax(batch_scores), next_tokens)) 
 
-                loss = np.sum(cross_entropy(softmax(batch_scores), next_tokens))
+                softmax_batch_scores = softmax(batch_scores)
+                batch_gradient = np.array(cross_entropy_gradient(softmax_batch_scores, next_tokens)) 
+
+                loss = np.sum(cross_entropy(softmax_batch_scores, next_tokens))
                 total_loss += loss
                 count += len(batch)
 
                 self.backward(batch_gradient, lr)
         
-            if print_loss:
+            if print_loss and i % 10 == 0:
                 print(f"epoch={i} | avg_loss={total_loss / count:.4f}")
     
     def count_params(self) -> int:
@@ -82,10 +114,7 @@ class Model:
         
         return total_params
     
-    def save(self, filename:str):
-        """
-        save model into a JSON file.
-        """
+    def to_dict(self) -> dict:
         model = {
             "layers": []
         }
@@ -98,9 +127,27 @@ class Model:
                     "biases":layer.biases.tolist(),
                 }
             )
+        return model
+    
+    def save(self, filename:str):
+        """
+        save model into a JSON file.
+        """
+        model = self.to_dict()
         filename = f'artifacts/models/model_{str(self.count_params())}_{filename}.json'
         with open(filename, 'w', encoding='utf-8') as file:
             json.dump(model, file, indent=4)
+
+    @classmethod
+    def from_dict(cls,thing:dict):
+        model = cls()
+        for layer in thing["layers"]:
+            current = Layer(layer["n"], layer["m"])
+            current.weights = np.array(layer["weights"])
+            current.biases = np.array(layer["biases"])
+            model.add_layer(current)
+
+        return model
     
     def load(self, filename:str) -> "Model":
         """
@@ -110,13 +157,7 @@ class Model:
             with open(filename, "r") as file:
                 model = json.load(file)
 
-            self.layers = []
-            for layer in model["layers"]:
-                current = Layer(layer["n"], layer["m"])
-                current.weights = np.array(layer["weights"])
-                current.biases = np.array(layer["biases"])
-                self.add_layer(current)
-            
+            self.layers = Model.from_dict(model).layers
             return self
 
         except FileNotFoundError:

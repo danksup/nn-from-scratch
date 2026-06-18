@@ -26,6 +26,16 @@ class Layer:
     def __repr__(self) -> str:
         return f"Weights: {self.weights}\nBiases: {self.biases}"
 
+    def __len__(self):
+        return self.n
+    
+    @classmethod
+    def hidden(cls, n, m, activation=unit.leaky_relu, activation_derivative= unit.leaky_relu_derivative):
+        return cls(n,m,activation ,activation_derivative)
+    
+    @classmethod
+    def output(cls, n, m):
+        return cls(n,m, None, None)
     
     def forward(self, inputs:np.ndarray) -> np.ndarray:
         '''
