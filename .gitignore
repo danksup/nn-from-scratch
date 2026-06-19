@@ -8,3 +8,6 @@ venv/
 
 data/*
 !data/.gitkeep
+
+artifacts/sessions/*
+!artifacts/sessions/.gitkeep

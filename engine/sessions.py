@@ -4,19 +4,30 @@ from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.activations import softmax
+from engine.optimizer import Momentum, SGD,Adam
 import numpy as np
 
 
 DEFAULT_CONFIGS = {
             "epochs": 100,
-            "lr": 1e-3,
             "context_size": 64,
             "batch_size": 32,
             "seed": 42,
             "embed_dim":8,
             "base_width": 512,
-            "dataset": "data/The_Expedition_of_Humphry_Clinker.txt"
+            "dataset": "data/The_Expedition_of_Humphry_Clinker.txt",
+            "optimizer":"momentum",
+            "optimizer_args":{
+                "lr":0.05,
+                "beta":0.95
+            }
         }
+
+OPTIMIZERS = {
+    "sgd": SGD,
+    "momentum": Momentum,
+    "adam": Adam,
+}
 
 class Session:
     def __init__(self, model:Model,  tokenizer:Tokenizer, embedding:Embedding, configs:dict | None = None):
@@ -27,6 +38,9 @@ class Session:
             configs = {}
 
         self.configs = DEFAULT_CONFIGS | configs
+        optimizer_class = OPTIMIZERS[self.configs["optimizer"]]
+        model.optimizer = optimizer_class(**self.configs["optimizer_args"])
+
         
     
     #TODO a mess
@@ -59,7 +73,7 @@ class Session:
         """
         dataloader = DataLoader(self.configs["dataset"], self.tokenizer, self.configs["context_size"])
         if display_message:
-            print(f"[TRAINING] param: {self.model.count_params()}, seed: {self.configs["seed"]}, epochs: {self.configs["epochs"]}, LR: {self.configs["lr"]}, embed dimension: {self.configs["embed_dim"]},  base_width: = {self.configs["base_width"]}, context_size: {self.configs["context_size"]}, batch_size: {self.configs["batch_size"]}")
+            print(f"[TRAINING] param: {self.model.count_params()}, seed: {self.configs["seed"]}, epochs: {self.configs["epochs"]}, LR: {self.configs["optimizer_args"]["lr"]}, embed dimension: {self.configs["embed_dim"]},  base_width: = {self.configs["base_width"]}, context_size: {self.configs["context_size"]}, batch_size: {self.configs["batch_size"]}")
         
         epoch = 0
         try:
@@ -70,7 +84,7 @@ class Session:
             THRESHOLD = 1e-4
             for i in range(self.configs["epochs"]):
                 epoch = i
-                error = self.model.train(dataloader, self.embedding, lr=self.configs["lr"], batch_size=self.configs["batch_size"])
+                error = self.model.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
 
                 if prev_error is not None:
                     improvement = prev_error - error
@@ -96,7 +110,8 @@ class Session:
                             print(f"[STOPPED] epoch {i} | not getting better | avg loss: {error}")
                             self.save("save_stopped")
                         break
-                if display_message and( i %10 == 0 or i == self.configs["epochs"] - 1):
+                display_every = max(1, self.configs["epochs"] // 10)
+                if display_message and( i % display_every == 0 or i == self.configs["epochs"] - 1):
                     print(f"epoch {epoch} | avg loss: {error}")
                     
                 prev_error = error

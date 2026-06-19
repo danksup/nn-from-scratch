@@ -4,13 +4,17 @@ import json
 from engine.activations import softmax
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
+from engine.optimizer import SGD, Momentum
 import numpy as np
 import time
 
 class Model:
-    def __init__(self) -> None:
+    def __init__(self, optimizer=None) -> None:
         self.layers = []
+        if optimizer is None:
+            optimizer = Momentum()
 
+        self.optimizer = optimizer
     def __repr__(self) -> str:
         str_layers = ""
         for idx,i in enumerate(self.layers):
@@ -64,7 +68,7 @@ class Model:
         self.last_output = output
         return output
     
-    def backward(self, err_signal:np.ndarray, lr:float=1e-3) -> np.ndarray:
+    def backward(self, err_signal:np.ndarray) -> np.ndarray:
         '''
         Args:
             err_signal: gradient
@@ -74,12 +78,12 @@ class Model:
             err_signal = layer.backward(err_signal)
         
         for layer in self.layers:
-            layer.weights -= lr * layer.d_weight
-            layer.biases -= lr * layer.d_bias
+            self.optimizer.step(layer.weights, layer.d_weight)
+            self.optimizer.step(layer.biases, layer.d_bias)
         
         return err_signal
 
-    def train(self, dataloader:DataLoader, embedding:Embedding, lr:float=1e-3,batch_size:int=32):
+    def train(self, dataloader:DataLoader, embedding:Embedding, batch_size:int=32):
         '''
         Args:
             data: dataset, ex: [(1,1), (2,4), (3,9)] -> x^2
@@ -112,11 +116,13 @@ class Model:
             count += len(batch)
 
             # start = time.perf_counter()
-            error_signal = self.backward(batch_gradient, lr).reshape(len(contexts),dataloader.context_size,embedding.embed_dim)
+            error_signal = self.backward(batch_gradient).reshape(len(contexts),dataloader.context_size,embedding.embed_dim)
             # end = time.perf_counter()
             # backward_time += end-start
             # start = time.perf_counter()
-            np.add.at(embedding.lookup_table, contexts, -lr * error_signal)
+            embedding_gradient = np.zeros_like(embedding.lookup_table)
+            np.add.at(embedding_gradient, contexts, error_signal)
+            self.optimizer.step(embedding.lookup_table, embedding_gradient)
             # end = time.perf_counter()
             # embedding_update += end-start
 
