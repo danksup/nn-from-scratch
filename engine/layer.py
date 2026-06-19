@@ -18,10 +18,11 @@ class Layer:
         self.activation = activation
         self.activation_derivative = activation_derivative
 
+        scale = 1/np.sqrt(self.m)
         for i in range(n_neuron):
             for j in range(m_weight):
-                self.weights[i,j] = random.uniform(-1,1)
-            self.biases[i] = random.uniform(-1,1)
+                self.weights[i,j] = random.uniform(-scale, scale)
+            self.biases[i] = random.uniform(-scale, scale)
     
     def __repr__(self) -> str:
         return f"Weights: {self.weights}\nBiases: {self.biases}"

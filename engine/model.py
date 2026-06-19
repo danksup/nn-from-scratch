@@ -5,6 +5,7 @@ from engine.activations import softmax
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 import numpy as np
+import time
 
 class Model:
     def __init__(self) -> None:
@@ -63,7 +64,7 @@ class Model:
         self.last_output = output
         return output
     
-    def backward(self, err_signal:np.ndarray, lr:float=1e-3):
+    def backward(self, err_signal:np.ndarray, lr:float=1e-3) -> np.ndarray:
         '''
         Args:
             err_signal: gradient
@@ -71,8 +72,10 @@ class Model:
         '''
         for layer in self.layers[::-1]:
             err_signal = layer.backward(err_signal, lr)
+        
+        return err_signal
 
-    def train(self, dataloader:DataLoader, embedding:Embedding, epochs:int, lr:float=1e-3, print_loss:bool=False, batch_size:int=32):
+    def train(self, dataloader:DataLoader, embedding:Embedding, lr:float=1e-3,batch_size:int=32):
         '''
         Args:
             data: dataset, ex: [(1,1), (2,4), (3,9)] -> x^2
@@ -80,29 +83,41 @@ class Model:
             lr = learning rate, how big a step the model takes when adjusting weights.
             print_loss: output loss
         '''
-        for i in range(epochs):
-            total_loss = 0.0
+        total_loss = 0.0
+        count = 0
 
-            count = 0
-            for batch in dataloader.get_pairs(batch_size):
-                contexts = [pair[0] for pair in batch]
-                next_tokens = [pair[1] for pair in batch]
-                
-                embedded = embedding.lookup_table[contexts]  # shape (batch, context_size, embed_dim)
-                flat = embedded.reshape(len(contexts), -1)             
-                batch_scores = self.forward(flat)
+        # forward_time = 0
+        # backward_time = 0
+        # embedding_update = 0
+        for batch in dataloader.get_pairs(batch_size):
+            contexts = [pair[0] for pair in batch]
+            next_tokens = [pair[1] for pair in batch]
+            
+            embedded = embedding.lookup_table[contexts]  # shape (batch, context_size, embed_dim)
+            flat = embedded.reshape(len(contexts), -1)        
+            # start = time.perf_counter()     
+            batch_scores = self.forward(flat)
+            # end = time.perf_counter()
+            # forward_time += end-start
 
-                softmax_batch_scores = softmax(batch_scores)
-                batch_gradient = np.array(cross_entropy_gradient(softmax_batch_scores, next_tokens)) 
+            softmax_batch_scores = softmax(batch_scores)
+            batch_gradient = np.array(cross_entropy_gradient(softmax_batch_scores, next_tokens)) 
 
-                loss = np.sum(cross_entropy(softmax_batch_scores, next_tokens))
-                total_loss += loss
-                count += len(batch)
+            loss = np.sum(cross_entropy(softmax_batch_scores, next_tokens))
+            total_loss += loss
+            count += len(batch)
 
-                self.backward(batch_gradient, lr)
-        
-            if print_loss and i % 10 == 0:
-                print(f"epoch={i} | avg_loss={total_loss / count:.4f}")
+            # start = time.perf_counter()
+            error_signal = self.backward(batch_gradient, lr).reshape(len(contexts),dataloader.context_size,embedding.embed_dim)
+            # end = time.perf_counter()
+            # backward_time += end-start
+            # start = time.perf_counter()
+            np.add.at(embedding.lookup_table, contexts, -lr * error_signal)
+            # end = time.perf_counter()
+            # embedding_update += end-start
+
+        # print(f"backward_time: {backward_time:.5f} | embedding_update: {embedding_update:.5f} | forward_time: {forward_time:.5f}")   
+        return total_loss / count
     
     def count_params(self) -> int:
         """
@@ -171,10 +186,3 @@ class Model:
         scores = self.forward(flat)
         probs = softmax(scores)
         return probs, int(probs.argmax())
-
-
-        
-
-    
-
-        

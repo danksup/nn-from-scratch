@@ -9,6 +9,7 @@ class Embedding:
     
     def forward(self, token_list:np.ndarray):
         ''' loopup and convert to the vector for each token id'''
+
         return self.lookup_table[token_list]
     
     def to_dict(self) -> dict:
@@ -28,7 +29,7 @@ class Embedding:
     def from_dict(cls, thing:dict) -> "Embedding":
         lookuptable = thing["lookuptable"]
         embedding = cls(1,1)
-        embedding.lookup_table = lookuptable
+        embedding.lookup_table = np.array(lookuptable)
         return embedding
 
 

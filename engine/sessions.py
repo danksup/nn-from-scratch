@@ -48,15 +48,55 @@ class Session:
         '''
         raise NotImplementedError("not yet")
 
-    def train(self, display_message:bool=True):
+    def train(self,patience:int=10, display_message:bool=True):
         """
+        Args:
+            patience: max bad epochs
+            display_message: obvious
         train using set configs
         """
         dataloader = DataLoader(self.configs["dataset"], self.tokenizer, self.configs["context_size"])
         if display_message:
             print(f"[TRAINING] param: {self.model.count_params()}, seed: {self.configs["seed"]}, epochs: {self.configs["epochs"]}, LR: {self.configs["lr"]}, embed dimension: {self.configs["embed_dim"]},  base_width: = {self.configs["base_width"]}, context_size: {self.configs["context_size"]}, batch_size: {self.configs["batch_size"]}")
-        self.model.train(dataloader, self.embedding, self.configs["epochs"], lr=self.configs["lr"], print_loss=True, batch_size=self.configs["batch_size"])
+        
+        epoch = 0
+        try:
+            prev_error = None
+            bad_epoch = 0
+            for i in range(self.configs["epochs"]):
+                epoch = i
+                error = self.model.train(dataloader, self.embedding, lr=self.configs["lr"], batch_size=self.configs["batch_size"])
 
+                if prev_error is not None:
+                    too_small = abs(error - prev_error) < 0.001 
+                    getting_worse = prev_error - error < 0
+
+                    if too_small or getting_worse:
+                        bad_epoch += 1
+                        if display_message:
+                            bad_epoch_reason = "improvement too small" if too_small else "getting worse"
+                            print(f"epoch {i}: bad epoch: {bad_epoch_reason} | delta: {error-prev_error:.5f} | ({bad_epoch}/{patience})")
+                    else:
+                        if bad_epoch > 0 and display_message:
+                            print(f"epoch: {i}: bad epoch count reset")
+                        bad_epoch = 0
+
+                    if bad_epoch >= patience:
+                        if display_message:
+                            print(f"training stopped at {i}, model isnt getting better")
+                        break
+                if i == self.configs["epochs"] - 1:
+                    print(f"epoch {epoch} | avg loss: {error}")
+                    
+                prev_error = error
+        except ValueError as e:
+            print(f"epoch {epoch}: {e}")
+            self.save("valueerror_save")
+            raise
+        except OverflowError as e:
+            print(f"epoch {epoch}: {e}")
+            self.save("overflow_save")
+            raise
     
     def predict(self, context:np.ndarray):
         """
