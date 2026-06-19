@@ -3,7 +3,9 @@ from engine.model import Model
 from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
+from engine.activations import softmax
 import numpy as np
+
 
 DEFAULT_CONFIGS = {
             "epochs": 100,
@@ -63,13 +65,17 @@ class Session:
         try:
             prev_error = None
             bad_epoch = 0
+            # checkpoint = None
+            # best_loss = None
+            THRESHOLD = 1e-4
             for i in range(self.configs["epochs"]):
                 epoch = i
                 error = self.model.train(dataloader, self.embedding, lr=self.configs["lr"], batch_size=self.configs["batch_size"])
 
                 if prev_error is not None:
-                    too_small = abs(error - prev_error) < 0.001 
-                    getting_worse = prev_error - error < 0
+                    improvement = prev_error - error
+                    too_small = improvement > 0 and improvement < THRESHOLD
+                    getting_worse = improvement < 0
 
                     if too_small or getting_worse:
                         bad_epoch += 1
@@ -77,15 +83,20 @@ class Session:
                             bad_epoch_reason = "improvement too small" if too_small else "getting worse"
                             print(f"epoch {i}: bad epoch: {bad_epoch_reason} | delta: {error-prev_error:.5f} | ({bad_epoch}/{patience})")
                     else:
-                        if bad_epoch > 0 and display_message:
-                            print(f"epoch: {i}: bad epoch count reset")
+                        #not how this works, checkpoint just references self so...
+                        # checkpoint = self
+                        # best_loss = error
+                        if bad_epoch > 0:
+                            if display_message:
+                                print(f"epoch: {i}: bad epoch count reset")
                         bad_epoch = 0
 
                     if bad_epoch >= patience:
                         if display_message:
-                            print(f"training stopped at {i}, model isnt getting better")
+                            print(f"[STOPPED] epoch {i} | not getting better | avg loss: {error}")
+                            self.save("save_stopped")
                         break
-                if i == self.configs["epochs"] - 1:
+                if display_message and( i %10 == 0 or i == self.configs["epochs"] - 1):
                     print(f"epoch {epoch} | avg loss: {error}")
                     
                 prev_error = error
@@ -98,11 +109,17 @@ class Session:
             self.save("overflow_save")
             raise
     
-    def predict(self, context:np.ndarray):
+    def predict(self, context:np.ndarray, temperature:float=0.8, top_k=3):
         """
         predict next token
         """
-        return self.model.predict(context, self.embedding)
+        logits = self.model.predict(context, self.embedding)
+        probs = softmax(logits/temperature)
+        top_k = min(top_k, len(probs))
+        top_indices = np.argpartition(probs, -top_k)[-top_k:]
+        top_probs = probs[top_indices]
+        top_probs = top_probs / np.sum(top_probs)
+        return np.random.choice(top_indices, p=top_probs)
 
     def save(self, filename:str, save_artifacts:bool=False):
         '''

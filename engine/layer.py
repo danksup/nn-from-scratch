@@ -57,10 +57,9 @@ class Layer:
 
         return res
 
-    def backward(self, err_signal:np.ndarray, lr = 1e-3) -> np.ndarray:
+    def backward(self, err_signal:np.ndarray) -> np.ndarray:
         '''
-        backprop and update weights and biases.
-        returns error contribution (blame signal) of previous layer
+        compute gradients and return previous layer error signal
         '''
         if self.activation_derivative is not None:
             current_neuron_error = err_signal * self.activation_derivative(self.last_z)
@@ -71,8 +70,8 @@ class Layer:
 
         d_weight = ( current_neuron_error.T @ self.last_input) / batch_size
         previous_error = self.weights.T @ current_neuron_error.T
-        self.weights -= lr * d_weight
-        self.biases -= lr * current_neuron_error.mean(axis=0)
+        self.d_weight = d_weight
+        self.d_bias = current_neuron_error.mean(axis=0)
 
         
         return previous_error.T

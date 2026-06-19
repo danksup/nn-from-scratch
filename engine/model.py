@@ -71,7 +71,11 @@ class Model:
             lr: learning rate, how big a step the model takes when adjusting weights.
         '''
         for layer in self.layers[::-1]:
-            err_signal = layer.backward(err_signal, lr)
+            err_signal = layer.backward(err_signal)
+        
+        for layer in self.layers:
+            layer.weights -= lr * layer.d_weight
+            layer.biases -= lr * layer.d_bias
         
         return err_signal
 
@@ -180,9 +184,8 @@ class Model:
         except json.JSONDecodeError:
             raise ValueError("decode eror")
 
-    def predict(self, context:np.ndarray, embedding:Embedding) -> tuple[np.ndarray, int]:
+    def predict(self, context:np.ndarray, embedding:Embedding) -> np.ndarray:
         embedded = embedding.forward(context)
         flat = embedded.flatten()
         scores = self.forward(flat)
-        probs = softmax(scores)
-        return probs, int(probs.argmax())
+        return scores
