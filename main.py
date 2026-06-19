@@ -8,12 +8,10 @@ CONTEXT_SIZE = 32
 BATCH_SIZE = 32
 BASE_WIDTH = EMBED_DIM * CONTEXT_SIZE
 
-import numpy as np
 import time
 
 
 from engine.model import Model
-from engine.layer import Layer
 from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
@@ -53,6 +51,6 @@ session1.save("test_momentum")
 
 # for _ in range(400):
     
-#     predicted_id = session_load.predict(context, top_k=10, temperature=0.3)
+#     predicted_id = session_load.predict(context, top_k=10, temperature=0.5)
 #     print(session_load.tokenizer.decode([predicted_id]), end="")
 #     context = context[1:] + [predicted_id]  

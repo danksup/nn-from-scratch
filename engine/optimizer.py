@@ -1,8 +1,31 @@
 import numpy as np
 
 class Adam:
-    def __init__(self) -> None:
-            pass
+    def __init__(self, lr=0.01, beta:float=0.9, beta2:float=0.999, epsilon:float=1e-8) -> None:
+        self.memory = {}
+        self.lr = lr
+        self.beta1 = beta
+        self.beta2 = beta2
+        self.epilon = epsilon
+    def step(self, params:np.ndarray, gradient:np.ndarray):
+        param_id = id(params)
+        if param_id not in self.memory:
+            self.memory[param_id] = {
+                "momentum_estimate":np.zeros_like(params),
+                "velocity":np.zeros_like(params),
+                "time_step":0
+            }
+        momentum_estimate = self.memory[param_id]["momentum_estimate"]
+        velocity = self.memory[param_id]["velocity"]
+        self.memory[param_id]["momentum_estimate"] = self.beta1 * momentum_estimate + (1 - self.beta1) * gradient
+        self.memory[param_id]["velocity"] = self.beta2 * velocity + (1-self.beta2) * np.square(gradient)
+        self.memory[param_id]["time_step"] +=1 
+        time_step = self.memory[param_id]["time_step"]
+        m_hat =  self.memory[param_id]["momentum_estimate"]/ (1-np.power(self.beta1,time_step))
+        v_hat =  self.memory[param_id]["velocity"]/ (1-np.power(self.beta2, time_step))
+        params -= self.lr * m_hat / (np.sqrt(v_hat) + self.epilon)
+
+
 
 class SGD:
     def __init__(self, lr=0.05) -> None:
@@ -15,7 +38,7 @@ class SGD:
         params -= self.lr * gradient
 
 class Momentum:
-    def __init__(self, lr:float=0.05, beta:float=0.95) -> None:
+    def __init__(self, lr:float=0.01, beta:float=0.9) -> None:
         self.lr = lr
         self.beta = beta
         self.velocities = {}

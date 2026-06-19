@@ -4,7 +4,7 @@ import json
 from engine.activations import softmax
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
-from engine.optimizer import SGD, Momentum
+from engine.optimizer import SGD, Momentum, Adam
 import numpy as np
 import time
 
@@ -12,7 +12,7 @@ class Model:
     def __init__(self, optimizer=None) -> None:
         self.layers = []
         if optimizer is None:
-            optimizer = Momentum()
+            optimizer = Adam()
 
         self.optimizer = optimizer
     def __repr__(self) -> str:

@@ -16,10 +16,12 @@ DEFAULT_CONFIGS = {
             "embed_dim":8,
             "base_width": 512,
             "dataset": "data/The_Expedition_of_Humphry_Clinker.txt",
-            "optimizer":"momentum",
+            "optimizer":"adam",
             "optimizer_args":{
                 "lr":0.05,
-                "beta":0.95
+                "beta":0.9,
+                "beta2":0.999,
+                "epsilon":1e-8
             }
         }
 
@@ -38,6 +40,7 @@ class Session:
             configs = {}
 
         self.configs = DEFAULT_CONFIGS | configs
+        self.configs["optimizer_args"] = DEFAULT_CONFIGS["optimizer_args"] | configs.get("optimizer_args", {})
         optimizer_class = OPTIMIZERS[self.configs["optimizer"]]
         model.optimizer = optimizer_class(**self.configs["optimizer_args"])
 
@@ -73,8 +76,10 @@ class Session:
         """
         dataloader = DataLoader(self.configs["dataset"], self.tokenizer, self.configs["context_size"])
         if display_message:
-            print(f"[TRAINING] param: {self.model.count_params()}, seed: {self.configs["seed"]}, epochs: {self.configs["epochs"]}, LR: {self.configs["optimizer_args"]["lr"]}, embed dimension: {self.configs["embed_dim"]},  base_width: = {self.configs["base_width"]}, context_size: {self.configs["context_size"]}, batch_size: {self.configs["batch_size"]}")
-        
+            t_mess = f"[TRAINING]param: {self.model.count_params()} "
+            for key,val in self.configs.items():
+                t_mess += f"{key}: {val} "
+            print(t_mess)        
         epoch = 0
         try:
             prev_error = None
