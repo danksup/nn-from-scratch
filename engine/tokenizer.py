@@ -1,14 +1,15 @@
 import json
 import numpy as np
+import re
+
 class Tokenizer:
     def __init__(self):
         self.idtochar = {0:"<PAD>", 1:"<UNK>"}
         self.chartoid = {"<PAD>":0,"<UNK>":1}
 
-    #TODO maybe what if i want a different method of splitting like maybe world level 
     def split_input(self, char:str) -> list[str]:
-        """character level tokenizer"""
-        return list(char)
+        """word level tokenizer"""
+        return re.findall(r"\w+|[^\w\s]", char)
 
     def fit(self, x:str) -> None:
         """

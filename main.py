@@ -1,13 +1,13 @@
 import random
 SEED = 42
 random.seed(SEED)
-EPOCHS = 50
+EPOCHS = 1
 LR = 1e-3
-EMBED_DIM = 32
+EMBED_DIM = 8
 CONTEXT_SIZE = 32
 BATCH_SIZE = 32
-BASE_WIDTH = (EMBED_DIM * CONTEXT_SIZE ) // 4
-# BASE_WIDTH = 16
+# BASE_WIDTH = (EMBED_DIM * CONTEXT_SIZE ) // 4
+BASE_WIDTH = 16
 
 #not added yet to session
 PATIENCE = 20
@@ -17,7 +17,7 @@ import time
 import numpy as np
 
 
-from engine.model import Model
+from engine.transformer import Transformer
 from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
@@ -29,7 +29,7 @@ configs = {
             "batch_size": BATCH_SIZE,
             "seed": SEED,
             "embed_dim":EMBED_DIM,
-            "base_width": BASE_WIDTH,
+            "ff_width": BASE_WIDTH,
             "optimizer":"adamw",
             "dataset": "data/The_Expedition_of_Humphry_Clinker.txt",
             "optimizer_args":{
@@ -44,19 +44,20 @@ dataloader = DataLoader(data, tokenizer1, CONTEXT_SIZE)
 vocab_size = len(tokenizer1.chartoid)
 weight_n = CONTEXT_SIZE * EMBED_DIM
 embedding1 = Embedding(vocab_size, EMBED_DIM)
-model1 = Model.build(weight_n,vocab_size,2, BASE_WIDTH)
-print(model1)
-session1 = Session(model1,tokenizer1,embedding1, configs)
+# model1 = Transformer.build(weight_n,vocab_size,2, BASE_WIDTH)
+# print(model1)
+transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
+session1 = Session(transformer,tokenizer1,embedding1, configs)
 start = time.time()
 session1.train(display_message=True)
 end = time.time()
 print(f"training finished. time: {end - start:.3f}s")
-session1.save("test_adamw_1e-3")
+# session1.save("test_pe")
 
-# session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_adam_0.0001.json")
+# session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_adamw_1e-3.json")
 # context = session_load.tokenizer.encode("The nature of religion is questi")
 # print(len(context))
-# TEMPERATURE = 0.8
+# TEMPERATURE = 0.3
 # TOP_K = 10
 # print(f"temperature={TEMPERATURE}")
 # print(f"top_k={TOP_K}")

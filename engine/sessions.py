@@ -1,5 +1,6 @@
 import json
-from engine.model import Model
+from engine.transformer import Transformer
+from engine.transformer_block import TransformerBlock
 from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
@@ -14,7 +15,7 @@ DEFAULT_CONFIGS = {
             "batch_size": 32,
             "seed": 42,
             "embed_dim":8,
-            "base_width": 512,
+            "ff_width": 512,
             "dataset": "data/The_Expedition_of_Humphry_Clinker.txt",
             "optimizer":"adam",
             "optimizer_args":{
@@ -34,8 +35,8 @@ OPTIMIZERS = {
 }
 
 class Session:
-    def __init__(self, model:Model,  tokenizer:Tokenizer, embedding:Embedding, configs:dict | None = None):
-        self.model = model
+    def __init__(self, transformer:Transformer,  tokenizer:Tokenizer, embedding:Embedding, configs:dict | None = None):
+        self.transformer = transformer
         self.tokenizer = tokenizer
         self.embedding = embedding
         if configs is None:
@@ -44,23 +45,9 @@ class Session:
         self.configs = DEFAULT_CONFIGS | configs
         self.configs["optimizer_args"] = DEFAULT_CONFIGS["optimizer_args"] | configs.get("optimizer_args", {})
         optimizer_class = OPTIMIZERS[self.configs["optimizer"]]
-        model.optimizer = optimizer_class(**self.configs["optimizer_args"])
+        transformer.optimizer = optimizer_class(**self.configs["optimizer_args"])
 
         
-    
-    #TODO a mess
-    @classmethod
-    def build(cls, datapath:str):
-        '''
-        create a session with default model, tokenizer,embedding, and configuration.
-        '''
-        raise NotImplementedError("not yet")
-        tokenizer = Tokenizer()
-        tokenizer_len = len(tokenizer.chartoid)
-        embedding = Embedding(tokenizer_len, 8)
-        model = Model.build(DEFAULT_CONFIGS["context_size"] * DEFAULT_CONFIGS["embed_dim"],tokenizer_len , 2, DEFAULT_CONFIGS["base_width"])
-        session = cls(model,tokenizer,embedding)
-        session.embedding.embed_dim = session.configs["embed_dim"]
 
     @classmethod
     def build_from_files(cls):
@@ -74,10 +61,20 @@ class Session:
         whole architecture number of params
         """
         total = 0
-        for layer in self.model.layers:
-            total += layer.weights.size
-            total += layer.biases.size
+        for i in self.transformer.blocks:
+            total += i.ff1.weights.size
+            total += i.ff2.weights.size
+            total += i.ff1.biases.size
+            total += i.ff2.biases.size
+            total += i.attention.Wq.size
+            total += i.attention.Wk.size
+            total += i.attention.Wv.size
+            total += i.attention.Bv.size
+            total += i.attention.Bk.size
+            total += i.attention.Bq.size
         total += self.embedding.lookup_table.size
+        total += self.transformer.classifier.weights.size
+        total += self.transformer.classifier.biases.size
         return total
 
     def train(self,patience:int=10, display_message:bool=True):
@@ -103,7 +100,7 @@ class Session:
             for i in range(self.configs["epochs"]):
                 epoch = i
                 start = time.perf_counter()
-                error = self.model.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
+                error = self.transformer.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
                 end = time.perf_counter()
 
                 time_ = end-start
@@ -130,7 +127,7 @@ class Session:
                     if bad_epoch >= patience:
                         if display_message:
                             print(f"[STOPPED] epoch {i} | not getting better | avg loss: {error}")
-                            self.save("save_stopped")
+                            # self.save("save_stopped")
                         break
                 display_every = max(1, self.configs["epochs"] // 10)
                 if display_message and( i % display_every == 0 or i == self.configs["epochs"] - 1):
@@ -149,18 +146,18 @@ class Session:
                 prev_error = error
         except ValueError as e:
             print(f"epoch {epoch}: {e}")
-            self.save("valueerror_save")
+            # self.save("valueerror_save")
             raise
         except OverflowError as e:
             print(f"epoch {epoch}: {e}")
-            self.save("overflow_save")
+            # self.save("overflow_save")
             raise
     
     def predict(self, context:np.ndarray, temperature:float=0.8, top_k=3):
         """
         predict next token
         """
-        logits = self.model.predict(context, self.embedding)
+        logits = self.transformer.predict(context, self.embedding)
         probs = softmax(logits/temperature)
         top_k = min(top_k, len(probs))
         top_indices = np.argpartition(probs, -top_k)[-top_k:]
@@ -168,40 +165,40 @@ class Session:
         top_probs = top_probs / np.sum(top_probs)
         return np.random.choice(top_indices, p=top_probs)
 
-    def save(self, filename:str, save_artifacts:bool=False):
-        '''
-        Args:
-            filename: the name the save file will have. session_{filename}.json
-            save_artifacts: also save artifacts seperately
-        '''
+    # def save(self, filename:str, save_artifacts:bool=False):
+    #     '''
+    #     Args:
+    #         filename: the name the save file will have. session_{filename}.json
+    #         save_artifacts: also save artifacts seperately
+    #     '''
 
-        model_dict = self.model.to_dict()
-        tokenizer_dict = self.tokenizer.to_dict()
-        embedding_dict = self.embedding.to_dict()
+    #     model_dict = self.model.to_dict()
+    #     tokenizer_dict = self.tokenizer.to_dict()
+    #     embedding_dict = self.embedding.to_dict()
 
-        session = {
-            "configs":self.configs,
-            "model":model_dict,
-            "tokenizer":tokenizer_dict,
-            "embedding":embedding_dict,
-        }
+    #     session = {
+    #         "configs":self.configs,
+    #         "model":model_dict,
+    #         "tokenizer":tokenizer_dict,
+    #         "embedding":embedding_dict,
+    #     }
 
-        filename = f"session_{filename}.json"
-        with open(f"artifacts/sessions/{filename}", "w") as f:
-            json.dump(session,f,indent=4)
+    #     filename = f"session_{filename}.json"
+    #     with open(f"artifacts/sessions/{filename}", "w") as f:
+    #         json.dump(session,f,indent=4)
     
-    @classmethod
-    def load(cls, filepath) -> "Session":
-        """
-        load the saved session file and build
-        """
-        with open(filepath, "r") as f:
-            session = json.load(f)
+    # @classmethod
+    # def load(cls, filepath) -> "Session":
+    #     """
+    #     load the saved session file and build
+    #     """
+    #     with open(filepath, "r") as f:
+    #         session = json.load(f)
 
-        model = Model.from_dict(session["model"])
-        embedding = Embedding.from_dict(session["embedding"])
-        tokenizer = Tokenizer.from_dict(session["tokenizer"])
-        configs = session["configs"]
+    #     model = Model.from_dict(session["model"])
+    #     embedding = Embedding.from_dict(session["embedding"])
+    #     tokenizer = Tokenizer.from_dict(session["tokenizer"])
+    #     configs = session["configs"]
 
-        session = cls(model,tokenizer,embedding, configs=configs)
-        return session
+    #     session = cls(model,tokenizer,embedding, configs=configs)
+    #     return session
