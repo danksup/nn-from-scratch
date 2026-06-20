@@ -111,7 +111,6 @@ class Model:
             loss = np.sum(cross_entropy(softmax_batch_scores, next_tokens))
             total_loss += loss
             count += contexts.shape[0]
-
             # start = time.perf_counter()
             error_signal = self.backward(batch_gradient).reshape(contexts.shape[0],dataloader.context_size,embedding.embed_dim)
             # end = time.perf_counter()

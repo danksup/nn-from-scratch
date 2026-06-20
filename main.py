@@ -2,14 +2,19 @@ import random
 SEED = 42
 random.seed(SEED)
 EPOCHS = 50
-LR = 0.005
-EMBED_DIM = 16
+LR = 1e-3
+EMBED_DIM = 32
 CONTEXT_SIZE = 32
 BATCH_SIZE = 32
-BASE_WIDTH = (EMBED_DIM * CONTEXT_SIZE ) // 2
+BASE_WIDTH = (EMBED_DIM * CONTEXT_SIZE ) // 4
 # BASE_WIDTH = 16
 
+#not added yet to session
+PATIENCE = 20
+TRESHOLD = 1e-2
+
 import time
+import numpy as np
 
 
 from engine.model import Model
@@ -25,10 +30,11 @@ configs = {
             "seed": SEED,
             "embed_dim":EMBED_DIM,
             "base_width": BASE_WIDTH,
+            "optimizer":"adamw",
             "dataset": "data/The_Expedition_of_Humphry_Clinker.txt",
             "optimizer_args":{
-                "lr":0.01,
-                "beta":0.5
+                "lr":LR,
+                "beta":0.9
             }
         }
 
@@ -45,13 +51,18 @@ start = time.time()
 session1.train(display_message=True)
 end = time.time()
 print(f"training finished. time: {end - start:.3f}s")
-session1.save("test_momentum")
+session1.save("test_adamw_1e-3")
 
-# session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_momentum.json")
+# session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_adam_0.0001.json")
 # context = session_load.tokenizer.encode("The nature of religion is questi")
-
+# print(len(context))
+# TEMPERATURE = 0.8
+# TOP_K = 10
+# print(f"temperature={TEMPERATURE}")
+# print(f"top_k={TOP_K}")
 # for _ in range(400):
-    
-#     predicted_id = session_load.predict(context, top_k=10, temperature=0.5)
-#     print(session_load.tokenizer.decode([predicted_id]), end="")
-#     context = context[1:] + [predicted_id]  
+#     context_batch = context.reshape(1, -1)
+#     predicted_id = session_load.predict(context_batch, top_k=TOP_K, temperature=TEMPERATURE)
+#     print(session_load.tokenizer.decode([predicted_id]), end="", flush=True)
+#     context = np.append(context[1:], predicted_id)
+# print()

@@ -4,9 +4,9 @@ from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.activations import softmax
-from engine.optimizer import Momentum, SGD,Adam
+from engine.optimizer import Momentum, SGD,Adam,AdamW
 import numpy as np
-
+import time
 
 DEFAULT_CONFIGS = {
             "epochs": 100,
@@ -21,7 +21,8 @@ DEFAULT_CONFIGS = {
                 "lr":0.05,
                 "beta":0.9,
                 "beta2":0.999,
-                "epsilon":1e-8
+                "epsilon":1e-8,
+                "weight_decay":0.01
             }
         }
 
@@ -29,6 +30,7 @@ OPTIMIZERS = {
     "sgd": SGD,
     "momentum": Momentum,
     "adam": Adam,
+    "adamw": AdamW,
 }
 
 class Session:
@@ -68,6 +70,9 @@ class Session:
         raise NotImplementedError("not yet")
     
     def count_params(self):
+        """
+        whole architecture number of params
+        """
         total = 0
         for layer in self.model.layers:
             total += layer.weights.size
@@ -97,7 +102,11 @@ class Session:
             THRESHOLD = 1e-4
             for i in range(self.configs["epochs"]):
                 epoch = i
+                start = time.perf_counter()
                 error = self.model.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
+                end = time.perf_counter()
+
+                time_ = end-start
 
                 if prev_error is not None:
                     improvement = prev_error - error
@@ -108,7 +117,7 @@ class Session:
                         bad_epoch += 1
                         if display_message:
                             bad_epoch_reason = "improvement too small" if too_small else "getting worse"
-                            print(f"epoch {i}: bad epoch: {bad_epoch_reason} | delta: {error-prev_error:.5f} | ({bad_epoch}/{patience})")
+                            print(f"epoch {i}: bad epoch: {bad_epoch_reason} | delta: {error-prev_error:.5f} | ({bad_epoch}/{patience}) | time: {time_}")
                     else:
                         #not how this works, checkpoint just references self so...
                         # checkpoint = self
@@ -125,7 +134,17 @@ class Session:
                         break
                 display_every = max(1, self.configs["epochs"] // 10)
                 if display_message and( i % display_every == 0 or i == self.configs["epochs"] - 1):
-                    print(f"epoch {epoch} | avg loss: {error}")
+                    
+                    print(f"epoch {epoch} | avg loss: {error} | time: {time_}")
+                    # largest = 0
+
+                    # for layer in self.model.layers:
+                    #     largest = max(
+                    #         largest,
+                    #         np.max(np.abs(layer.weights))
+                    #     )
+
+                    # print("max weight:", largest)
                     
                 prev_error = error
         except ValueError as e:
