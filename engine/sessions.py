@@ -66,6 +66,14 @@ class Session:
         build from save file using filepath.
         '''
         raise NotImplementedError("not yet")
+    
+    def count_params(self):
+        total = 0
+        for layer in self.model.layers:
+            total += layer.weights.size
+            total += layer.biases.size
+        total += self.embedding.lookup_table.size
+        return total
 
     def train(self,patience:int=10, display_message:bool=True):
         """
@@ -76,7 +84,7 @@ class Session:
         """
         dataloader = DataLoader(self.configs["dataset"], self.tokenizer, self.configs["context_size"])
         if display_message:
-            t_mess = f"[TRAINING]param: {self.model.count_params()} "
+            t_mess = f"[TRAINING]param: {self.count_params()} "
             for key,val in self.configs.items():
                 t_mess += f"{key}: {val} "
             print(t_mess)        

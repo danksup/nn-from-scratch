@@ -15,14 +15,17 @@ class Adam:
                 "velocity":np.zeros_like(params),
                 "time_step":0
             }
-        momentum_estimate = self.memory[param_id]["momentum_estimate"]
-        velocity = self.memory[param_id]["velocity"]
-        self.memory[param_id]["momentum_estimate"] = self.beta1 * momentum_estimate + (1 - self.beta1) * gradient
-        self.memory[param_id]["velocity"] = self.beta2 * velocity + (1-self.beta2) * np.square(gradient)
-        self.memory[param_id]["time_step"] +=1 
-        time_step = self.memory[param_id]["time_step"]
-        m_hat =  self.memory[param_id]["momentum_estimate"]/ (1-np.power(self.beta1,time_step))
-        v_hat =  self.memory[param_id]["velocity"]/ (1-np.power(self.beta2, time_step))
+        current = self.memory[param_id]
+        momentum_estimate = current["momentum_estimate"]
+        velocity = current["velocity"]
+        momentum_estimate *= self.beta1
+        momentum_estimate += (1 - self.beta1) * gradient
+        velocity *= self.beta2
+        velocity += (1-self.beta2) * gradient ** 2
+        current["time_step"] +=1 
+        time_step = current["time_step"]
+        m_hat =  momentum_estimate / (1- self.beta1 ** time_step)
+        v_hat =  velocity / (1- self.beta2 ** time_step)
         params -= self.lr * m_hat / (np.sqrt(v_hat) + self.epilon)
 
 

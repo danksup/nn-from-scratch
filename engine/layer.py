@@ -13,16 +13,12 @@ class Layer:
         '''
         self.n = n_neuron
         self.m = m_weight
-        self.weights = np.ndarray((n_neuron,m_weight))
-        self.biases = np.ndarray((n_neuron))
         self.activation = activation
         self.activation_derivative = activation_derivative
-
         scale = 1/np.sqrt(self.m)
-        for i in range(n_neuron):
-            for j in range(m_weight):
-                self.weights[i,j] = random.uniform(-scale, scale)
-            self.biases[i] = random.uniform(-scale, scale)
+        rng = np.random.default_rng()
+        self.weights = rng.uniform(low=-scale, high=scale,size=(self.n, self.m))
+        self.biases = rng.uniform(low=-scale, high=scale,size=(self.n,))
     
     def __repr__(self) -> str:
         return f"Weights: {self.weights}\nBiases: {self.biases}"

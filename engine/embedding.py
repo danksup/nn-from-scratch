@@ -5,7 +5,8 @@ import numpy as np
 class Embedding:
     def __init__(self, n:int, embed_dim:int) -> None:
         self.embed_dim = embed_dim
-        self.lookup_table = np.array([[random.uniform(-0.1, 0.1) for _ in range(self.embed_dim)] for _ in range(n)])
+        rng = np.random.default_rng()
+        self.lookup_table = rng.uniform(low=-0.1, high=0.1,size=(n, self.embed_dim))
     
     def forward(self, token_list:np.ndarray):
         ''' loopup and convert to the vector for each token id'''

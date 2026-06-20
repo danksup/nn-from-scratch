@@ -9,9 +9,9 @@ def leaky_relu_derivative(x:np.ndarray):
 
 def softmax(l:np.ndarray) -> np.ndarray:
     if l.ndim == 2:
-        max_l = np.max(l, axis=1).reshape(-1,1)
+        max_l = np.max(l, axis=1, keepdims=True)
         exponent = np.exp(l - max_l) 
-        return exponent/np.sum(exponent, axis=-1).reshape(-1,1) 
+        return exponent/np.sum(exponent, axis=-1, keepdims=True)
     else:
         max_l = np.max(l)
         exponent = np.exp(l - max_l)

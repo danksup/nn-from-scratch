@@ -1,16 +1,16 @@
 import json
-
+import numpy as np
 class Tokenizer:
     def __init__(self):
-        self.idtochar = {0:"<PAD>"}
-        self.chartoid = {"<PAD>":0}
+        self.idtochar = {0:"<PAD>", 1:"<UNK>"}
+        self.chartoid = {"<PAD>":0,"<UNK>":1}
 
     #TODO maybe what if i want a different method of splitting like maybe world level 
     def split_input(self, char:str) -> list[str]:
         """character level tokenizer"""
         return list(char)
 
-    def fit(self, x):
+    def fit(self, x:str) -> None:
         """
         Args:
             x: input
@@ -18,24 +18,25 @@ class Tokenizer:
         fit x if not fitted.
         """
 
-        next_id = len(self.chartoid)
-
-        self.chartoid[x] = next_id
-        self.idtochar[next_id] = x
-    
-    def encode(self, char:str) -> list[int]:
+        tokens = self.split_input(x)
+        for i in tokens:
+            if i not in self.chartoid:
+                next_id = len(self.chartoid)
+                self.chartoid[i] = next_id
+                self.idtochar[next_id] = i
+        
+    def encode(self, char:str) -> np.ndarray:
         """
         returns list of token id 
         """
 
         tokens = self.split_input(char)
-        encoded = [] 
-        for i in tokens:
-            if i not in self.chartoid:
-                self.fit(i)
-                encoded.append(self.chartoid[i])
+        encoded = np.zeros(len(tokens),dtype=np.int64)
+        for i,token in enumerate(tokens):
+            if token not in self.chartoid:
+                encoded[i] = (self.chartoid["<UNK>"])
             else:
-                encoded.append(self.chartoid[i])
+                encoded[i] = (self.chartoid[token ])
         
         return encoded
 

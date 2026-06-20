@@ -1,5 +1,5 @@
 from engine.tokenizer import Tokenizer
-
+import numpy as np
 class DataLoader:
     def __init__(self,filepath:str, tokenizer:Tokenizer, size:int=16) -> None:
         '''
@@ -11,21 +11,18 @@ class DataLoader:
         with open(filepath, "r") as f:
             text = f.read()
 
+        tokenizer.fit(text)
         self.tokens = tokenizer.encode(text)
         self.context_size = size
+
+        windows = np.lib.stride_tricks.sliding_window_view(self.tokens, self.context_size + 1)
+
+        self.contexts = windows[:,:-1]
+        self.targets = windows[:,-1]
 
     def get_pairs(self, batch_size:int=32):
         """ 
         slice token per size as inputs
         """
-        batch = []
-        for i in range(self.context_size, len(self.tokens)):
-            context = self.tokens[i- self.context_size : i]
-            next_token = self.tokens[i]
-            batch.append([context, next_token])
-            if len(batch) == batch_size:
-                yield batch
-                batch = []
-        
-        if batch:
-            yield batch
+        for i in range(0, len(self.targets), batch_size):
+            yield(self.contexts[i:i+batch_size], self.targets[i:i+batch_size])
