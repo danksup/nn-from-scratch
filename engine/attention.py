@@ -23,9 +23,11 @@ class AttentionLayer:
         self.V = x @ self.Wv + self.Bv
 
         self.scores = self.Q @ self.K.transpose(0,2,1) / np.sqrt(self.embed_dim)
+
+        mask = np.triu(np.ones((self.scores.shape[1],self.scores.shape[2])), k = 1)
+        self.scores = np.where(mask, -1e9,self.scores)
         self.weights = softmax(self.scores)
         self.output = self.weights @ self.V
-
     
         return self.output
     
