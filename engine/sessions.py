@@ -4,7 +4,7 @@ from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.activations import softmax
-from engine.optimizer import Momentum, SGD,Adam,AdamW
+from engine.optimizer import Momentum, SGD,AdamW
 import numpy as np
 import time
 import pickle
@@ -30,12 +30,12 @@ DEFAULT_CONFIGS = {
 OPTIMIZERS = {
     "sgd": SGD,
     "momentum": Momentum,
-    "adam": Adam,
     "adamw": AdamW,
+    "adam": AdamW,
 }
 
 class Session:
-    def __init__(self, transformer:Transformer,  tokenizer:Tokenizer, embedding:Embedding, configs:dict | None = None):
+    def __init__(self, transformer:Transformer,  tokenizer:Tokenizer, embedding:Embedding, configs:dict | None = None,init_optimizer:bool=True):
         self.transformer = transformer
         self.tokenizer = tokenizer
         self.embedding = embedding
@@ -44,8 +44,10 @@ class Session:
 
         self.configs = DEFAULT_CONFIGS | configs
         self.configs["optimizer_args"] = DEFAULT_CONFIGS["optimizer_args"] | configs.get("optimizer_args", {})
-        optimizer_class = OPTIMIZERS[self.configs["optimizer"]]
-        transformer.optimizer = optimizer_class(**self.configs["optimizer_args"])
+
+        if init_optimizer: #if the optimizers need to be optimized first, otherwise from_dict params would get overridden
+            optimizer_class = OPTIMIZERS[self.configs["optimizer"]]
+            transformer.optimizer = optimizer_class(**self.configs["optimizer_args"])
 
         
 
@@ -181,6 +183,7 @@ class Session:
             "transformer":transformer_dict,
             "tokenizer":tokenizer_dict,
             "embedding":embedding_dict,
+            "optimizer_states":self.transformer.optimizer.to_dict()
         }
 
         filename = f"session_{filename}.ram2n"
@@ -205,5 +208,7 @@ class Session:
         embedding = Embedding.from_dict(session["embedding"])
         tokenizer = Tokenizer.from_dict(session["tokenizer"])
         configs = session["configs"]
-
-        return  cls(transformer,tokenizer,embedding, configs=configs)
+        optimizer_class = OPTIMIZERS[configs["optimizer"]]
+        transformer.optimizer = optimizer_class.from_dict(session["optimizer_states"])
+        
+        return  cls(transformer,tokenizer,embedding, configs=configs, init_optimizer=False)

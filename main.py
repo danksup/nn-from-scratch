@@ -56,13 +56,13 @@ start = time.time()
 session1.train(display_message=True)
 end = time.time()
 print(f"training finished. time: {end - start:.3f}s")
-session1.save("test_pe")
+session1.save("test_")
 
 # session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_pe.ram2n")
-# context = session_load.tokenizer.encode("The nature of religion is questi")
+# context = session_load.tokenizer.encode("The nature of re")
 # print(len(context))
-# TEMPERATURE = 0.8
-# TOP_K = 10
+# TEMPERATURE = 10
+# TOP_K = 50
 # print(f"temperature={TEMPERATURE}")
 # print(f"top_k={TOP_K}")
 # for _ in range(100):

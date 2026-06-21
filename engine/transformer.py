@@ -3,7 +3,7 @@ from engine.losses import cross_entropy_gradient, cross_entropy
 from engine.activations import softmax
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
-from engine.optimizer import SGD, Momentum, Adam, AdamW
+from engine.optimizer import SGD, Momentum, AdamW
 from engine.positionalencoding import PE
 from engine.attention import AttentionLayer
 from engine.transformer_block import TransformerBlock
@@ -18,7 +18,7 @@ class Transformer:
         self.blocks = []
         self.classifier = Layer.output(vocab_size, embed_dim)
         if optimizer is None:
-            optimizer = Adam()
+            optimizer = AdamW()
 
         self.optimizer = optimizer
     def __repr__(self) -> str:
@@ -74,20 +74,20 @@ class Transformer:
             err_signal = block.backward(cuurent_grad)
             cuurent_grad = err_signal
         
-        for block in self.blocks:
-            self.optimizer.step(block.attention.Wq, block.attention.dWq)
-            self.optimizer.step(block.attention.Wk, block.attention.dWk)
-            self.optimizer.step(block.attention.Wv, block.attention.dWv)
-            self.optimizer.step(block.attention.Bq, block.attention.dBq)
-            self.optimizer.step(block.attention.Bk, block.attention.dBk)
-            self.optimizer.step(block.attention.Bv, block.attention.dBv)
-            self.optimizer.step(block.ff1.weights, block.ff1.d_weight)
-            self.optimizer.step(block.ff1.biases, block.ff1.d_bias)
-            self.optimizer.step(block.ff2.weights, block.ff2.d_weight)
-            self.optimizer.step(block.ff2.biases, block.ff2.d_bias)
+        for i,block in enumerate(self.blocks):
+            self.optimizer.step(f"Wq_{i}", block.attention.Wq, block.attention.dWq)
+            self.optimizer.step(f"Wk_{i}",block.attention.Wk, block.attention.dWk)
+            self.optimizer.step(f"Wv_{i}",block.attention.Wv, block.attention.dWv)
+            self.optimizer.step(f"Bq_{i}",block.attention.Bq, block.attention.dBq)
+            self.optimizer.step(f"Bk_{i}",block.attention.Bk, block.attention.dBk)
+            self.optimizer.step(f"Bv_{i}",block.attention.Bv, block.attention.dBv)
+            self.optimizer.step(f"ff1_weights_{i}",block.ff1.weights, block.ff1.d_weight)
+            self.optimizer.step(f"ff1_biases_{i}",block.ff1.biases, block.ff1.d_bias)
+            self.optimizer.step(f"ff2_weights_{i}",block.ff2.weights, block.ff2.d_weight)
+            self.optimizer.step(f"ff2_biases_{i}",block.ff2.biases, block.ff2.d_bias)
         
-        self.optimizer.step(self.classifier.weights,self.classifier.d_weight)
-        self.optimizer.step(self.classifier.biases,self.classifier.d_bias)
+        self.optimizer.step("classifier_weights",self.classifier.weights,self.classifier.d_weight)
+        self.optimizer.step("classifier_biases",self.classifier.biases,self.classifier.d_bias)
                         
         return cuurent_grad
 
@@ -118,7 +118,7 @@ class Transformer:
          
             embedding_gradient = np.zeros_like(embedding.lookup_table)
             np.add.at(embedding_gradient, contexts, error_signal)
-            self.optimizer.step(embedding.lookup_table, embedding_gradient)  
+            self.optimizer.step("embedding",embedding.lookup_table, embedding_gradient)  
         return total_loss / count
     
     # def count_params_model(self):
@@ -136,7 +136,7 @@ class Transformer:
             "vocab_size":self.vocab_size,
             "embed_dim": self.embed_dim,
             "blocks": [],
-            "classifier": None
+            "classifier": None,
         }
         for block in self.blocks:
             transformer["blocks"].append(block.to_dict())
