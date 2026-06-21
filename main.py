@@ -34,7 +34,9 @@ configs = {
             "dataset": "data/The_Expedition_of_Humphry_Clinker.txt",
             "optimizer_args":{
                 "lr":LR,
-                "beta":0.9
+                "beta":0.9,
+                "beta2":0.999,
+                "weight_decay":1e-2
             }
         }
 

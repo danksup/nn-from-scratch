@@ -17,7 +17,7 @@ DEFAULT_CONFIGS = {
             "embed_dim":8,
             "ff_width": 512,
             "dataset": "data/The_Expedition_of_Humphry_Clinker.txt",
-            "optimizer":"adam",
+            "optimizer":"adamw",
             "optimizer_args":{
                 "lr":0.05,
                 "beta":0.9,
