@@ -3,7 +3,7 @@ import engine.activations as unit
 import numpy as np
 
 class Layer:
-    def __init__(self, n_neuron:int, m_weight:int, activation=unit.leaky_relu, activation_derivative = unit.leaky_relu_derivative) -> None:
+    def __init__(self, n_neuron:int, m_weight:int, layer_type:str="hidden",activation=unit.leaky_relu, activation_derivative = unit.leaky_relu_derivative) -> None:
         '''
         Args:
             n_neuron: number of neurons
@@ -11,6 +11,7 @@ class Layer:
             activation: activation unit
             activation_derivative: activation unit derivative
         '''
+        self.layer_type = layer_type
         self.n = n_neuron
         self.m = m_weight
         self.activation = activation
@@ -28,11 +29,11 @@ class Layer:
     
     @classmethod
     def hidden(cls, n, m, activation=unit.leaky_relu, activation_derivative= unit.leaky_relu_derivative):
-        return cls(n,m,activation ,activation_derivative)
+        return cls(n,m,"hidden",activation ,activation_derivative)
     
     @classmethod
     def output(cls, n, m):
-        return cls(n,m, None, None)
+        return cls(n,m, "output",None, None)
     
     def forward(self, inputs:np.ndarray) -> np.ndarray:
         '''
@@ -71,4 +72,32 @@ class Layer:
 
         
         return previous_error.T
+    
+    def to_dict(self):
+        return {
+            "n":self.n,
+            "m":self.m,
+            "weights":self.weights,
+            "biases":self.biases,
+            "type":self.layer_type
+        }
+    
+    @classmethod
+    def from_dict(cls,thing):
+        n = thing['n']
+        m = thing['m']
+        weights = np.array(thing["weights"])
+        biases = np.array(thing["biases"])
+        layer_type = thing["type"]
+        if layer_type == "hidden":
+            ff = cls.hidden(n,m)
+        elif layer_type == "output":
+            ff = cls.output(n,m)
+        else:
+            raise ValueError(f"unknown type {layer_type}")
+        ff.weights = weights
+        ff.biases = biases
+
+        return ff
+        
         

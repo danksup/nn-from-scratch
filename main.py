@@ -42,6 +42,7 @@ data = "/Users/rama/Desktop/project1/data/The_Expedition_of_Humphry_Clinker.txt"
 tokenizer1 = Tokenizer()
 dataloader = DataLoader(data, tokenizer1, CONTEXT_SIZE)
 vocab_size = len(tokenizer1.chartoid)
+print(vocab_size)
 weight_n = CONTEXT_SIZE * EMBED_DIM
 embedding1 = Embedding(vocab_size, EMBED_DIM)
 # model1 = Transformer.build(weight_n,vocab_size,2, BASE_WIDTH)

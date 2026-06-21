@@ -1,4 +1,4 @@
-from engine.layer import Layer
+from engine.feedforward import Layer
 from engine.losses import cross_entropy_gradient, cross_entropy
 from engine.activations import softmax
 from engine.embedding import Embedding
@@ -13,6 +13,8 @@ import json
 
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
+        self.vocab_size = vocab_size
+        self.embed_dim = embed_dim
         self.blocks = []
         self.classifier = Layer.output(vocab_size, embed_dim)
         if optimizer is None:
@@ -129,57 +131,31 @@ class Transformer:
     #         total += layer.biases.size
     #     return total
     
-    # def to_dict(self) -> dict:
-    #     model = {
-    #         "layers": []
-    #     }
-    #     for layer in self.layers:
-    #         model["layers"].append(
-    #              {
-    #                 "n":layer.n,
-    #                 "m":layer.m,
-    #                 "weights":layer.weights.tolist(),
-    #                 "biases":layer.biases.tolist(),
-    #             }
-    #         )
-    #     return model
+    def to_dict(self) -> dict:
+        transformer = {
+            "vocab_size":self.vocab_size,
+            "embed_dim": self.embed_dim,
+            "blocks": [],
+            "classifier": None
+        }
+        for block in self.blocks:
+            transformer["blocks"].append(block.to_dict())
+        transformer["classifier"] = self.classifier.to_dict()
+        return transformer
     
-    # def save(self, filename:str):
-    #     """
-    #     save model into a JSON file.
-    #     """
-    #     model = self.to_dict()
-    #     filename = f'artifacts/models/model_{str(self.count_params_model())}_{filename}.json'
-    #     with open(filename, 'w', encoding='utf-8') as file:
-    #         json.dump(model, file, indent=4)
-
-    # @classmethod
-    # def from_dict(cls,thing:dict):
-    #     model = cls()
-    #     for layer in thing["layers"]:
-    #         current = Layer(layer["n"], layer["m"])
-    #         current.weights = np.array(layer["weights"])
-    #         current.biases = np.array(layer["biases"])
-    #         model.add_layer(current)
-
-    #     return model
+    @classmethod
+    def from_dict(cls,thing:dict):
+        vocab_size = thing["vocab_size"]
+        embed_dim = thing["embed_dim"]
+        blocks = thing["blocks"]
+        classifier = thing["classifier"]
+        transformer = cls(vocab_size, embed_dim)
+        for block in blocks:
+            transformer.add_block(TransformerBlock.from_dict(block))
+        transformer.classifier = Layer.from_dict(classifier)
+        return transformer
     
-    # def load(self, filename:str) -> "Model":
-    #     """
-    #     load model from a JSON file
-    #     """
-    #     try:
-    #         with open(filename, "r") as file:
-    #             model = json.load(file)
-
-    #         self.layers = Model.from_dict(model).layers
-    #         return self
-
-    #     except FileNotFoundError:
-    #         raise FileNotFoundError("file not found")
-    #     except json.JSONDecodeError:
-    #         raise ValueError("decode eror")
-
+   
     def predict(self, context:np.ndarray, embedding:Embedding) -> np.ndarray:
         embedded = embedding.forward(context) + PE(len(context), embedding.embed_dim)
         scores = self.forward(embedded)

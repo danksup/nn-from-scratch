@@ -1,4 +1,3 @@
-import json
 from engine.transformer import Transformer
 from engine.transformer_block import TransformerBlock
 from engine.tokenizer import Tokenizer
@@ -8,6 +7,7 @@ from engine.activations import softmax
 from engine.optimizer import Momentum, SGD,Adam,AdamW
 import numpy as np
 import time
+import pickle
 
 DEFAULT_CONFIGS = {
             "epochs": 100,
@@ -165,40 +165,45 @@ class Session:
         top_probs = top_probs / np.sum(top_probs)
         return np.random.choice(top_indices, p=top_probs)
 
-    # def save(self, filename:str, save_artifacts:bool=False):
-    #     '''
-    #     Args:
-    #         filename: the name the save file will have. session_{filename}.json
-    #         save_artifacts: also save artifacts seperately
-    #     '''
+    def save(self, filename:str, save_artifacts:bool=False):
+        '''
+        Args:
+            filename: the name the save file will have. session_{filename}.json
+            save_artifacts: also save artifacts seperately
+        '''
 
-    #     model_dict = self.model.to_dict()
-    #     tokenizer_dict = self.tokenizer.to_dict()
-    #     embedding_dict = self.embedding.to_dict()
+        transformer_dict = self.transformer.to_dict()
+        tokenizer_dict = self.tokenizer.to_dict()
+        embedding_dict = self.embedding.to_dict()
 
-    #     session = {
-    #         "configs":self.configs,
-    #         "model":model_dict,
-    #         "tokenizer":tokenizer_dict,
-    #         "embedding":embedding_dict,
-    #     }
+        session = {
+            "configs":self.configs,
+            "transformer":transformer_dict,
+            "tokenizer":tokenizer_dict,
+            "embedding":embedding_dict,
+        }
 
-    #     filename = f"session_{filename}.json"
-    #     with open(f"artifacts/sessions/{filename}", "w") as f:
-    #         json.dump(session,f,indent=4)
+        filename = f"session_{filename}.ram2n"
+        with open(f"artifacts/sessions/{filename}", "wb") as f:
+           f.write(b"RAM2N")
+           f.write((1).to_bytes(4, "little"))
+           pickle.dump(session, f)
     
-    # @classmethod
-    # def load(cls, filepath) -> "Session":
-    #     """
-    #     load the saved session file and build
-    #     """
-    #     with open(filepath, "r") as f:
-    #         session = json.load(f)
+    @classmethod
+    def load(cls, filepath) -> "Session":
+        """
+        load the saved session file and build
+        """
+        with open(filepath, "rb") as f:
+            magic = f.read(5)
+            if magic != b"RAM2N":
+                raise ValueError("unknown file")
+            version = int.from_bytes(f.read(4), "little")
+            session = pickle.load(f)
 
-    #     model = Model.from_dict(session["model"])
-    #     embedding = Embedding.from_dict(session["embedding"])
-    #     tokenizer = Tokenizer.from_dict(session["tokenizer"])
-    #     configs = session["configs"]
+        transformer = Transformer.from_dict(session["transformer"])
+        embedding = Embedding.from_dict(session["embedding"])
+        tokenizer = Tokenizer.from_dict(session["tokenizer"])
+        configs = session["configs"]
 
-    #     session = cls(model,tokenizer,embedding, configs=configs)
-    #     return session
+        return  cls(transformer,tokenizer,embedding, configs=configs)
