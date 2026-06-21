@@ -158,7 +158,7 @@ class Session:
         predict next token
         """
         logits = self.transformer.predict(context, self.embedding)
-        probs = softmax(logits/temperature)
+        probs = softmax(logits / temperature)[0]
         top_k = min(top_k, len(probs))
         top_indices = np.argpartition(probs, -top_k)[-top_k:]
         top_probs = probs[top_indices]

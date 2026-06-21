@@ -63,15 +63,13 @@ class Layer:
         else:
             current_neuron_error = err_signal
 
-        batch_size = self.last_input.shape[0] if self.last_input.ndim > 1 else 1
+        batch_size, seq_len, _ = self.last_input.shape
+        self.d_weight = np.einsum("bso,bsi->oi",current_neuron_error,self.last_input) / (batch_size * seq_len)
+        previous_error = current_neuron_error @ self.weights
 
-        d_weight = ( current_neuron_error.T @ self.last_input) / batch_size
-        previous_error = self.weights.T @ current_neuron_error.T
-        self.d_weight = d_weight
-        self.d_bias = current_neuron_error.mean(axis=0)
+        self.d_bias = current_neuron_error.mean(axis=(0,1))
 
-        
-        return previous_error.T
+        return previous_error
     
     def to_dict(self):
         return {

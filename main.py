@@ -1,13 +1,15 @@
 import random
 SEED = 42
 random.seed(SEED)
-EPOCHS = 1
+EPOCHS = 10
 LR = 1e-3
-EMBED_DIM = 8
-CONTEXT_SIZE = 32
-BATCH_SIZE = 32
+EMBED_DIM = 128
+CONTEXT_SIZE = 64
+BATCH_SIZE = 16
 # BASE_WIDTH = (EMBED_DIM * CONTEXT_SIZE ) // 4
-BASE_WIDTH = 16
+BASE_WIDTH = 256
+DATA = "test"
+
 
 #not added yet to session
 PATIENCE = 20
@@ -18,6 +20,7 @@ import numpy as np
 
 
 from engine.transformer import Transformer
+from engine.transformer_block import TransformerBlock
 from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
@@ -31,7 +34,7 @@ configs = {
             "embed_dim":EMBED_DIM,
             "ff_width": BASE_WIDTH,
             "optimizer":"adamw",
-            "dataset": "data/The_Expedition_of_Humphry_Clinker.txt",
+            "dataset": DATA,
             "optimizer_args":{
                 "lr":LR,
                 "beta":0.9,
@@ -40,31 +43,29 @@ configs = {
             }
         }
 
-data = "/Users/rama/Desktop/project1/data/The_Expedition_of_Humphry_Clinker.txt"
 tokenizer1 = Tokenizer()
-dataloader = DataLoader(data, tokenizer1, CONTEXT_SIZE)
+dataloader = DataLoader(DATA, tokenizer1, CONTEXT_SIZE)
 vocab_size = len(tokenizer1.chartoid)
-print(vocab_size)
 weight_n = CONTEXT_SIZE * EMBED_DIM
 embedding1 = Embedding(vocab_size, EMBED_DIM)
-# model1 = Transformer.build(weight_n,vocab_size,2, BASE_WIDTH)
-# print(model1)
+tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH)
 transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
+transformer.add_block(tblock)
 session1 = Session(transformer,tokenizer1,embedding1, configs)
 start = time.time()
 session1.train(display_message=True)
 end = time.time()
 print(f"training finished. time: {end - start:.3f}s")
-# session1.save("test_pe")
+session1.save("test_pe")
 
-# session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_adamw_1e-3.json")
+# session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_pe.ram2n")
 # context = session_load.tokenizer.encode("The nature of religion is questi")
 # print(len(context))
-# TEMPERATURE = 0.3
+# TEMPERATURE = 0.8
 # TOP_K = 10
 # print(f"temperature={TEMPERATURE}")
 # print(f"top_k={TOP_K}")
-# for _ in range(400):
+# for _ in range(100):
 #     context_batch = context.reshape(1, -1)
 #     predicted_id = session_load.predict(context_batch, top_k=TOP_K, temperature=TEMPERATURE)
 #     print(session_load.tokenizer.decode([predicted_id]), end="", flush=True)

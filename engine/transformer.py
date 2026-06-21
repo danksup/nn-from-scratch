@@ -53,21 +53,21 @@ class Transformer:
         output = inputs
         for block in self.blocks:
             output = block.forward(output)
-        self.last_token = output[:, -1,:]
-        self.scores = self.classifier.forward(self.last_token)
-        
+        self.last_token = output[:, -1:,:]
+        scores = self.classifier.forward(self.last_token)
+        scores = np.squeeze(scores, axis=1)
         self.last_output = output
-        return self.scores
+        return scores
     
     def backward(self, err_signal:np.ndarray) -> np.ndarray:
         '''
         Args:
             err_signal: gradient
         '''
-        gradient = self.classifier.backward(err_signal)
+        gradient = self.classifier.backward(err_signal[:,None,:])
 
         full_grad = np.zeros_like(self.last_output)
-        full_grad[:, -1, :] = gradient
+        full_grad[:, -1:, :] = gradient
         cuurent_grad = full_grad
 
         for block in self.blocks[::-1]:

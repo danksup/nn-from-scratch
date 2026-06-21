@@ -42,13 +42,18 @@ class Tokenizer:
         return encoded
 
 
-    def decode(self, thing:list[int]) -> str:
-        '''
-        decode back list of id into char
-        '''
+    def decode(self, thing: list[int]) -> str:
         decoded = ""
-        for i in thing:
-            decoded += self.idtochar[i]
+
+        for token_id in thing:
+            token = self.idtochar[token_id]
+
+            if re.match(r"[^\w\s]", token):
+                decoded += token
+            else:
+                if decoded:
+                    decoded += " "
+                decoded += token
 
         return decoded
     
