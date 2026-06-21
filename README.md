@@ -4,8 +4,12 @@ highly unoptimized and inefficient. just a fun little project
 ## TODO:
 - multi head attention
 - layer norm 
-- batching
 - optimizers' state saving
+- weight tying
+- lr scheduling
+- dropout
 
 #### Maybe:
-- absolutely no gpu acceleration
+- gpu acceleration (maybe not)
+- batching
+- better tokenization
