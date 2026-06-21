@@ -2,8 +2,10 @@
 highly unoptimized and inefficient. just a fun little project
 
 ## TODO:
-- single head attention
-- still no layer norm 
-- mini batching
+- multi head attention
+- layer norm 
+- batching
+- optimizers' state saving
+
+#### Maybe:
 - absolutely no gpu acceleration
-- forgot to implement optimizers' state saving
