@@ -2,12 +2,12 @@
 highly unoptimized and inefficient. just a fun little project
 
 ## TODO:
-- multi head attention
-- layer norm 
 - optimizers' state saving
+- layer norm 
 - weight tying
-- lr scheduling
 - dropout
+- lr scheduling
+- multi head attention
 
 #### Maybe:
 - gpu acceleration (maybe not)
