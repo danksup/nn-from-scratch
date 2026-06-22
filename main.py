@@ -1,7 +1,7 @@
 import random
 SEED = 42
 random.seed(SEED)
-EPOCHS = 1
+EPOCHS = 2
 LR = 1e-3
 EMBED_DIM = 32
 CONTEXT_SIZE = 64
@@ -58,11 +58,11 @@ end = time.time()
 print(f"training finished. time: {end - start:.3f}s")
 session1.save("test_")
 
-# session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_pe.ram2n")
+# session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_.ram2n")
 # context = session_load.tokenizer.encode("The nature of re")
 # print(len(context))
-# TEMPERATURE = 10
-# TOP_K = 50
+# TEMPERATURE = .7
+# TOP_K = 5
 # print(f"temperature={TEMPERATURE}")
 # print(f"top_k={TOP_K}")
 # for _ in range(100):

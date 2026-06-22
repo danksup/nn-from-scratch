@@ -26,10 +26,11 @@ class TransformerBlock:
         self.d_ln2 = self.layernorm2.backward(self.d_ff1)
         self.d_attn_out = gradient +  self.d_ln2
 
-        self.d_ln1 = self.layernorm1.backward(self.d_attn_out) 
-        self.d_attn = self.attention.backward(self.d_ln1)
+        self.d_attn = self.attention.backward(self.d_attn_out)
+        self.d_ln1 = self.layernorm1.backward(self.d_attn) 
 
-        self.dx = self.d_attn + self.d_attn_out
+
+        self.dx = self.d_ln1 + self.d_attn_out
 
         return self.dx
     

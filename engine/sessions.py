@@ -74,6 +74,10 @@ class Session:
             total += i.attention.Bv.size
             total += i.attention.Bk.size
             total += i.attention.Bq.size
+            total += i.layernorm1.beta.size
+            total += i.layernorm1.gamma.size
+            total += i.layernorm2.beta.size
+            total += i.layernorm2.gamma.size
         total += self.embedding.lookup_table.size
         total += self.transformer.classifier.weights.size
         total += self.transformer.classifier.biases.size
@@ -161,6 +165,16 @@ class Session:
         """
         logits = self.transformer.predict(context, self.embedding)
         probs = softmax(logits / temperature)[0]
+
+
+        # top = np.argsort(probs)[-10:]
+        # for i in top[::-1]:
+        #     print(
+        #         repr(self.tokenizer.decode([i])),
+        #         probs[i]
+        #     )
+
+
         top_k = min(top_k, len(probs))
         top_indices = np.argpartition(probs, -top_k)[-top_k:]
         top_probs = probs[top_indices]
