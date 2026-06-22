@@ -60,7 +60,7 @@ class Transformer:
     def backward(self, err_signal:np.ndarray) -> np.ndarray:
         '''
         Args:
-            err_signal: gradient
+            traces error contribution and then optimize
         '''
         gradient = self.classifier.backward(err_signal)
 
@@ -97,10 +97,9 @@ class Transformer:
     def train(self, dataloader:DataLoader, embedding:Embedding, batch_size:int=32):
         '''
         Args:
-            data: dataset, ex: [(1,1), (2,4), (3,9)] -> x^2
-            epochs: one complete pass of training
-            lr = learning rate, how big a step the model takes when adjusting weights.
-            print_loss: output loss
+            dataloader: Dataloader object
+            embedding: Embedding object
+            batch_size = number of batch
         '''
         total_loss = np.float32(0.0)
         count = 0
@@ -135,6 +134,9 @@ class Transformer:
     #     return total
     
     def to_dict(self) -> dict:
+        """
+        get dictionary
+        """
         transformer = {
             "vocab_size":self.vocab_size,
             "embed_dim": self.embed_dim,
@@ -147,7 +149,8 @@ class Transformer:
         return transformer
     
     @classmethod
-    def from_dict(cls,thing:dict):
+    def from_dict(cls,thing:dict) -> "Transformer":
+        """init from dictionary"""
         vocab_size = thing["vocab_size"]
         embed_dim = thing["embed_dim"]
         blocks = thing["blocks"]

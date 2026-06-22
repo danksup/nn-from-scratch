@@ -4,8 +4,8 @@ import re
 
 class Tokenizer:
     def __init__(self):
-        self.idtochar = {0:"<PAD>", 1:"<UNK>"}
-        self.chartoid = {"<PAD>":0,"<UNK>":1}
+        self.idtochar = {0:"<PAD>", 1:"<UNK>", 2: "<EOT>"}
+        self.chartoid = {"<PAD>":0,"<UNK>":1, "<EOT>":2}
 
     def split_input(self, char:str) -> list[str]:
         """character level tokenizer"""

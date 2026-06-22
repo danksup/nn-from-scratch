@@ -17,7 +17,7 @@ class AttentionLayer:
 
 
 
-    def forward(self, x:np.ndarray): #x shape (batch_size, context_size, embed_dim)
+    def forward(self, x:np.ndarray) -> np.ndarray: #x shape (batch_size, context_size, embed_dim)
         self.x = x
         self.Q = x @ self.Wq + self.Bq
         self.K = x @ self.Wk + self.Bk
@@ -33,7 +33,7 @@ class AttentionLayer:
     
         return self.output
     
-    def backward(self, output_gradient):
+    def backward(self, output_gradient) -> np.ndarray:
 
         dweights = (output_gradient@ self.V.transpose(0,2,1) )
 

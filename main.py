@@ -1,14 +1,14 @@
 import random
+from pathlib import Path
+
 SEED = 42
 random.seed(SEED)
 EPOCHS = 10
 LR = 1e-3
-EMBED_DIM = 32
+EMBED_DIM = 64
 CONTEXT_SIZE = 64
 BATCH_SIZE = 16
-# BASE_WIDTH = (EMBED_DIM * CONTEXT_SIZE ) // 4
-BASE_WIDTH = 128
-DATA = "data/a_farewell_to_arms.txt"
+BASE_WIDTH = 4 * EMBED_DIM 
 
 
 #not added yet to session
@@ -34,7 +34,7 @@ configs = {
             "embed_dim":EMBED_DIM,
             "ff_width": BASE_WIDTH,
             "optimizer":"adamw",
-            "dataset": DATA,
+            "dataset":0,
             "optimizer_args":{
                 "lr":LR,
                 "beta":0.9,
@@ -43,8 +43,24 @@ configs = {
             }
         }
 
+corpus = ""
+
 tokenizer1 = Tokenizer()
-dataloader = DataLoader(DATA, tokenizer1, CONTEXT_SIZE)
+files = []
+folder = Path("data")
+for file in folder.iterdir():
+    if file.name != ".gitkeep":
+        files.append(file)
+
+for file in files:
+    with open(file) as f:
+        data = f.read()
+        corpus += data + "\n\n\n"
+
+tokenizer1.fit(corpus)
+
+configs["dataset"] = f"{len(files)} files"
+
 vocab_size = len(tokenizer1.chartoid)
 weight_n = CONTEXT_SIZE * EMBED_DIM
 embedding1 = Embedding(vocab_size, EMBED_DIM)
@@ -52,16 +68,18 @@ tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH)
 transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
 session1 = Session(transformer,tokenizer1,embedding1, configs)
+
+dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 start = time.time()
-session1.train(display_message=True)
+session1.train(dataloader, display_message=True)
 end = time.time()
 print(f"training finished. time: {end - start:.3f}s")
 session1.save("test_")
 
 # session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_.ram2n")
-# context = session_load.tokenizer.encode("we must")
+# context = session_load.tokenizer.encode("The nature of religion is questionable")
 # print(f"context: {session_load.tokenizer.decode(context.tolist())} | {len(context)}")
-# TEMPERATURE = 1
+# TEMPERATURE = .9
 # TOP_K = 5
 # print(f"temperature={TEMPERATURE}")
 # print(f"top_k={TOP_K}")

@@ -16,7 +16,6 @@ DEFAULT_CONFIGS = {
             "seed": 42,
             "embed_dim":8,
             "ff_width": 512,
-            "dataset": "data/The_Expedition_of_Humphry_Clinker.txt",
             "optimizer":"adamw",
             "optimizer_args":{
                 "lr":0.05,
@@ -83,14 +82,13 @@ class Session:
         total += self.transformer.classifier.biases.size
         return total
 
-    def train(self,patience:int=10, display_message:bool=True):
+    def train(self,dataloader:DataLoader,patience:int=10, display_message:bool=True):
         """
         Args:
             patience: max bad epochs
             display_message: obvious
         train using set configs
         """
-        dataloader = DataLoader(self.configs["dataset"], self.tokenizer, self.configs["context_size"])
         if display_message:
             t_mess = f"[TRAINING]param: {self.count_params()} "
             for key,val in self.configs.items():

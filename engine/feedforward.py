@@ -28,11 +28,11 @@ class Layer:
         return self.n
     
     @classmethod
-    def hidden(cls, n, m, activation=unit.leaky_relu, activation_derivative= unit.leaky_relu_derivative):
+    def hidden(cls, n:int, m:int, activation=unit.leaky_relu, activation_derivative= unit.leaky_relu_derivative) -> "Layer":
         return cls(n,m,"hidden",activation ,activation_derivative)
     
     @classmethod
-    def output(cls, n, m):
+    def output(cls, n:int, m:int) -> "Layer":
         return cls(n,m, "output",None, None)
     
     def forward(self, inputs:np.ndarray) -> np.ndarray:
@@ -71,7 +71,7 @@ class Layer:
 
         return previous_error
     
-    def to_dict(self):
+    def to_dict(self) -> dict:
         return {
             "n":self.n,
             "m":self.m,
@@ -81,7 +81,7 @@ class Layer:
         }
     
     @classmethod
-    def from_dict(cls,thing):
+    def from_dict(cls,thing:dict) -> "Layer":
         n = thing['n']
         m = thing['m']
         weights = np.array(thing["weights"], dtype=np.float32)

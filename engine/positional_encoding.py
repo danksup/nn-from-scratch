@@ -1,6 +1,6 @@
 import numpy as np
 
-def PE(context_size:int, embed_dim:int):
+def PE(context_size:int, embed_dim:int) -> np.ndarray:
     positions = np.arange(context_size,dtype=np.float32).reshape(-1,1)
     dims = np.arange(0,embed_dim,2, dtype=np.float32)
     div_term = np.power(np.float32(10000.0),np.float32(dims / embed_dim), dtype=np.float32)
