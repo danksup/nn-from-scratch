@@ -1,8 +1,7 @@
 # nn-from-scratch
 highly unoptimized and inefficient. just a fun little project
 
-## TODO:
-- layer norm 
+## TODO (not in order):
 - weight tying
 - dropout
 - lr scheduling
