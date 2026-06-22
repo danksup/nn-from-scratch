@@ -3,8 +3,8 @@ from engine.losses import cross_entropy_gradient, cross_entropy
 from engine.activations import softmax
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
-from engine.optimizer import SGD, Momentum, AdamW
-from engine.positionalencoding import PE
+from engine.optimizer import  AdamW
+from engine.positional_encoding import PE
 from engine.attention import AttentionLayer
 from engine.transformer_block import TransformerBlock
 import numpy as np
@@ -85,6 +85,10 @@ class Transformer:
             self.optimizer.step(f"ff1_biases_{i}",block.ff1.biases, block.ff1.d_bias)
             self.optimizer.step(f"ff2_weights_{i}",block.ff2.weights, block.ff2.d_weight)
             self.optimizer.step(f"ff2_biases_{i}",block.ff2.biases, block.ff2.d_bias)
+            self.optimizer.step(f"layernorm1_gamma_{i}", block.layernorm1.gamma, block.layernorm1.d_gamma)
+            self.optimizer.step(f"layernorm1_beta_{i}", block.layernorm1.beta, block.layernorm1.d_beta)
+            self.optimizer.step(f"layernorm2_beta_{i}", block.layernorm2.beta, block.layernorm2.d_beta)
+            self.optimizer.step(f"layernorm2_gamma_{i}", block.layernorm2.gamma, block.layernorm2.d_gamma)
         
         self.optimizer.step("classifier_weights",self.classifier.weights,self.classifier.d_weight)
         self.optimizer.step("classifier_biases",self.classifier.biases,self.classifier.d_bias)
@@ -99,7 +103,7 @@ class Transformer:
             lr = learning rate, how big a step the model takes when adjusting weights.
             print_loss: output loss
         '''
-        total_loss = 0.0
+        total_loss = np.float32(0.0)
         count = 0
 
         for contexts, next_tokens in dataloader.get_pairs(batch_size):            
@@ -111,7 +115,7 @@ class Transformer:
             softmax_batch_scores = softmax(batch_scores)
             batch_gradient = cross_entropy_gradient(softmax_batch_scores, next_tokens)
 
-            loss = np.sum(cross_entropy(softmax_batch_scores, next_tokens))
+            loss = np.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=np.float32)
             total_loss += loss
             count += contexts.shape[0]
             error_signal = self.backward(batch_gradient)
@@ -119,7 +123,7 @@ class Transformer:
             embedding_gradient = np.zeros_like(embedding.lookup_table)
             np.add.at(embedding_gradient, contexts, error_signal)
             self.optimizer.step("embedding",embedding.lookup_table, embedding_gradient)  
-        return total_loss / count
+        return np.float32(total_loss / count)
     
     # def count_params_model(self):
     #     """

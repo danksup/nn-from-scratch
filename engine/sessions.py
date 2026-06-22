@@ -4,7 +4,7 @@ from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.activations import softmax
-from engine.optimizer import Momentum, SGD,AdamW
+from engine.optimizer import AdamW
 import numpy as np
 import time
 import pickle
@@ -28,8 +28,8 @@ DEFAULT_CONFIGS = {
         }
 
 OPTIMIZERS = {
-    "sgd": SGD,
-    "momentum": Momentum,
+    # "sgd": SGD,
+    # "momentum": Momentum,
     "adamw": AdamW,
     "adam": AdamW,
 }

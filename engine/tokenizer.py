@@ -8,8 +8,9 @@ class Tokenizer:
         self.chartoid = {"<PAD>":0,"<UNK>":1}
 
     def split_input(self, char:str) -> list[str]:
-        """word level tokenizer"""
-        return re.findall(r"\w+|[^\w\s]", char)
+        """character level tokenizer"""
+        # return re.findall(r"\w+|\s+|[^\w\s]", text)
+        return list(char)
 
     def fit(self, x:str) -> None:
         """
@@ -46,14 +47,14 @@ class Tokenizer:
         decoded = ""
 
         for token_id in thing:
-            token = self.idtochar[token_id]
+            decoded += self.idtochar[token_id]
 
-            if re.match(r"[^\w\s]", token):
-                decoded += token
-            else:
-                if decoded:
-                    decoded += " "
-                decoded += token
+            # if re.match(r"[^\w\s]", token):
+            #     decoded += token
+            # else:
+            #     if decoded:
+            #         decoded += " "
+            #     decoded += token
 
         return decoded
     

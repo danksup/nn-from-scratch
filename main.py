@@ -1,14 +1,14 @@
 import random
 SEED = 42
 random.seed(SEED)
-EPOCHS = 10
+EPOCHS = 1
 LR = 1e-3
-EMBED_DIM = 128
+EMBED_DIM = 32
 CONTEXT_SIZE = 64
-BATCH_SIZE = 16
+BATCH_SIZE = 32
 # BASE_WIDTH = (EMBED_DIM * CONTEXT_SIZE ) // 4
 BASE_WIDTH = 256
-DATA = "test"
+DATA = "data/a_farewell_to_arms.txt"
 
 
 #not added yet to session

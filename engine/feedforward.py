@@ -16,10 +16,10 @@ class Layer:
         self.m = m_weight
         self.activation = activation
         self.activation_derivative = activation_derivative
-        scale = 1/np.sqrt(self.m)
+        scale = np.float32(1.0/np.sqrt(self.m))
         rng = np.random.default_rng()
-        self.weights = rng.uniform(low=-scale, high=scale,size=(self.n, self.m))
-        self.biases = rng.uniform(low=-scale, high=scale,size=(self.n,))
+        self.weights = rng.uniform(low=-scale, high=scale,size=(self.n, self.m)).astype(np.float32)
+        self.biases = rng.uniform(low=-scale, high=scale,size=(self.n,)).astype(np.float32)
     
     def __repr__(self) -> str:
         return f"Weights: {self.weights}\nBiases: {self.biases}"
@@ -64,10 +64,10 @@ class Layer:
             current_neuron_error = err_signal
 
         batch_size, seq_len, _ = self.last_input.shape
-        self.d_weight = np.einsum("bso,bsi->oi",current_neuron_error,self.last_input) / (batch_size * seq_len)
+        self.d_weight = np.einsum("bso,bsi->oi",current_neuron_error,self.last_input, dtype=np.float32) / np.float32(batch_size * seq_len)
         previous_error = current_neuron_error @ self.weights
 
-        self.d_bias = current_neuron_error.mean(axis=(0,1))
+        self.d_bias = current_neuron_error.mean(axis=(0,1),dtype=np.float32)
 
         return previous_error
     
@@ -75,8 +75,8 @@ class Layer:
         return {
             "n":self.n,
             "m":self.m,
-            "weights":self.weights,
-            "biases":self.biases,
+            "weights":self.weights.tolist(),
+            "biases":self.biases.tolist(),
             "type":self.layer_type
         }
     
@@ -84,8 +84,8 @@ class Layer:
     def from_dict(cls,thing):
         n = thing['n']
         m = thing['m']
-        weights = np.array(thing["weights"])
-        biases = np.array(thing["biases"])
+        weights = np.array(thing["weights"], dtype=np.float32)
+        biases = np.array(thing["biases"],np.float32)
         layer_type = thing["type"]
         if layer_type == "hidden":
             ff = cls.hidden(n,m)
