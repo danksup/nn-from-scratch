@@ -18,7 +18,7 @@ class DataLoader:
         windows = np.lib.stride_tricks.sliding_window_view(self.tokens, self.context_size + 1)
 
         self.contexts = windows[:,:-1]
-        self.targets = windows[:,-1]
+        self.targets = windows[:,1:]
 
     def get_pairs(self, batch_size:int=32):
         """ 

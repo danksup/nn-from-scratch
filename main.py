@@ -1,13 +1,13 @@
 import random
 SEED = 42
 random.seed(SEED)
-EPOCHS = 2
+EPOCHS = 10
 LR = 1e-3
 EMBED_DIM = 32
 CONTEXT_SIZE = 64
-BATCH_SIZE = 32
+BATCH_SIZE = 16
 # BASE_WIDTH = (EMBED_DIM * CONTEXT_SIZE ) // 4
-BASE_WIDTH = 256
+BASE_WIDTH = 128
 DATA = "data/a_farewell_to_arms.txt"
 
 
@@ -59,9 +59,9 @@ print(f"training finished. time: {end - start:.3f}s")
 session1.save("test_")
 
 # session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_.ram2n")
-# context = session_load.tokenizer.encode("The nature of re")
-# print(len(context))
-# TEMPERATURE = .7
+# context = session_load.tokenizer.encode("we must")
+# print(f"context: {session_load.tokenizer.decode(context.tolist())} | {len(context)}")
+# TEMPERATURE = 1
 # TOP_K = 5
 # print(f"temperature={TEMPERATURE}")
 # print(f"top_k={TOP_K}")

@@ -159,27 +159,19 @@ class Session:
             # self.save("overflow_save")
             raise
     
-    def predict(self, context:np.ndarray, temperature:float=0.8, top_k=3):
-        """
-        predict next token
-        """
+    def predict(self, context, temperature=0.8, top_k=3):
         logits = self.transformer.predict(context, self.embedding)
-        probs = softmax(logits / temperature)[0]
 
-
-        # top = np.argsort(probs)[-10:]
-        # for i in top[::-1]:
-        #     print(
-        #         repr(self.tokenizer.decode([i])),
-        #         probs[i]
-        #     )
-
+        probs = softmax(logits / temperature)[0, -1]
 
         top_k = min(top_k, len(probs))
+
         top_indices = np.argpartition(probs, -top_k)[-top_k:]
+
         top_probs = probs[top_indices]
-        top_probs = top_probs / np.sum(top_probs)
-        return np.random.choice(top_indices, p=top_probs)
+        top_probs /= np.sum(top_probs)
+
+        return np.random.choice(top_indices,p=top_probs)
 
     def save(self, filename:str, save_artifacts:bool=False):
         '''

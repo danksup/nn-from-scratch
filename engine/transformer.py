@@ -53,9 +53,7 @@ class Transformer:
         output = inputs
         for block in self.blocks:
             output = block.forward(output)
-        self.last_token = output[:, -1:,:]
-        scores = self.classifier.forward(self.last_token)
-        scores = np.squeeze(scores, axis=1)
+        scores = self.classifier.forward(output)
         self.last_output = output
         return scores
     
@@ -64,11 +62,12 @@ class Transformer:
         Args:
             err_signal: gradient
         '''
-        gradient = self.classifier.backward(err_signal[:,None,:])
+        gradient = self.classifier.backward(err_signal)
 
-        full_grad = np.zeros_like(self.last_output)
-        full_grad[:, -1:, :] = gradient
-        cuurent_grad = full_grad
+        # full_grad = np.zeros_like(self.last_output)
+        # full_grad[:, -1:, :] = gradient
+        # cuurent_grad = full_grad
+        cuurent_grad = gradient
 
         for block in self.blocks[::-1]:
             err_signal = block.backward(cuurent_grad)
@@ -117,7 +116,7 @@ class Transformer:
 
             loss = np.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=np.float32)
             total_loss += loss
-            count += contexts.shape[0]
+            count += next_tokens.size
             error_signal = self.backward(batch_gradient)
          
             embedding_gradient = np.zeros_like(embedding.lookup_table)
