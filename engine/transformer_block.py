@@ -1,7 +1,6 @@
 from engine.feedforward import Layer
 from engine.attention import AttentionLayer
 from engine.layernorm import LayerNorm
-import numpy as np
 
 class TransformerBlock:
     def __init__(self,embed_dim=None,ff_dim=None) -> None:

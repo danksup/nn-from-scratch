@@ -7,9 +7,12 @@ from engine.optimizer import  AdamW
 from engine.positional_encoding import PE
 from engine.attention import AttentionLayer
 from engine.transformer_block import TransformerBlock
-import numpy as np
+from engine.backend import Backend
 import time
 import json
+from typing import Any
+
+nx = Backend()
 
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
@@ -46,7 +49,7 @@ class Transformer:
         '''
         raise DeprecationWarning("no")
         
-    def forward(self, inputs:np.ndarray) -> np.ndarray:
+    def forward(self, inputs:Any) -> Any:
         '''
         inputs = list of inputs
         '''
@@ -57,7 +60,7 @@ class Transformer:
         self.last_output = output
         return scores
     
-    def backward(self, err_signal:np.ndarray) -> np.ndarray:
+    def backward(self, err_signal:Any) -> Any:
         '''
         Args:
             traces error contribution and then optimize
@@ -101,7 +104,7 @@ class Transformer:
             embedding: Embedding object
             batch_size = number of batch
         '''
-        total_loss = np.float32(0.0)
+        total_loss = nx.float_32(0.0)
         count = 0
 
         for contexts, next_tokens in dataloader.get_pairs(batch_size):            
@@ -113,15 +116,15 @@ class Transformer:
             softmax_batch_scores = softmax(batch_scores)
             batch_gradient = cross_entropy_gradient(softmax_batch_scores, next_tokens)
 
-            loss = np.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=np.float32)
+            loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
             total_loss += loss
             count += next_tokens.size
             error_signal = self.backward(batch_gradient)
          
-            embedding_gradient = np.zeros_like(embedding.lookup_table)
-            np.add.at(embedding_gradient, contexts, error_signal)
+            embedding_gradient = nx.zeros_like(embedding.lookup_table)
+            embedding_gradient = nx.add_at(embedding_gradient, contexts, error_signal)
             self.optimizer.step("embedding",embedding.lookup_table, embedding_gradient)  
-        return np.float32(total_loss / count)
+        return nx.float_32(total_loss / count)
     
     # def count_params_model(self):
     #     """
@@ -162,7 +165,7 @@ class Transformer:
         return transformer
     
    
-    def predict(self, context:np.ndarray, embedding:Embedding) -> np.ndarray:
+    def predict(self, context:Any, embedding:Embedding) -> Any:
         embedded = embedding.forward(context) + PE(len(context), embedding.embed_dim)
         scores = self.forward(embedded)
         return scores

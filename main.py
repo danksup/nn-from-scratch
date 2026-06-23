@@ -3,12 +3,13 @@ from pathlib import Path
 
 SEED = 42
 random.seed(SEED)
-EPOCHS = 10
+EPOCHS = 1
 LR = 1e-3
-EMBED_DIM = 64
-CONTEXT_SIZE = 64
-BATCH_SIZE = 16
+EMBED_DIM = 8
+CONTEXT_SIZE = 32
+BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
+BASE_WIDTH = 16
 
 
 #not added yet to session
@@ -17,6 +18,9 @@ TRESHOLD = 1e-2
 
 import time
 import numpy as np
+
+import cProfile
+import pstats
 
 
 from engine.transformer import Transformer
@@ -58,8 +62,9 @@ for file in files:
         corpus += data + "\n\n\n"
 
 tokenizer1.fit(corpus)
-
 configs["dataset"] = f"{len(files)} files"
+
+
 
 vocab_size = len(tokenizer1.chartoid)
 weight_n = CONTEXT_SIZE * EMBED_DIM
@@ -68,24 +73,21 @@ tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH)
 transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
 session1 = Session(transformer,tokenizer1,embedding1, configs)
-
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
+
+
+
 start = time.time()
+profiler = cProfile.Profile()
+profiler.enable()
 session1.train(dataloader, display_message=True)
+profiler.disable()
 end = time.time()
 print(f"training finished. time: {end - start:.3f}s")
 session1.save("test_")
 
-# session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_.ram2n")
-# context = session_load.tokenizer.encode("The nature of religion is questionable")
-# print(f"context: {session_load.tokenizer.decode(context.tolist())} | {len(context)}")
-# TEMPERATURE = .9
-# TOP_K = 5
-# print(f"temperature={TEMPERATURE}")
-# print(f"top_k={TOP_K}")
-# for _ in range(100):
-#     context_batch = context.reshape(1, -1)
-#     predicted_id = session_load.predict(context_batch, top_k=TOP_K, temperature=TEMPERATURE)
-#     print(session_load.tokenizer.decode([predicted_id]), end="", flush=True)
-#     context = np.append(context[1:], predicted_id)
-# print()
+stats = pstats.Stats(profiler)
+stats.sort_stats("cumtime")
+stats.print_stats(30)
+
+

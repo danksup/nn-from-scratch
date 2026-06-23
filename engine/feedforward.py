@@ -64,7 +64,12 @@ class Layer:
             current_neuron_error = err_signal
 
         batch_size, seq_len, _ = self.last_input.shape
-        self.d_weight = np.einsum("bso,bsi->oi",current_neuron_error,self.last_input, dtype=np.float32) / np.float32(batch_size * seq_len)
+        # X = self.last_input.reshape(-1, self.last_input.shape[-1])
+        # E = current_neuron_error.reshape(-1, current_neuron_error.shape[-1])
+        X = np.ascontiguousarray(self.last_input).reshape(-1, self.last_input.shape[-1]) #ai suggested this, because machine loves when the data are contigous so they can just take it without jumping (row since it's based on C)
+        E = np.ascontiguousarray(current_neuron_error).reshape(-1, current_neuron_error.shape[-1])
+        self.d_weight = (E.T @ X) / (batch_size * seq_len)
+        # self.d_weight = np.einsum("bso,bsi->oi",current_neuron_error,self.last_input, dtype=np.float32) / np.float32(batch_size * seq_len)
         previous_error = current_neuron_error @ self.weights
 
         self.d_bias = current_neuron_error.mean(axis=(0,1),dtype=np.float32)
