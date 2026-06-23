@@ -5,15 +5,16 @@ from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.activations import softmax
 from engine.optimizer import AdamW
-import numpy as np
+from engine.backend import Backend
 import time
 import pickle
+
+nx = Backend()
 
 DEFAULT_CONFIGS = {
             "epochs": 100,
             "context_size": 64,
             "batch_size": 32,
-            "seed": 42,
             "embed_dim":8,
             "ff_width": 512,
             "optimizer":"adamw",
@@ -164,12 +165,12 @@ class Session:
 
         top_k = min(top_k, len(probs))
 
-        top_indices = np.argpartition(probs, -top_k)[-top_k:]
+        top_indices = nx.argpartition(probs, -top_k)[-top_k:]
 
         top_probs = probs[top_indices]
-        top_probs /= np.sum(top_probs)
+        top_probs /= nx.sum(top_probs)
 
-        return np.random.choice(top_indices,p=top_probs)
+        return nx.random_choice(top_indices,p=top_probs)
 
     def save(self, filename:str, save_artifacts:bool=False):
         '''

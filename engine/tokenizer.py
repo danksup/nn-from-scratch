@@ -1,7 +1,9 @@
 import json
-import numpy as np
+from engine.backend import Backend
 import re
+from typing import Any
 
+nx = Backend()
 class Tokenizer:
     def __init__(self):
         self.idtochar = {0:"<PAD>", 1:"<UNK>", 2: "<EOT>"}
@@ -27,13 +29,13 @@ class Tokenizer:
                 self.chartoid[i] = next_id
                 self.idtochar[next_id] = i
         
-    def encode(self, char:str) -> np.ndarray:
+    def encode(self, char:str) -> Any:
         """
         returns list of token id 
         """
 
         tokens = self.split_input(char)
-        encoded = np.zeros(len(tokens),dtype=np.int64)
+        encoded = nx.zeros(len(tokens),dtype=nx.int32)
         for i,token in enumerate(tokens):
             if token not in self.chartoid:
                 encoded[i] = (self.chartoid["<UNK>"])

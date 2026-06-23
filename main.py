@@ -1,8 +1,6 @@
-import random
 from pathlib import Path
 
 SEED = 42
-random.seed(SEED)
 EPOCHS = 1
 LR = 1e-3
 EMBED_DIM = 8
@@ -17,8 +15,6 @@ PATIENCE = 20
 TRESHOLD = 1e-2
 
 import time
-import numpy as np
-
 import cProfile
 import pstats
 
@@ -34,7 +30,6 @@ configs = {
             "epochs": EPOCHS,
             "context_size": CONTEXT_SIZE,
             "batch_size": BATCH_SIZE,
-            "seed": SEED,
             "embed_dim":EMBED_DIM,
             "ff_width": BASE_WIDTH,
             "optimizer":"adamw",

@@ -1,5 +1,7 @@
 from engine.tokenizer import Tokenizer
-import numpy as np
+from engine.backend import Backend
+
+nx = Backend()
 class DataLoader:
     def __init__(self,data:str, tokenizer:Tokenizer, context_size:int=16) -> None:
         '''
@@ -12,7 +14,7 @@ class DataLoader:
         self.tokens = tokenizer.encode(data)
         self.context_size = context_size
 
-        windows = np.lib.stride_tricks.sliding_window_view(self.tokens, self.context_size + 1)
+        windows = nx.sliding_window_view(self.tokens, self.context_size + 1)
 
         self.contexts = windows[:,:-1]
         self.targets = windows[:,1:]

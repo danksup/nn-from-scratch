@@ -1,23 +1,22 @@
 from engine.backend import Backend
 import numpy as np
+import mlx.core as mlx
 from engine.activations import softmax
 
-nx = Backend("mlx")
+nx = Backend("numpy")
 
-# a = nx.float_32(333)
-# a +=  nx.float_32(333)
+f = mlx.array([2,3,4], mlx.float32)
+a = mlx.array([2,3,4], mlx.float32)
+# g = nx.dot(nx.array(f),nx.array(a))
 
-# a = nx.ones(3)
-# b = nx.array([44,2,5])
-
-a = [2,3,4,2]
-a = softmax(a)
-print(a)
-
-# a = np.exp([2,3,4,2])
-# b = np.exp(a)
-# print(b)
-# nx.add_at(b,a,4)
-# print(nx.add_at(b,a,4))
+p = [0.9, 0.4, 0.5]
+cdf = np.cumsum(p)
+r = np.random.uniform()
+idx = np.argmax(cdf >= r)
+b = a[idx]
+print(b)
+# a = f @ a
+# i = mlx.tensordot(mlx.array(f),mlx.array(a), axes=1)
+# print(a)
 
 

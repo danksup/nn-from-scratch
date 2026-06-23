@@ -1,23 +1,23 @@
-import numpy as np
+from engine.backend import Backend
 from engine.activations import softmax, softmax_derivative
-
+from typing import Any
+nx = Backend()
 class AttentionLayer:
     def __init__(self, embed_dim:int) -> None:
         self.embed_dim = embed_dim
-        self.scale = np.float32(np.sqrt(embed_dim))
-        rng = np.random.default_rng()
+        self.scale = nx.float_32(nx.sqrt(embed_dim))
         
-        scale = np.float32(1/self.scale)
-        self.Wq = rng.uniform(-scale, scale, (embed_dim,embed_dim)).astype(np.float32) #query, current context
-        self.Wk = rng.uniform(-scale, scale, (embed_dim,embed_dim)).astype(np.float32) #key, what information is contained
-        self.Wv = rng.uniform(-scale, scale, (embed_dim,embed_dim)).astype(np.float32) #value, what information should be sent
-        self.Bq =  rng.uniform(-scale, scale, (embed_dim,)).astype(np.float32)
-        self.Bk =  rng.uniform(-scale, scale, (embed_dim,)).astype(np.float32)
-        self.Bv =  rng.uniform(-scale, scale, (embed_dim,)).astype(np.float32)
+        scale = nx.float_32(1/self.scale)
+        self.Wq = nx.uniform(-scale, scale, (embed_dim,embed_dim), dtype=nx.float32) #query, current context
+        self.Wk = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float32) #key, what information is contained
+        self.Wv = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float32) #value, what information should be sent
+        self.Bq =  nx.uniform(-scale, scale, (embed_dim,),dtype=nx.float32)
+        self.Bk =  nx.uniform(-scale, scale, (embed_dim,),dtype=nx.float32)
+        self.Bv =  nx.uniform(-scale, scale, (embed_dim,),dtype=nx.float32)
 
 
 
-    def forward(self, x:np.ndarray) -> np.ndarray: #x shape (batch_size, context_size, embed_dim)
+    def forward(self, x:Any) -> Any: #x shape (batch_size, context_size, embed_dim)
         self.x = x
         self.Q = x @ self.Wq + self.Bq
         self.K = x @ self.Wk + self.Bk
@@ -26,14 +26,14 @@ class AttentionLayer:
         self.scores = self.Q @ self.K.transpose(0,2,1)
         self.scores /= self.scale
 
-        mask = np.triu(np.ones((self.scores.shape[1],self.scores.shape[2]), dtype=bool), k = 1)
-        self.scores = np.where(mask, np.float32(-1e9), self.scores)
+        mask = nx.triu(nx.ones((self.scores.shape[1],self.scores.shape[2]), dtype=bool), k = 1)
+        self.scores = nx.where(mask, nx.float32(-1e9), self.scores)
         self.weights = softmax(self.scores)
         self.output = self.weights @ self.V
     
         return self.output
     
-    def backward(self, output_gradient) -> np.ndarray:
+    def backward(self, output_gradient) -> Any:
 
         dweights = (output_gradient@ self.V.transpose(0,2,1) )
 
@@ -43,13 +43,13 @@ class AttentionLayer:
         self.dV = (self.weights.transpose(0,2,1)@ output_gradient)
         self.dQ = dscores @ self.K
         self.dK = (dscores.transpose(0,2,1)@ self.Q)
-        self.dWq = np.sum(self.x.transpose(0,2,1)@ self.dQ,axis=0, dtype=np.float32)
-        self.dWk = np.sum(self.x.transpose(0,2,1)@ self.dK,axis=0, dtype=np.float32)
-        self.dWv = np.sum(self.x.transpose(0,2,1)@ self.dV,axis=0, dtype=np.float32)
+        self.dWq = nx.sum(self.x.transpose(0,2,1)@ self.dQ,axis=0, dtype=nx.float32)
+        self.dWk = nx.sum(self.x.transpose(0,2,1)@ self.dK,axis=0, dtype=nx.float32)
+        self.dWv = nx.sum(self.x.transpose(0,2,1)@ self.dV,axis=0, dtype=nx.float32)
 
-        self.dBq = np.sum(self.dQ, axis=(0,1), dtype=np.float32)
-        self.dBk = np.sum(self.dK, axis=(0,1), dtype=np.float32)
-        self.dBv = np.sum(self.dV, axis=(0,1), dtype=np.float32)
+        self.dBq = nx.sum(self.dQ, axis=(0,1), dtype=nx.float32)
+        self.dBk = nx.sum(self.dK, axis=(0,1), dtype=nx.float32)
+        self.dBv = nx.sum(self.dV, axis=(0,1), dtype=nx.float32)
 
         self.dx = (self.dQ @ self.Wq.T + self.dK @ self.Wk.T +self.dV @ self.Wv.T)
     
@@ -77,12 +77,12 @@ class AttentionLayer:
         Bv = thing["Bv"]
 
         attention = cls(embed_dim)
-        attention.Wk = np.array(Wk, dtype=np.float32)
-        attention.Wq = np.array(Wq, dtype=np.float32)
-        attention.Wv = np.array(Wv, dtype=np.float32)
-        attention.Bk = np.array(Bk, dtype=np.float32)
-        attention.Bq = np.array(Bq, dtype=np.float32)
-        attention.Bv = np.array(Bv, dtype=np.float32)
+        attention.Wk = nx.array(Wk, dtype=nx.float32)
+        attention.Wq = nx.array(Wq, dtype=nx.float32)
+        attention.Wv = nx.array(Wv, dtype=nx.float32)
+        attention.Bk = nx.array(Bk, dtype=nx.float32)
+        attention.Bq = nx.array(Bq, dtype=nx.float32)
+        attention.Bv = nx.array(Bv, dtype=nx.float32)
 
         return attention
         

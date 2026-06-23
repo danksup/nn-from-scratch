@@ -1,12 +1,14 @@
-import numpy as np
+from engine.backend import Backend
+from typing import Any
+nx = Backend()
 
-def PE(context_size:int, embed_dim:int) -> np.ndarray:
-    positions = np.arange(context_size,dtype=np.float32).reshape(-1,1)
-    dims = np.arange(0,embed_dim,2, dtype=np.float32)
-    div_term = np.power(np.float32(10000.0),np.float32(dims / embed_dim), dtype=np.float32)
+def PE(context_size:int, embed_dim:int) -> Any:
+    positions = nx.arange(context_size,dtype=nx.float32).reshape(-1,1)
+    dims = nx.arange(0, embed_dim, 2, dtype=nx.float32)
+    div_term = nx.power(nx.float_32(10000.0),nx.float_32(dims / embed_dim), dtype=nx.float32)
 
-    pe = np.zeros((context_size, embed_dim),dtype=np.float32)
-    pe[:, 0::2] = np.sin(positions / div_term, dtype=np.float32)  
-    pe[:, 1::2] = np.cos(positions / div_term,dtype=np.float32)
+    pe = nx.zeros((context_size, embed_dim),dtype=nx.float32)
+    pe[:, 0::2] = nx.sin(positions / div_term, dtype=nx.float32)  
+    pe[:, 1::2] = nx.cos(positions / div_term,dtype=nx.float32)
 
     return pe
