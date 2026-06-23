@@ -25,7 +25,7 @@ def cross_entropy_gradient(probs:Any , target_idx) -> Any:
     '''
     derivative of cross entropy and softmax
     '''
-    probs_copy = probs.copy()
+    probs_copy = nx.copy(probs)
     if probs.ndim == 2:
         row_coords = nx.arange(probs.shape[0])
         probs_copy[row_coords, target_idx] -= nx.float_32(1.0)

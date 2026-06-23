@@ -74,7 +74,7 @@ class Layer:
         # self.d_weight = np.einsum("bso,bsi->oi",current_neuron_error,self.last_input, dtype=np.float32) / np.float32(batch_size * seq_len)
         previous_error = current_neuron_error @ self.weights
 
-        self.d_bias = current_neuron_error.mean(axis=(0,1),dtype=nx.float32)
+        self.d_bias = nx.mean(current_neuron_error, axis=(0,1),dtype=nx.float32)
 
         return previous_error
     

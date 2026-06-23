@@ -29,20 +29,10 @@ class Tokenizer:
                 self.chartoid[i] = next_id
                 self.idtochar[next_id] = i
         
-    def encode(self, char:str) -> Any:
-        """
-        returns list of token id 
-        """
-
+    def encode(self, char: str):
         tokens = self.split_input(char)
-        encoded = nx.zeros(len(tokens),dtype=nx.int32)
-        for i,token in enumerate(tokens):
-            if token not in self.chartoid:
-                encoded[i] = (self.chartoid["<UNK>"])
-            else:
-                encoded[i] = (self.chartoid[token ])
-        
-        return encoded
+        encoded = [self.chartoid.get(token, self.chartoid["<UNK>"])for token in tokens]
+        return nx.array(encoded, dtype=nx.int32)
 
 
     def decode(self, thing: list[int]) -> str:

@@ -72,17 +72,17 @@ dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 
 
 
-start = time.time()
 profiler = cProfile.Profile()
 profiler.enable()
+# start = time.time()
 session1.train(dataloader, display_message=True)
+# end = time.time()
 profiler.disable()
-end = time.time()
-print(f"training finished. time: {end - start:.3f}s")
+# print(f"training finished. time: {end - start:.3f}s")
 session1.save("test_")
 
 stats = pstats.Stats(profiler)
 stats.sort_stats("cumtime")
-stats.print_stats(30)
+stats.print_stats(40)
 
 

@@ -26,7 +26,8 @@ class Backend:
         self.float32 = self.nx.float32
         self.int64 = self.nx.int64
         self.int32 = self.nx.int32
-       
+        self.bool = self.nx.bool_
+    
     def array(self, x, dtype=None):
         if dtype is None:
             dtype = self.float32
@@ -231,3 +232,9 @@ class Backend:
             idx = self.nx.argmax(cdf >= r)
             return a[idx]
         return self.nx.random.choice(a, p=p)
+    
+    def copy(self,x):
+        if self.backend == "MLX":
+            return self.nx.array(x)
+        
+        return x.copy()

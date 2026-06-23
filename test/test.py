@@ -15,6 +15,9 @@ r = np.random.uniform()
 idx = np.argmax(cdf >= r)
 b = a[idx]
 print(b)
+
+a = mlx.array(0, dtype=mlx.bool_)
+print(a)
 # a = f @ a
 # i = mlx.tensordot(mlx.array(f),mlx.array(a), axes=1)
 # print(a)

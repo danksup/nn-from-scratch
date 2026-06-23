@@ -26,8 +26,8 @@ class AttentionLayer:
         self.scores = self.Q @ self.K.transpose(0,2,1)
         self.scores /= self.scale
 
-        mask = nx.triu(nx.ones((self.scores.shape[1],self.scores.shape[2]), dtype=bool), k = 1)
-        self.scores = nx.where(mask, nx.float32(-1e9), self.scores)
+        mask = nx.triu(nx.ones((self.scores.shape[1],self.scores.shape[2]), dtype=nx.bool), k = 1)
+        self.scores = nx.where(mask, nx.float_32(-1e9), self.scores)
         self.weights = softmax(self.scores)
         self.output = self.weights @ self.V
     
