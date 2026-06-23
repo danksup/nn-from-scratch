@@ -65,10 +65,6 @@ class Transformer:
             traces error contribution and then optimize
         '''
         gradient = self.classifier.backward(err_signal)
-
-        # full_grad = np.zeros_like(self.last_output)
-        # full_grad[:, -1:, :] = gradient
-        # cuurent_grad = full_grad
         cuurent_grad = gradient
 
         for block in self.blocks[::-1]:
@@ -93,7 +89,6 @@ class Transformer:
         
         self.optimizer.step("classifier_weights",self.classifier.weights,self.classifier.d_weight)
         self.optimizer.step("classifier_biases",self.classifier.biases,self.classifier.d_bias)
-                        
         return cuurent_grad
 
     def train(self, dataloader:DataLoader, embedding:Embedding, batch_size:int=32):
@@ -124,16 +119,6 @@ class Transformer:
             embedding_gradient = nx.add_at(embedding_gradient, contexts, error_signal)
             self.optimizer.step("embedding",embedding.lookup_table, embedding_gradient)  
         return nx.float_32(total_loss / count)
-    
-    # def count_params_model(self):
-    #     """
-    #     count the model's param
-    #     """
-    #     total = 0
-    #     for layer in self.layers:
-    #         total += layer.weights.size
-    #         total += layer.biases.size
-    #     return total
     
     def to_dict(self) -> dict:
         """

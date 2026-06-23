@@ -38,7 +38,7 @@ class Tokenizer:
         decoded = ""
 
         for token_id in thing:
-            decoded += self.idtochar[token_id]
+            decoded += self.idtochar[int(token_id)]
 
             # if re.match(r"[^\w\s]", token):
             #     decoded += token

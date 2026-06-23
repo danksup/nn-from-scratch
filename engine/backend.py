@@ -1,8 +1,9 @@
 from typing import Any
 nx: Any
+import os
 class Backend:
-    def __init__(self, backend:str="auto") -> None:
-        self.backend = backend.lower()
+    def __init__(self) -> None:
+        self.backend = os.environ.get("USE_BACKEND", "auto").lower()
         self.nx:Any
 
         if self.backend == "auto":
@@ -238,5 +239,15 @@ class Backend:
             return self.nx.array(x)
         
         return x.copy()
+    
+    def eval(self,x):
+        if self.backend == "MLX":
+            self.nx.eval(x)
+        pass
+
+    def concatenate(self,a):
+        if self.backend == "MLX":
+            return self.nx.concatenate(a)
+        return self.nx.concatenate(a)
     
 nx = Backend()

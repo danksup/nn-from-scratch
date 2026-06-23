@@ -1,15 +1,14 @@
 from pathlib import Path
 
 SEED = 42
-EPOCHS = 1
+EPOCHS = 20
 LR = 1e-3
-EMBED_DIM = 8
-CONTEXT_SIZE = 32
+EMBED_DIM = 64
+CONTEXT_SIZE = 64
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
-BASE_WIDTH = 16
-
-
+import os
+os.environ["USE_BACKEND"] = "mlx"
 #not added yet to session
 PATIENCE = 20
 TRESHOLD = 1e-2
@@ -38,7 +37,8 @@ configs = {
                 "beta":0.9,
                 "beta2":0.999,
                 "weight_decay":1e-2
-            }
+            },
+            "using":os.environ["USE_BACKEND"]
         }
 
 corpus = ""
@@ -56,6 +56,7 @@ for file in files:
         corpus += data + "\n\n\n"
 
 tokenizer1.fit(corpus)
+
 configs["dataset"] = f"{len(files)} files"
 
 
@@ -76,8 +77,9 @@ profiler.enable()
 # start = time.time()
 session1.train(dataloader, display_message=True)
 # end = time.time()
-profiler.disable()
 # print(f"training finished. time: {end - start:.3f}s")
+
+profiler.disable()
 session1.save("test_")
 
 stats = pstats.Stats(profiler)
