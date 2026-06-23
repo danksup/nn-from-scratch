@@ -1,5 +1,4 @@
-from engine.backend import Backend
-nx = Backend()
+from engine.backend import nx
 
 def dot(u:list,v:list) -> float:
     """

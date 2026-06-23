@@ -1,7 +1,6 @@
-from engine.backend import Backend
+from engine.backend import nx
 from typing import Any
 
-nx = Backend()
 def cross_entropy(probs:Any, target_idx):
     '''
     |  |I

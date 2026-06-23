@@ -5,11 +5,9 @@ from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.activations import softmax
 from engine.optimizer import AdamW
-from engine.backend import Backend
+from engine.backend import nx
 import time
 import pickle
-
-nx = Backend()
 
 DEFAULT_CONFIGS = {
             "epochs": 100,

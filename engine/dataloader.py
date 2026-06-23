@@ -1,7 +1,6 @@
 from engine.tokenizer import Tokenizer
-from engine.backend import Backend
+from engine.backend import nx
 
-nx = Backend()
 class DataLoader:
     def __init__(self,data:str, tokenizer:Tokenizer, context_size:int=16) -> None:
         '''

@@ -1,9 +1,8 @@
 import random
 import json
-from engine.backend import Backend
+from engine.backend import nx
 from typing import Any
 
-nx = Backend()
 
 class Embedding:
     def __init__(self, n:int, embed_dim:int) -> None:

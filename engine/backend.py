@@ -238,3 +238,5 @@ class Backend:
             return self.nx.array(x)
         
         return x.copy()
+    
+nx = Backend()

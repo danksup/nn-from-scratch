@@ -18,7 +18,6 @@ import time
 import cProfile
 import pstats
 
-
 from engine.transformer import Transformer
 from engine.transformer_block import TransformerBlock
 from engine.tokenizer import Tokenizer

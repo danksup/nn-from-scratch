@@ -1,6 +1,5 @@
-from engine.backend import Backend
+from engine.backend import nx
 from typing import Any
-nx = Backend()
 
 def PE(context_size:int, embed_dim:int) -> Any:
     positions = nx.arange(context_size,dtype=nx.float32).reshape(-1,1)

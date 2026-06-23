@@ -1,6 +1,5 @@
-from engine.backend import Backend
+from engine.backend import nx
 from typing import Any
-nx =  Backend("auto")
 #rectified linear unit
 
 def leaky_relu(x:Any) -> Any:

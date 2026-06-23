@@ -1,8 +1,7 @@
 import random
 import engine.activations as unit
-from engine.backend import Backend
+from engine.backend import nx
 from typing import Any
-nx = Backend()
 
 class Layer:
     def __init__(self, n_neuron:int, m_weight:int, layer_type:str="hidden",activation=unit.leaky_relu, activation_derivative = unit.leaky_relu_derivative) -> None:

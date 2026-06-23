@@ -1,7 +1,7 @@
-from engine.backend import Backend
+from engine.backend import nx
 from engine.activations import softmax, softmax_derivative
 from typing import Any
-nx = Backend()
+
 class AttentionLayer:
     def __init__(self, embed_dim:int) -> None:
         self.embed_dim = embed_dim

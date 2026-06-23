@@ -1,6 +1,5 @@
-from engine.backend import Backend
+from engine.backend import nx
 from typing import Any
-nx = Backend()
 
 class LayerNorm:
     def __init__(self, embed_dim:int, epsilon:float=1e-5) -> None:

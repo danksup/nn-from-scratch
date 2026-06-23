@@ -1,9 +1,8 @@
 import json
-from engine.backend import Backend
+from engine.backend import nx
 import re
 from typing import Any
 
-nx = Backend()
 class Tokenizer:
     def __init__(self):
         self.idtochar = {0:"<PAD>", 1:"<UNK>", 2: "<EOT>"}

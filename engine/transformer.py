@@ -7,12 +7,11 @@ from engine.optimizer import  AdamW
 from engine.positional_encoding import PE
 from engine.attention import AttentionLayer
 from engine.transformer_block import TransformerBlock
-from engine.backend import Backend
+from engine.backend import nx
 import time
 import json
 from typing import Any
 
-nx = Backend()
 
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
