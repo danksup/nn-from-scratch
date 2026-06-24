@@ -14,10 +14,9 @@ finished:
 - weight tying (jun 24 2026)
 
 ## Ongoing:
-- still choosing
+- dropout
   
 ## TODO (not in order):
-- dropout
 - lr scheduling
 - rope
 - training/validation split

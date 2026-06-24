@@ -9,7 +9,6 @@ from engine.transformer_block import TransformerBlock
 from engine.backend import nx
 from typing import Any
 
-
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
         self.vocab_size = vocab_size
@@ -61,6 +60,7 @@ class Transformer:
         '''
         block_gradient = err_signal @ embedding_table
         d_table = err_signal.reshape(-1, self.vocab_size).T @ self.last_output.reshape(-1, self.embed_dim)
+        d_table /= (err_signal.shape[0]* err_signal.shape[1])
         current_grad = block_gradient
         for block in self.blocks[::-1]:
             current_grad = block.backward(current_grad)
@@ -77,7 +77,6 @@ class Transformer:
             self.optimizer.step(f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma)
             self.optimizer.step(f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)
         
-
         return current_grad,d_table
 
     def train(self, dataloader:DataLoader, embedding:Embedding, batch_size:int=32):
@@ -112,11 +111,10 @@ class Transformer:
             #     current_grad.shape,
             #     embedding_gradient.shape
             # )
-            # print(
-            #     nx.sum(nx.abs(embedding_gradient)),
-            #     nx.sum(nx.abs(d_table))
-            # )
+            # print(f"sum abs embed grad {nx.sum(nx.abs(embedding_gradient))},sum abs dtable{nx.sum(nx.abs(d_table))}")
             total_embedding_gradient = embedding_gradient + d_table
+            # print("tot embed grad shape",total_embedding_gradient.shape)
+            # print("tot embed grad sum abs",nx.sum(nx.abs(total_embedding_gradient)))
             self.optimizer.step("embedding",embedding.lookup_table, total_embedding_gradient)  
         return nx.float_32(total_loss / count)
     
