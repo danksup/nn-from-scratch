@@ -2,13 +2,13 @@ import os
 os.environ["USE_BACKEND"] = "auto"
 
 SEED = 42
-EPOCHS = 10
+EPOCHS = 25
 LR = 1e-3
 EMBED_DIM = 128
-CONTEXT_SIZE = 64
+CONTEXT_SIZE = 128
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
-N_HEADS = 4
+N_HEADS = 8
 
 #not hooked yet to session
 PATIENCE = 20
@@ -73,10 +73,10 @@ dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 
 # profiler = cProfile.Profile()
 # profiler.enable()
-# start = time.time()
+start = time.time()
 session1.train(dataloader, display_message=True)
-# end = time.time()
-# print(f"training finished. time: {end - start:.3f}s")
+end = time.time()
+print(f"training finished. time: {end - start:.3f}s")
 
 # profiler.disable()
 session1.save("test__")

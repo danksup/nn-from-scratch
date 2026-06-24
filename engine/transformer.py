@@ -15,7 +15,6 @@ class Transformer:
         self.vocab_size = vocab_size
         self.embed_dim = embed_dim
         self.blocks = []
-        self.classifier = Layer.output(vocab_size, embed_dim)
         if optimizer is None:
             optimizer = AdamW()
         self.optimizer = optimizer
@@ -44,27 +43,27 @@ class Transformer:
         '''
         raise DeprecationWarning("no")
         
-    def forward(self, inputs:Any) -> Any:
+    def forward(self, inputs:Any, embedding:Embedding) -> Any:
         '''
         inputs = list of inputs
         '''
         output = inputs
         for block in self.blocks:
             output = block.forward(output)
-        scores = self.classifier.forward(output)
+        self.last_output = output
+        scores = output @ embedding.lookup_table.T
         return scores
     
-    def backward(self, err_signal:Any) -> Any:
+    def backward(self, err_signal:Any, embedding_table:Any) -> Any:
         '''
         Args:
             traces error contribution and then optimize
         '''
-        gradient = self.classifier.backward(err_signal)
-        cuurent_grad = gradient
-
+        block_gradient = err_signal @ embedding_table
+        d_table = err_signal.reshape(-1, self.vocab_size).T @ self.last_output.reshape(-1, self.embed_dim)
+        current_grad = block_gradient
         for block in self.blocks[::-1]:
-            err_signal = block.backward(cuurent_grad)
-            cuurent_grad = err_signal
+            current_grad = block.backward(current_grad)
         
         for i,block in enumerate(self.blocks):
             self.optimizer.step(f"Wq_{i}", block.attention.Wq, block.attention.dWq)
@@ -78,9 +77,8 @@ class Transformer:
             self.optimizer.step(f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma)
             self.optimizer.step(f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)
         
-        self.optimizer.step("classifier_weights",self.classifier.weights,self.classifier.d_weight)
-        self.optimizer.step("classifier_biases",self.classifier.biases,self.classifier.d_bias)
-        return cuurent_grad
+
+        return current_grad,d_table
 
     def train(self, dataloader:DataLoader, embedding:Embedding, batch_size:int=32):
         '''
@@ -95,7 +93,7 @@ class Transformer:
         for contexts, next_tokens in dataloader.get_pairs(batch_size):            
             embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
             embedded += PE(dataloader.context_size, embedding.embed_dim)
-            batch_scores = self.forward(embedded)
+            batch_scores = self.forward(embedded, embedding)
 
             softmax_batch_scores = softmax(batch_scores)
             batch_gradient = cross_entropy_gradient(softmax_batch_scores, next_tokens)
@@ -104,11 +102,16 @@ class Transformer:
             nx.eval(loss)
             total_loss += float(loss)
             count += next_tokens.size
-            error_signal = self.backward(batch_gradient)
-         
+            current_grad,d_table = self.backward(batch_gradient, embedding.lookup_table)
             embedding_gradient = nx.zeros_like(embedding.lookup_table)
-            embedding_gradient = nx.add_at(embedding_gradient, contexts, error_signal)
-            self.optimizer.step("embedding",embedding.lookup_table, embedding_gradient)  
+            embedding_gradient = nx.add_at(embedding_gradient, contexts, current_grad)
+            # print(
+            #     contexts.shape,
+            #     current_grad.shape,
+            #     embedding_gradient.shape
+            # )
+            total_embedding_gradient = embedding_gradient + d_table
+            self.optimizer.step("embedding",embedding.lookup_table, total_embedding_gradient)  
         return nx.float_32(total_loss / count)
     
     def to_dict(self) -> dict:
@@ -119,11 +122,10 @@ class Transformer:
             "vocab_size":self.vocab_size,
             "embed_dim": self.embed_dim,
             "blocks": [],
-            "classifier": None,
         }
         for block in self.blocks:
             transformer["blocks"].append(block.to_dict())
-        transformer["classifier"] = self.classifier.to_dict()
+        # transformer["classifier"] = self.classifier.to_dict()
         return transformer
     
     @classmethod
@@ -132,15 +134,13 @@ class Transformer:
         vocab_size = thing["vocab_size"]
         embed_dim = thing["embed_dim"]
         blocks = thing["blocks"]
-        classifier = thing["classifier"]
         transformer = cls(vocab_size, embed_dim)
         for block in blocks:
             transformer.add_block(TransformerBlock.from_dict(block))
-        transformer.classifier = Layer.from_dict(classifier)
         return transformer
     
    
     def predict(self, context:Any, embedding:Embedding) -> Any:
         embedded = embedding.forward(context) + PE(len(context), embedding.embed_dim)
-        scores = self.forward(embedded)
+        scores = self.forward(embedded, embedding)
         return scores

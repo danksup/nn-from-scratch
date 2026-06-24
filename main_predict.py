@@ -1,11 +1,11 @@
 from engine.backend import nx
 from engine.sessions import Session
-session_load = Session.load("artifacts/sessions/session_test_+.ram2n")
-context = session_load.tokenizer.encode("The nature of religion is questi")
+session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test__.ram2n")
+context = session_load.tokenizer.encode("The Problem with")
 print(f"context: {session_load.tokenizer.decode(context.tolist())} | {len(context)}")
-TEMPERATURE = .3
-TOP_K = 30
-TOP_P = 0.9
+TEMPERATURE = .6
+TOP_K = 1000
+TOP_P = .5
 print(f"temperature={TEMPERATURE}")
 print(f"top_k={TOP_K}")
 print(f"top_p={TOP_P}")

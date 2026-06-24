@@ -11,12 +11,12 @@ finished:
 - rmsnorm (jun 24 2026)
 - multi head attention (jun 24 2026)
 - top p (jun 24 2026)
+- weight tying (jun 24 2026)
 
 ## Ongoing:
 - still choosing
   
 ## TODO (not in order):
-- weight tying
 - dropout
 - lr scheduling
 - rope

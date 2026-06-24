@@ -72,8 +72,6 @@ class Session:
             total += i.rmsnorm1.gamma.size
             total += i.rmsnorm2.gamma.size
         total += self.embedding.lookup_table.size
-        total += self.transformer.classifier.weights.size
-        total += self.transformer.classifier.biases.size
         return total
 
     def train(self,dataloader:DataLoader,patience:int=10, display_message:bool=True):
