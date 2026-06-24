@@ -7,7 +7,7 @@ BATCH_SIZE = 512
 BASE_WIDTH = 4 * EMBED_DIM 
 N_HEADS = 4
 import os
-os.environ["USE_BACKEND"] = "mlx"
+os.environ["USE_BACKEND"] = "auto"
 #not added yet to session
 PATIENCE = 20
 TRESHOLD = 1e-2
@@ -23,6 +23,7 @@ from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.sessions import Session
+from engine.sessions import nx
 
 configs = {
             "epochs": EPOCHS,
@@ -39,7 +40,7 @@ configs = {
                 "beta2":0.999,
                 "weight_decay":1e-2
             },
-            "using":os.environ["USE_BACKEND"]
+            "using":nx.backend
         }
 
 corpus = ""
