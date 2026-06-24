@@ -10,6 +10,7 @@ finished:
 - apple silicon acceleration (MLX, messy) (jun 23 2026)
 - rmsnorm (jun 24 2026)
 - multi head attention (jun 24 2026)
+- top p (jun 24 2026)
 
 ## Ongoing:
 - still choosing
@@ -23,7 +24,6 @@ finished:
 - better tokenization
 - kv caching
 - frequency penalty
-- top p
   
 #### Maybe:
 - other gpus acceleration (maybe not)

@@ -1,14 +1,16 @@
+import os
+os.environ["USE_BACKEND"] = "auto"
+
 SEED = 42
-EPOCHS = 1
+EPOCHS = 10
 LR = 1e-3
 EMBED_DIM = 128
 CONTEXT_SIZE = 64
-BATCH_SIZE = 512
+BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
 N_HEADS = 4
-import os
-os.environ["USE_BACKEND"] = "auto"
-#not added yet to session
+
+#not hooked yet to session
 PATIENCE = 20
 TRESHOLD = 1e-2
 
@@ -77,7 +79,7 @@ session1.train(dataloader, display_message=True)
 # print(f"training finished. time: {end - start:.3f}s")
 
 # profiler.disable()
-session1.save("test_+")
+session1.save("test__")
 
 # stats = pstats.Stats(profiler)
 # stats.sort_stats("cumtime")

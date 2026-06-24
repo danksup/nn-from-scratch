@@ -250,4 +250,27 @@ class Backend:
             return self.nx.concatenate(a)
         return self.nx.concatenate(a)
     
+    def cumsum(self,a, *,axis=None, dtype=None):
+        if dtype is None:
+            dtype = self.nx.float32
+        if self.backend == "MLX":
+            a = self.nx.array(a, dtype=dtype)
+            return self.nx.cumsum(a, axis=axis)
+        return self.nx.cumsum(a, axis=axis, dtype=dtype)
+    
+    def argsort(self, a, axis=None):
+        if self.backend == "MLX":
+            a = self.nx.array(a)
+        return self.nx.argsort(a, axis=axis)
+    
+    def all(self, a, *,axis=None, keepdims:bool=False):
+        if self.backend == "MLX":
+            a = self.nx.array(a)
+        return self.nx.all(a, axis=axis, keepdims=keepdims)
+    
+    def argmax(self, a, axis=None, keepdims:bool=False):
+        if self.backend == "MLX":
+            a = self.nx.array(a)
+        return self.nx.argmax(a, axis=axis, keepdims=keepdims)
+    
 nx = Backend()

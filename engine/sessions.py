@@ -152,25 +152,39 @@ class Session:
             # self.save("overflow_save")
             raise
     
-    def predict(self, context, temperature=0.8, top_k=3):
+    def predict(self, context, temperature=0.8, top_k=3, top_p=0.9):
         logits = self.transformer.predict(context, self.embedding)
-
         probs = softmax(logits / temperature)[0, -1]
 
+        #top k
         top_k = min(top_k, len(probs))
-
         top_indices = nx.argpartition(probs, -top_k)[-top_k:]
 
-        top_probs = probs[top_indices]
-        top_probs /= nx.sum(top_probs)
+        #top p
+        probs = probs[top_indices]
+        sorted_order = nx.argsort(probs)[::-1]
+        sorted_probs = probs[sorted_order]
+        sorted_indices = top_indices[sorted_order]
+        cum = nx.cumsum(sorted_probs)
+        mask = cum <= top_p
+    
+        cutoff = int(nx.sum(mask))
+        cutoff = min(cutoff + 1, len(sorted_probs))
+        mask[0] = True
+        if not bool(nx.all(mask)):
+            first_false = nx.argmax(~mask)
+            mask[first_false] = True
 
-        return nx.random_choice(top_indices,p=top_probs)
+        keep_indices = sorted_indices[:cutoff]
+        keep_probs = sorted_probs[:cutoff]
+        keep_probs /= nx.sum(keep_probs)
+        return nx.random_choice(keep_indices, p=keep_probs)
 
     def save(self, filename:str, save_artifacts:bool=False):
         '''
         Args:
             filename: the name the save file will have. session_{filename}.json
-            save_artifacts: also save artifacts seperately
+            save_artifacts: also save artifacts seperately (not implemented yet)
         '''
 
         transformer_dict = self.transformer.to_dict()
