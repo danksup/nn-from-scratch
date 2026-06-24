@@ -111,7 +111,8 @@ class Transformer:
             batch_gradient = cross_entropy_gradient(softmax_batch_scores, next_tokens)
 
             loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
-            total_loss += loss
+            nx.eval(loss)
+            total_loss += float(loss)
             count += next_tokens.size
             error_signal = self.backward(batch_gradient)
          

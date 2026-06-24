@@ -104,6 +104,7 @@ class Session:
                 epoch = i
                 start = time.perf_counter()
                 error = self.transformer.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
+                nx.eval(error)
                 end = time.perf_counter()
 
                 time_ = end-start

@@ -1,11 +1,10 @@
 from engine.backend import nx
 from engine.sessions import Session
-
 session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test_.ram2n")
-context = session_load.tokenizer.encode("The nature of religion is questionable")
+context = session_load.tokenizer.encode("The nature of religion is questi")
 print(f"context: {session_load.tokenizer.decode(context.tolist())} | {len(context)}")
-TEMPERATURE = .4
-TOP_K = 5
+TEMPERATURE = .6
+TOP_K = 10
 print(f"temperature={TEMPERATURE}")
 print(f"top_k={TOP_K}")
 for _ in range(100):
@@ -15,3 +14,4 @@ for _ in range(100):
     new_token = nx.array([predicted_id]).astype(nx.int64)
     context = nx.concatenate([context[1:], new_token])
 print()
+

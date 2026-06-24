@@ -240,9 +240,9 @@ class Backend:
         
         return x.copy()
     
-    def eval(self,x):
+    def eval(self, *args):
         if self.backend == "MLX":
-            self.nx.eval(x)
+            self.nx.eval(*args)
         pass
 
     def concatenate(self,a):
