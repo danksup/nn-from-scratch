@@ -71,10 +71,8 @@ class Session:
             total += i.attention.Bv.size
             total += i.attention.Bk.size
             total += i.attention.Bq.size
-            total += i.layernorm1.beta.size
-            total += i.layernorm1.gamma.size
-            total += i.layernorm2.beta.size
-            total += i.layernorm2.gamma.size
+            total += i.rmsnorm1.gamma.size
+            total += i.rmsnorm2.gamma.size
         total += self.embedding.lookup_table.size
         total += self.transformer.classifier.weights.size
         total += self.transformer.classifier.biases.size

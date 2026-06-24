@@ -3,9 +3,9 @@ from pathlib import Path
 SEED = 42
 EPOCHS = 50
 LR = 1e-3
-EMBED_DIM = 128
-CONTEXT_SIZE = 128
-BATCH_SIZE = 128
+EMBED_DIM = 4
+CONTEXT_SIZE = 8
+BATCH_SIZE = 512
 BASE_WIDTH = 4 * EMBED_DIM 
 import os
 os.environ["USE_BACKEND"] = "mlx"

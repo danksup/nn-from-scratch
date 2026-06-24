@@ -96,10 +96,9 @@ class Transformer:
         count = 0
 
         for contexts, next_tokens in dataloader.get_pairs(batch_size):            
-            embedded = embedding.lookup_table[contexts]  # shape (batch, context_size, embed_dim)
+            embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
             embedded += PE(dataloader.context_size, embedding.embed_dim)
             batch_scores = self.forward(embedded)
-
 
             softmax_batch_scores = softmax(batch_scores)
             batch_gradient = cross_entropy_gradient(softmax_batch_scores, next_tokens)
