@@ -18,7 +18,6 @@ class Transformer:
         self.classifier = Layer.output(vocab_size, embed_dim)
         if optimizer is None:
             optimizer = AdamW()
-
         self.optimizer = optimizer
     def __repr__(self) -> str:
         # str_layers = ""
@@ -71,9 +70,7 @@ class Transformer:
             self.optimizer.step(f"Wq_{i}", block.attention.Wq, block.attention.dWq)
             self.optimizer.step(f"Wk_{i}",block.attention.Wk, block.attention.dWk)
             self.optimizer.step(f"Wv_{i}",block.attention.Wv, block.attention.dWv)
-            self.optimizer.step(f"Bq_{i}",block.attention.Bq, block.attention.dBq)
-            self.optimizer.step(f"Bk_{i}",block.attention.Bk, block.attention.dBk)
-            self.optimizer.step(f"Bv_{i}",block.attention.Bv, block.attention.dBv)
+            self.optimizer.step(f"Wo_{i}",block.attention.Wo, block.attention.dWo)
             self.optimizer.step(f"ff1_weights_{i}",block.ff1.weights, block.ff1.d_weight)
             self.optimizer.step(f"ff1_biases_{i}",block.ff1.biases, block.ff1.d_bias)
             self.optimizer.step(f"ff2_weights_{i}",block.ff2.weights, block.ff2.d_weight)

@@ -68,9 +68,7 @@ class Session:
             total += i.attention.Wq.size
             total += i.attention.Wk.size
             total += i.attention.Wv.size
-            total += i.attention.Bv.size
-            total += i.attention.Bk.size
-            total += i.attention.Bq.size
+            total += i.attention.Wo.size
             total += i.rmsnorm1.gamma.size
             total += i.rmsnorm2.gamma.size
         total += self.embedding.lookup_table.size

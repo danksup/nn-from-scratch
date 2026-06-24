@@ -3,9 +3,9 @@ from engine.attention import AttentionLayer
 from engine.RMSnorm import RMSNorm
 
 class TransformerBlock:
-    def __init__(self,embed_dim=None,ff_dim=None) -> None:
-        if embed_dim is not None and ff_dim is not None:
-            self.attention = AttentionLayer(embed_dim)
+    def __init__(self,embed_dim=None,ff_dim=None, n_heads=None) -> None:
+        if embed_dim is not None and ff_dim is not None and n_heads is not None:
+            self.attention = AttentionLayer(embed_dim, n_heads)
             self.ff1 = Layer.hidden(ff_dim, embed_dim)
             self.ff2 = Layer.hidden(embed_dim, ff_dim)
             self.rmsnorm1 = RMSNorm(embed_dim)

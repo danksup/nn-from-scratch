@@ -1,18 +1,18 @@
-from pathlib import Path
-
 SEED = 42
-EPOCHS = 50
+EPOCHS = 1
 LR = 1e-3
-EMBED_DIM = 4
-CONTEXT_SIZE = 8
+EMBED_DIM = 128
+CONTEXT_SIZE = 64
 BATCH_SIZE = 512
 BASE_WIDTH = 4 * EMBED_DIM 
+N_HEADS = 4
 import os
 os.environ["USE_BACKEND"] = "mlx"
 #not added yet to session
 PATIENCE = 20
 TRESHOLD = 1e-2
 
+from pathlib import Path
 import time
 import cProfile
 import pstats
@@ -30,6 +30,7 @@ configs = {
             "batch_size": BATCH_SIZE,
             "embed_dim":EMBED_DIM,
             "ff_width": BASE_WIDTH,
+            "n_heads": N_HEADS,
             "optimizer":"adamw",
             "dataset":0,
             "optimizer_args":{
@@ -42,7 +43,6 @@ configs = {
         }
 
 corpus = ""
-
 tokenizer1 = Tokenizer()
 files = []
 folder = Path("data")
@@ -61,7 +61,7 @@ configs["dataset"] = f"{len(files)} files"
 vocab_size = len(tokenizer1.chartoid)
 weight_n = CONTEXT_SIZE * EMBED_DIM
 embedding1 = Embedding(vocab_size, EMBED_DIM)
-tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH)
+tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
 session1 = Session(transformer,tokenizer1,embedding1, configs)
@@ -76,7 +76,7 @@ session1.train(dataloader, display_message=True)
 # print(f"training finished. time: {end - start:.3f}s")
 
 # profiler.disable()
-session1.save("test_")
+session1.save("test_+")
 
 # stats = pstats.Stats(profiler)
 # stats.sort_stats("cumtime")
