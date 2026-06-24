@@ -273,4 +273,6 @@ class Backend:
             a = self.nx.array(a)
         return self.nx.argmax(a, axis=axis, keepdims=keepdims)
     
+    def abs(self, a):
+        return self.nx.abs(a)
 nx = Backend()

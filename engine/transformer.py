@@ -105,10 +105,16 @@ class Transformer:
             current_grad,d_table = self.backward(batch_gradient, embedding.lookup_table)
             embedding_gradient = nx.zeros_like(embedding.lookup_table)
             embedding_gradient = nx.add_at(embedding_gradient, contexts, current_grad)
+            # print(embedding_gradient.shape)
+            # print(nx.sum(nx.abs(embedding_gradient)))
             # print(
             #     contexts.shape,
             #     current_grad.shape,
             #     embedding_gradient.shape
+            # )
+            # print(
+            #     nx.sum(nx.abs(embedding_gradient)),
+            #     nx.sum(nx.abs(d_table))
             # )
             total_embedding_gradient = embedding_gradient + d_table
             self.optimizer.step("embedding",embedding.lookup_table, total_embedding_gradient)  
