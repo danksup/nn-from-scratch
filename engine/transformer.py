@@ -5,11 +5,8 @@ from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.optimizer import  AdamW
 from engine.positional_encoding import PE
-from engine.attention import AttentionLayer
 from engine.transformer_block import TransformerBlock
 from engine.backend import nx
-import time
-import json
 from typing import Any
 
 
@@ -56,7 +53,6 @@ class Transformer:
         for block in self.blocks:
             output = block.forward(output)
         scores = self.classifier.forward(output)
-        self.last_output = output
         return scores
     
     def backward(self, err_signal:Any) -> Any:
@@ -82,10 +78,8 @@ class Transformer:
             self.optimizer.step(f"ff1_biases_{i}",block.ff1.biases, block.ff1.d_bias)
             self.optimizer.step(f"ff2_weights_{i}",block.ff2.weights, block.ff2.d_weight)
             self.optimizer.step(f"ff2_biases_{i}",block.ff2.biases, block.ff2.d_bias)
-            self.optimizer.step(f"layernorm1_gamma_{i}", block.layernorm1.gamma, block.layernorm1.d_gamma)
-            self.optimizer.step(f"layernorm1_beta_{i}", block.layernorm1.beta, block.layernorm1.d_beta)
-            self.optimizer.step(f"layernorm2_beta_{i}", block.layernorm2.beta, block.layernorm2.d_beta)
-            self.optimizer.step(f"layernorm2_gamma_{i}", block.layernorm2.gamma, block.layernorm2.d_gamma)
+            self.optimizer.step(f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma)
+            self.optimizer.step(f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)
         
         self.optimizer.step("classifier_weights",self.classifier.weights,self.classifier.d_weight)
         self.optimizer.step("classifier_biases",self.classifier.biases,self.classifier.d_bias)

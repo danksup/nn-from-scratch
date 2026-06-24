@@ -1,10 +1,13 @@
 # nn-from-scratch
-highly unoptimized and inefficient. just a fun little project
+highly unoptimized and inefficient. just a fun little project i do on my days off
 
 finished:
+- layernorm (replaced by rmsnorm)
 - attention
 - transformer
-- apple silicon acceleration (MLX)
+- apple silicon acceleration (MLX, messy) 
+- rmsnorm
+  
 
 ## Ongoing:
 - multi head attention
@@ -13,8 +16,16 @@ finished:
 - weight tying
 - dropout
 - lr scheduling
-
+- rope
+- training/validation split
+- better tokenization
+- kv caching
+- frequency penalty
+- top p
+  
+  
 #### Maybe:
 - gpu acceleration (maybe not)
-- batching
-- better tokenization
+- better batching
+- pure functions (optimizers first)
+- better activation (swiglu)

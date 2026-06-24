@@ -1,6 +1,6 @@
 from engine.feedforward import Layer
 from engine.attention import AttentionLayer
-from engine.layernorm import LayerNorm
+from engine.RMSnorm import RMSNorm
 
 class TransformerBlock:
     def __init__(self,embed_dim=None,ff_dim=None) -> None:
@@ -8,28 +8,28 @@ class TransformerBlock:
             self.attention = AttentionLayer(embed_dim)
             self.ff1 = Layer.hidden(ff_dim, embed_dim)
             self.ff2 = Layer.hidden(embed_dim, ff_dim)
-            self.layernorm1 = LayerNorm(embed_dim)
-            self.layernorm2 = LayerNorm(embed_dim)
+            self.rmsnorm1 = RMSNorm(embed_dim)
+            self.rmsnorm2 = RMSNorm(embed_dim)
 
     def forward(self,x):
-        ln1_out = self.layernorm1.forward(x)
-        self.attn_out = self.attention.forward(ln1_out) + x
+        rmsn1_out = self.rmsnorm1.forward(x)
+        self.attn_out = self.attention.forward(rmsn1_out) + x
 
-        ln2_out = self.layernorm2.forward(self.attn_out)
-        self.ff_out = self.ff2.forward(self.ff1.forward(ln2_out)) + self.attn_out
+        rmsn2_out = self.rmsnorm2.forward(self.attn_out)
+        self.ff_out = self.ff2.forward(self.ff1.forward(rmsn2_out)) + self.attn_out
         return self.ff_out
 
     def backward(self, gradient):
         self.d_ff2 = self.ff2.backward(gradient)
         self.d_ff1 = self.ff1.backward(self.d_ff2)
-        self.d_ln2 = self.layernorm2.backward(self.d_ff1)
-        self.d_attn_out = gradient +  self.d_ln2
+        self.d_rmsn2 = self.rmsnorm2.backward(self.d_ff1)
+        self.d_attn_out = gradient +  self.d_rmsn2
 
         self.d_attn = self.attention.backward(self.d_attn_out)
-        self.d_ln1 = self.layernorm1.backward(self.d_attn) 
+        self.d_rmsn1 = self.rmsnorm1.backward(self.d_attn) 
 
 
-        self.dx = self.d_ln1 + self.d_attn_out
+        self.dx = self.d_rmsn1 + self.d_attn_out
 
         return self.dx
     
@@ -38,8 +38,8 @@ class TransformerBlock:
             "attention":self.attention.to_dict(),
             "ff1":self.ff1.to_dict(),
             "ff2":self.ff2.to_dict(),
-            "layernorm1":self.layernorm1.to_dict(),
-            "layernorm2":self.layernorm2.to_dict()
+            "rmsnorm1":self.rmsnorm1.to_dict(),
+            "rmsnorm2":self.rmsnorm2.to_dict()
         } 
     
     @classmethod
@@ -48,6 +48,6 @@ class TransformerBlock:
         transformer_block.attention = AttentionLayer.from_dict(thing["attention"])
         transformer_block.ff1 = Layer.from_dict(thing["ff1"])
         transformer_block.ff2 =  Layer.from_dict(thing["ff2"])
-        transformer_block.layernorm1 = LayerNorm.from_dict(thing["layernorm1"])
-        transformer_block.layernorm2 = LayerNorm.from_dict(thing["layernorm2"])
+        transformer_block.rmsnorm1 = RMSNorm.from_dict(thing["rmsnorm1"])
+        transformer_block.rmsnorm2 = RMSNorm.from_dict(thing["rmsnorm2"])
         return transformer_block

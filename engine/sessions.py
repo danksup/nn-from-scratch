@@ -1,5 +1,4 @@
 from engine.transformer import Transformer
-from engine.transformer_block import TransformerBlock
 from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
