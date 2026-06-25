@@ -1,5 +1,5 @@
 import os
-os.environ["USE_BACKEND"] = "e"
+os.environ["USE_BACKEND"] = "auto"
 import random
 
 SEED = 42
