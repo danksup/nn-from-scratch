@@ -15,6 +15,8 @@ DEFAULT_CONFIGS = {
             "embed_dim":8,
             "ff_width": 512,
             "optimizer":"adamw",
+            "train_split":.9,
+            "n_heads": 4,
             "optimizer_args":{
                 "lr":0.05,
                 "beta":0.9,
@@ -74,6 +76,8 @@ class Session:
         total += self.embedding.lookup_table.size
         return total
 
+    def validation(self, dataloader:DataLoader):
+        return self.transformer.validate(self.embedding, dataloader, self.configs["batch_size"], train_split=self.configs["train_split"])
     def train(self,dataloader:DataLoader,patience:int=10, display_message:bool=True):
         """
         Args:
@@ -84,7 +88,7 @@ class Session:
         if display_message:
             t_mess = f"[TRAINING]param: {self.count_params()} "
             for key,val in self.configs.items():
-                t_mess += f"{key}: {val} "
+                t_mess += f"{key}: {val}\n"
             print(t_mess)        
         epoch = 0
         try:
@@ -98,6 +102,8 @@ class Session:
                 start = time.perf_counter()
                 self.transformer.train_mode()
                 error = self.transformer.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
+                val = self.validation(dataloader)
+
                 nx.eval(error)
                 end = time.perf_counter()
 
@@ -129,8 +135,7 @@ class Session:
                         break
                 display_every = max(1, self.configs["epochs"] // 10)
                 if display_message and( i % display_every == 0 or i == self.configs["epochs"] - 1):
-                    
-                    print(f"epoch {epoch} | avg loss: {error} | time: {time_}")
+                    print(f"epoch {epoch} | avg loss: {error} | val: {val} | time: {time_}")
                     # largest = 0
 
                     # for layer in self.model.layers:

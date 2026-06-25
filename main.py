@@ -1,14 +1,16 @@
 import os
 os.environ["USE_BACKEND"] = "auto"
+import random
 
 SEED = 42
 EPOCHS = 20
 LR = 1e-3
-EMBED_DIM = 64
-CONTEXT_SIZE = 32
+EMBED_DIM = 128
+CONTEXT_SIZE = 64
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
 N_HEADS = 4
+VAL = .9
 
 #not hooked yet to session
 PATIENCE = 20
@@ -33,6 +35,7 @@ configs = {
             "batch_size": BATCH_SIZE,
             "embed_dim":EMBED_DIM,
             "ff_width": BASE_WIDTH,
+            "train_split":VAL,
             "n_heads": N_HEADS,
             "optimizer":"adamw",
             "dataset":0,
@@ -66,17 +69,15 @@ weight_n = CONTEXT_SIZE * EMBED_DIM
 embedding1 = Embedding(vocab_size, EMBED_DIM)
 tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
-tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
-tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
-transformer.add_block(tblock2)
-# transformer.add_block(tblock3)
-# transformer.add_block(tblock4)
+# transformer.add_block(tblock2)
+configs["block_size"] = len(transformer.blocks)
 session1 = Session(transformer,tokenizer1,embedding1, configs)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 
-
+a = random.randint(1,9999999999999)
+a = str(a)
 # profiler = cProfile.Profile()
 # profiler.enable()
 start = time.time()
@@ -85,7 +86,7 @@ end = time.time()
 print(f"training finished. time: {end - start:.3f}s")
 
 # profiler.disable()
-session1.save("4_blocks")
+session1.save(f"val_test_{a}")
 
 # stats = pstats.Stats(profiler)
 # stats.sort_stats("cumtime")

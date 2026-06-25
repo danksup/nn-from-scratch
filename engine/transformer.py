@@ -125,6 +125,23 @@ class Transformer:
             self.optimizer.step("embedding",embedding.lookup_table, total_embedding_gradient)  
         return nx.float_32(total_loss / count)
     
+    def validate(self, embedding,dataloader:DataLoader, batch_size, train_split=.9):
+        total_loss = nx.float_32(0.0)
+        count = 0
+        dataloader.train_split = train_split
+        for contexts, next_tokens in dataloader.get_validation_pairs(batch_size):
+            embedded = embedding.forward(contexts) 
+            batch_validation_scores = self.forward(embedded, embedding)
+            softmax_batch_scores = softmax(batch_validation_scores)
+            
+            self.eval_mode()
+            val_loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
+            nx.eval(val_loss)
+            total_loss += float(val_loss)
+            count += next_tokens.size
+        
+        return nx.float_32(total_loss / count)
+
     def to_dict(self) -> dict:
         """
         get dictionary
