@@ -10,7 +10,7 @@ class Dropout:
         if not self.is_training:
             return x
         s = nx.uniform(0.0, 1.0, x.shape)
-        self.mask = nx.where(s > self.p, 1 ,0, dtype=nx.float32)
+        self.mask = nx.where(s > self.p, 1 ,0)
         output = x * self.mask
         output = output / (1.0 - self.p)
         return output

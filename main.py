@@ -2,7 +2,7 @@ import os
 os.environ["USE_BACKEND"] = "auto"
 
 SEED = 42
-EPOCHS = 25
+EPOCHS = 1
 LR = 1e-3
 EMBED_DIM = 128
 CONTEXT_SIZE = 128
