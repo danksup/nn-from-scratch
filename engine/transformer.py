@@ -79,6 +79,14 @@ class Transformer:
         
         return current_grad,d_table
 
+    def train_mode(self):
+        for block in self.blocks:
+            block.train()
+
+    def eval_mode(self):
+        for block in self.blocks:
+            block.eval()
+
     def train(self, dataloader:DataLoader, embedding:Embedding, batch_size:int=32):
         '''
         Args:
@@ -96,7 +104,7 @@ class Transformer:
 
             softmax_batch_scores = softmax(batch_scores)
             batch_gradient = cross_entropy_gradient(softmax_batch_scores, next_tokens)
-
+            
             loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
             nx.eval(loss)
             total_loss += float(loss)

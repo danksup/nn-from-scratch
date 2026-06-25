@@ -21,7 +21,7 @@ class AttentionLayer:
         self.Q = x @ self.Wq 
         self.K = x @ self.Wk 
         self.V = x @ self.Wv 
-
+ 
         B, T, _ = x.shape
         self.Q = self.Q.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)
         self.K = self.K.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)

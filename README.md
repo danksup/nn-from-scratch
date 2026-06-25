@@ -12,9 +12,9 @@ finished:
 - multi head attention (jun 24 2026)
 - top p (jun 24 2026)
 - weight tying (jun 24 2026)
+- dropout (jun 25 2026)
 
 ## Ongoing:
-- dropout
   
 ## TODO (not in order):
 - lr scheduling

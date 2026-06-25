@@ -96,6 +96,7 @@ class Session:
             for i in range(self.configs["epochs"]):
                 epoch = i
                 start = time.perf_counter()
+                self.transformer.train_mode()
                 error = self.transformer.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
                 nx.eval(error)
                 end = time.perf_counter()
@@ -151,6 +152,7 @@ class Session:
             raise
     
     def predict(self, context, temperature=0.8, top_k=3, top_p=0.9):
+        self.transformer.eval_mode()
         logits = self.transformer.predict(context, self.embedding)
         probs = softmax(logits / temperature)[0, -1]
 
