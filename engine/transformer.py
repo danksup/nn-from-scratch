@@ -153,6 +153,6 @@ class Transformer:
    
     def predict(self, context:Any, embedding:Embedding) -> Any:
         embedded = embedding.forward(context)
-        embedded = embedded[None, :, :]
+        # embedded = embedded[None, :, :]
         scores = self.forward(embedded, embedding)
         return scores

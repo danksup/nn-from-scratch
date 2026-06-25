@@ -3,19 +3,19 @@ from engine.sessions import Session
 session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_test__.ram2n")
 context = session_load.tokenizer.encode("The Problem with")
 print(f"context: {session_load.tokenizer.decode(context.tolist())} | {len(context)}")
-TEMPERATURE = .6
-TOP_K = 1000
-TOP_P = .5
+TEMPERATURE = .2
+TOP_K = 30
+TOP_P = .9
 print(f"temperature={TEMPERATURE}")
 print(f"top_k={TOP_K}")
 print(f"top_p={TOP_P}")
-# for _ in range(100):
-#     context_batch = context.reshape(1, -1)
-#     predicted_id = session_load.predict(context_batch, top_k=TOP_K, temperature=TEMPERATURE, top_p=TOP_P)
-#     print(session_load.tokenizer.decode([predicted_id]), end="", flush=True)
-#     new_token = nx.array([predicted_id]).astype(nx.int64)
-#     context = nx.concatenate([context[1:], new_token])
-# print()
+for _ in range(100):
+    context_batch = context.reshape(1, -1)
+    predicted_id = session_load.predict(context_batch, top_k=TOP_K, temperature=TEMPERATURE, top_p=TOP_P)
+    print(session_load.tokenizer.decode([predicted_id]), end="", flush=True)
+    new_token = nx.array([predicted_id]).astype(nx.int64)
+    context = nx.concatenate([context[1:], new_token])
+print()
 
 #dropout test
 # context_batch = context.reshape(1, -1)
