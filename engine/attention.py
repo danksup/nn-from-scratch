@@ -1,5 +1,6 @@
 from engine.backend import nx
 from engine.activations import softmax, softmax_derivative
+from engine.RoPE import precompute_freqs,rope_forward, rope_inverse
 from typing import Any
 
 class AttentionLayer:
@@ -16,6 +17,8 @@ class AttentionLayer:
         self.Wv = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float32) #value, what information should be sent
         self.Wo = nx.uniform(-scale,scale, (embed_dim,embed_dim), dtype=nx.float32) #projection
        
+        self.freqs = precompute_freqs(self.head_dim)
+
     def forward(self, x:Any) -> Any: #x shape (batch_size, context_size, embed_dim)
         self.x = x
         self.Q = x @ self.Wq 
@@ -26,6 +29,9 @@ class AttentionLayer:
         self.Q = self.Q.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)
         self.K = self.K.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)
         self.V = self.V.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)
+
+        self.Q = rope_forward(self.Q, self.freqs)
+        self.K = rope_forward(self.K, self.freqs)
 
         self.scores = self.Q @ self.K.transpose(0, 1, 3, 2)
         self.scores /= self.scale
@@ -48,6 +54,9 @@ class AttentionLayer:
         dscores /= self.scale
         self.dQ = dscores @ self.K
         self.dK = dscores.transpose(0, 1, 3, 2) @ self.Q
+
+        self.dQ = rope_inverse(self.dQ, self.freqs)
+        self.dK = rope_inverse(self.dK, self.freqs)
 
         dQ = self.dQ.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
         dK = self.dK.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
@@ -87,6 +96,4 @@ class AttentionLayer:
         attention.Wo = nx.array(Wo, dtype=nx.float32)
 
         return attention
-        
-
         

@@ -4,7 +4,6 @@ from engine.activations import softmax
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.optimizer import  AdamW
-from engine.positional_encoding import PE
 from engine.transformer_block import TransformerBlock
 from engine.backend import nx
 from typing import Any
@@ -99,7 +98,7 @@ class Transformer:
 
         for contexts, next_tokens in dataloader.get_pairs(batch_size):            
             embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
-            embedded += PE(dataloader.context_size, embedding.embed_dim)
+            # embedded += PE(dataloader.context_size, embedding.embed_dim)
             batch_scores = self.forward(embedded, embedding)
 
             softmax_batch_scores = softmax(batch_scores)
@@ -153,6 +152,7 @@ class Transformer:
     
    
     def predict(self, context:Any, embedding:Embedding) -> Any:
-        embedded = embedding.forward(context) + PE(len(context), embedding.embed_dim)
+        embedded = embedding.forward(context)
+        embedded = embedded[None, :, :]
         scores = self.forward(embedded, embedding)
         return scores

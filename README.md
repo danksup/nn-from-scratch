@@ -13,13 +13,13 @@ finished:
 - top p (jun 24 2026)
 - weight tying (jun 24 2026)
 - dropout (jun 25 2026)
+- rope (jun 25 2026)
 
 ## Ongoing:
-- rope
+- train/valid split
   
 ## TODO (not in order):
 - lr scheduling
-- training/validation split
 - better tokenization
 - kv caching
 - frequency penalty

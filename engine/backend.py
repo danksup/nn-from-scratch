@@ -275,4 +275,7 @@ class Backend:
     
     def abs(self, a):
         return self.nx.abs(a)
+    
+    def stack(self,a, axis=0):
+        return self.nx.stack(a, axis=axis)
 nx = Backend()
