@@ -13,3 +13,5 @@ artifacts/sessions/*
 !artifacts/sessions/.gitkeep
 
 .DS_Store
+
+test/*
