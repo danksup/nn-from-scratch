@@ -15,9 +15,10 @@ finished:
 - dropout (jun 25 2026)
 - rope (jun 25 2026)
 - train/valid split (jun 25 2026)
-
+- mixed precision(jum 25 2026)
+  
 ## Ongoing:
-- choosing
+- something something inference related (maybe kv chaching)
   
 ## TODO (not in order):
 - lr scheduling
@@ -28,5 +29,4 @@ finished:
 #### Maybe:
 - other gpus acceleration (maybe not)
 - better batching
-- pure functions (optimizers first)
 - better activation (swiglu)

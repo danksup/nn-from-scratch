@@ -16,6 +16,7 @@ class Transformer:
         if optimizer is None:
             optimizer = AdamW()
         self.optimizer = optimizer
+        
     def __repr__(self) -> str:
         # str_layers = ""
         # for idx,i in enumerate(self.layers):
@@ -45,37 +46,56 @@ class Transformer:
         '''
         inputs = list of inputs
         '''
-        output = inputs
+        output = inputs.astype(nx.float16)
         for block in self.blocks:
             output = block.forward(output)
-        self.last_output = output
-        scores = output @ embedding.lookup_table.T
+        self.last_output =output.astype(nx.float32)
+        # print("last output shape",self.last_output.shape)
+        # print("f32 lookuptable shape",embedding.f32_embedding_lookuptable.shape)
+        # print("f32 lookuptable transposed shape",embedding.f32_embedding_lookuptable.transpose(1,0).shape)
+        scores = self.last_output @ embedding.f32_embedding_lookuptable.T
         return scores
     
-    def backward(self, err_signal:Any, embedding_table:Any) -> Any:
+    def backward(self, err_signal:Any, embedding:Embedding) -> Any:
         '''
         Args:
             traces error contribution and then optimize
         '''
-        block_gradient = err_signal @ embedding_table
+        err_signal =  err_signal.astype(nx.float32)
+        block_gradient = err_signal @ embedding.f32_embedding_lookuptable
         d_table = err_signal.reshape(-1, self.vocab_size).T @ self.last_output.reshape(-1, self.embed_dim)
         d_table /= (err_signal.shape[0]* err_signal.shape[1])
+        
         current_grad = block_gradient
         for block in self.blocks[::-1]:
             current_grad = block.backward(current_grad)
         
         for i,block in enumerate(self.blocks):
-            self.optimizer.step(f"Wq_{i}", block.attention.Wq, block.attention.dWq)
-            self.optimizer.step(f"Wk_{i}",block.attention.Wk, block.attention.dWk)
-            self.optimizer.step(f"Wv_{i}",block.attention.Wv, block.attention.dWv)
-            self.optimizer.step(f"Wo_{i}",block.attention.Wo, block.attention.dWo)
-            self.optimizer.step(f"ff1_weights_{i}",block.ff1.weights, block.ff1.d_weight)
-            self.optimizer.step(f"ff1_biases_{i}",block.ff1.biases, block.ff1.d_bias)
-            self.optimizer.step(f"ff2_weights_{i}",block.ff2.weights, block.ff2.d_weight)
-            self.optimizer.step(f"ff2_biases_{i}",block.ff2.biases, block.ff2.d_bias)
-            self.optimizer.step(f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma)
-            self.optimizer.step(f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)
-        
+            optimized = self.optimizer.step_many(
+                ((f"Wq_{i}", block.attention.Wq, block.attention.dWq),
+                (f"Wk_{i}", block.attention.Wk, block.attention.dWk),
+                (f"Wv_{i}", block.attention.Wv, block.attention.dWv),
+                (f"Wo_{i}", block.attention.Wo, block.attention.dWo),
+                (f"ff1_weights_{i}", block.ff1.weights, block.ff1.d_weight),
+                (f"ff1_biases_{i}", block.ff1.biases, block.ff1.d_bias),
+                (f"ff2_weights_{i}", block.ff2.weights, block.ff2.d_weight),
+                (f"ff2_biases_{i}", block.ff2.biases, block.ff2.d_bias),
+                (f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma),
+                (f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma))
+            )
+            block.attention.Wq = optimized[f"Wq_{i}"]
+            block.attention.Wk = optimized[f"Wk_{i}"]
+            block.attention.Wv = optimized[f"Wv_{i}"]
+            block.attention.Wo = optimized[f"Wo_{i}"]
+            block.ff1.weights = optimized[f"ff1_weights_{i}"]
+            block.ff1.biases = optimized[f"ff1_biases_{i}"]
+            block.ff2.weights = optimized[f"ff2_weights_{i}"]
+            block.ff2.biases = optimized[f"ff2_biases_{i}"]
+            block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
+            block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
+           
+       
+      
         return current_grad,d_table
 
     def train_mode(self):
@@ -99,18 +119,19 @@ class Transformer:
         for contexts, next_tokens in dataloader.get_pairs(batch_size):            
             embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
             # embedded += PE(dataloader.context_size, embedding.embed_dim)
+            
             batch_scores = self.forward(embedded, embedding)
 
             softmax_batch_scores = softmax(batch_scores)
             batch_gradient = cross_entropy_gradient(softmax_batch_scores, next_tokens)
             
             loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
-            nx.eval(loss)
-            total_loss += float(loss)
+            total_loss += loss
             count += next_tokens.size
-            current_grad,d_table = self.backward(batch_gradient, embedding.lookup_table)
-            embedding_gradient = nx.zeros_like(embedding.lookup_table)
+            current_grad,d_table = self.backward(batch_gradient, embedding)
+            embedding_gradient = nx.zeros_like(embedding.lookup_table, dtype=nx.float32)
             embedding_gradient = nx.add_at(embedding_gradient, contexts, current_grad)
+
             # print(embedding_gradient.shape)
             # print(nx.sum(nx.abs(embedding_gradient)))
             # print(
@@ -122,24 +143,47 @@ class Transformer:
             total_embedding_gradient = embedding_gradient + d_table
             # print("tot embed grad shape",total_embedding_gradient.shape)
             # print("tot embed grad sum abs",nx.sum(nx.abs(total_embedding_gradient)))
-            self.optimizer.step("embedding",embedding.lookup_table, total_embedding_gradient)  
+            optimized = self.optimizer.step(("embedding",embedding.lookup_table, total_embedding_gradient))  
+            embedding.lookup_table = optimized
+            embedding.f32_embedding_lookuptable = embedding.lookup_table.astype(nx.float32)
+            nx.eval(loss, embedding.lookup_table, embedding.f32_embedding_lookuptable)
+            nx.eval(
+            *[
+                x
+                for block in self.blocks
+                for x in (
+                    block.attention.Wq,
+                    block.attention.Wk,
+                    block.attention.Wv,
+                    block.attention.Wo,
+                    block.ff1.weights,
+                    block.ff1.biases,
+                    block.ff2.weights,
+                    block.ff2.biases,
+                    block.rmsnorm1.gamma,
+                    block.rmsnorm2.gamma,
+                    )
+                ]
+            )
+        nx.eval(total_loss)
         return nx.float_32(total_loss / count)
     
     def validate(self, embedding,dataloader:DataLoader, batch_size, train_split=.9):
         total_loss = nx.float_32(0.0)
         count = 0
+        self.eval_mode()
         dataloader.train_split = train_split
         for contexts, next_tokens in dataloader.get_validation_pairs(batch_size):
             embedded = embedding.forward(contexts) 
             batch_validation_scores = self.forward(embedded, embedding)
             softmax_batch_scores = softmax(batch_validation_scores)
             
-            self.eval_mode()
             val_loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
-            nx.eval(val_loss)
-            total_loss += float(val_loss)
+
+            total_loss +=  val_loss
             count += next_tokens.size
-        
+
+        nx.eval(total_loss)
         return nx.float_32(total_loss / count)
 
     def to_dict(self) -> dict:

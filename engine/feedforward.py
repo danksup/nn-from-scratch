@@ -19,8 +19,8 @@ class Layer:
         self.activation_derivative = activation_derivative
         scale = nx.float_32(1.0/nx.sqrt(self.m))
         
-        self.weights = nx.uniform(low=-scale, high=scale,size=(self.n, self.m), dtype=nx.float32)
-        self.biases = nx.uniform(low=-scale, high=scale,size=(self.n,), dtype=nx.float32)
+        self.weights = nx.uniform(low=-scale, high=scale,size=(self.n, self.m), dtype=nx.float16)
+        self.biases = nx.uniform(low=-scale, high=scale,size=(self.n,), dtype=nx.float16)
     
     def __repr__(self) -> str:
         return f"Weights: {self.weights}\nBiases: {self.biases}"
@@ -40,8 +40,10 @@ class Layer:
         '''
         compute layer output and some values needed for layer.backward()
         '''
+        inputs = inputs.astype(nx.float16)
         weights = self.weights
         biases = self.biases
+        self.last_input = inputs
         
         if inputs.ndim == 1:
             z = weights @ inputs + biases
@@ -51,7 +53,6 @@ class Layer:
         self.last_z = z
         res = self.activation(z) if self.activation is not None else z
         self.last_ouput = res
-        self.last_input = inputs
 
         return res
 
@@ -60,18 +61,21 @@ class Layer:
         compute gradients and return previous layer error signal
         '''
         if self.activation_derivative is not None:
-            current_neuron_error = err_signal * self.activation_derivative(self.last_z)
+            current_neuron_error = err_signal * self.activation_derivative(self.last_z.astype(nx.float32))
         else:
-            current_neuron_error = err_signal
+            current_neuron_error = err_signal.astype(nx.float32)
 
         batch_size, seq_len, _ = self.last_input.shape
         X = self.last_input.reshape(-1, self.last_input.shape[-1])
         E = current_neuron_error.reshape(-1, current_neuron_error.shape[-1])
+        X32 = X.astype(nx.float32)
+        E32 = E.astype(nx.float32)
+
         # X = np.ascontiguousarray(self.last_input).reshape(-1, self.last_input.shape[-1]) #ai suggested this, because machine loves when the data are contigous so they can just take it without jumping (row since it's based on C)
         # E = np.ascontiguousarray(current_neuron_error).reshape(-1, current_neuron_error.shape[-1])
-        self.d_weight = (E.T @ X) / (batch_size * seq_len)
+        self.d_weight = (E32.T @ X32) / (batch_size * seq_len)
         # self.d_weight = np.einsum("bso,bsi->oi",current_neuron_error,self.last_input, dtype=np.float32) / np.float32(batch_size * seq_len)
-        previous_error = current_neuron_error @ self.weights
+        previous_error = current_neuron_error.astype(nx.float32) @ self.weights
 
         self.d_bias = nx.mean(current_neuron_error, axis=(0,1),dtype=nx.float32)
 
@@ -90,8 +94,8 @@ class Layer:
     def from_dict(cls,thing:dict) -> "Layer":
         n = thing['n']
         m = thing['m']
-        weights = nx.array(thing["weights"], dtype=nx.float32)
-        biases = nx.array(thing["biases"],nx.float32)
+        weights = nx.array(thing["weights"], dtype=nx.float16)
+        biases = nx.array(thing["biases"],nx.float16)
         layer_type = thing["type"]
         if layer_type == "hidden":
             ff = cls.hidden(n,m)

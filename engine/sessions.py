@@ -103,8 +103,6 @@ class Session:
                 self.transformer.train_mode()
                 error = self.transformer.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
                 val = self.validation(dataloader)
-
-                nx.eval(error)
                 end = time.perf_counter()
 
                 time_ = end-start

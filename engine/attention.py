@@ -12,18 +12,19 @@ class AttentionLayer:
         self.scale = nx.float_32(nx.sqrt(self.head_dim))
         
         scale = nx.float_32(1/self.scale)
-        self.Wq = nx.uniform(-scale, scale, (embed_dim,embed_dim), dtype=nx.float32) #query, current context
-        self.Wk = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float32) #key, what information is contained
-        self.Wv = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float32) #value, what information should be sent
-        self.Wo = nx.uniform(-scale,scale, (embed_dim,embed_dim), dtype=nx.float32) #projection
+        self.Wq = nx.uniform(-scale, scale, (embed_dim,embed_dim), dtype=nx.float16) #query, current context
+        self.Wk = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) #key, what information is contained
+        self.Wv = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) #value, what information should be sent
+        self.Wo = nx.uniform(-scale,scale, (embed_dim,embed_dim), dtype=nx.float16) #projection
        
         self.freqs = precompute_freqs(self.head_dim)
 
     def forward(self, x:Any) -> Any: #x shape (batch_size, context_size, embed_dim)
-        self.x = x
-        self.Q = x @ self.Wq 
-        self.K = x @ self.Wk 
-        self.V = x @ self.Wv 
+        self.x = x.astype(nx.float16)
+        
+        self.Q = self.x @ self.Wq 
+        self.K = self.x @ self.Wk 
+        self.V = self.x @ self.Wv 
  
         B, T, _ = x.shape
         self.Q = self.Q.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)
@@ -34,10 +35,11 @@ class AttentionLayer:
         self.K = rope_forward(self.K, self.freqs)
 
         self.scores = self.Q @ self.K.transpose(0, 1, 3, 2)
+        self.scores = self.scores.astype(nx.float32)
         self.scores /= self.scale
 
         mask = nx.triu(nx.ones((T, T), dtype=nx.bool), k=1)
-        self.scores = nx.where(mask, nx.float_32(-1e9), self.scores)
+        self.scores = nx.where(mask, nx.float_32(-1e5), self.scores)
         self.weights = softmax(self.scores)
         self.output = self.weights @ self.V
         self.output_concat = self.output.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
@@ -90,10 +92,10 @@ class AttentionLayer:
         Wo = thing["Wo"]
 
         attention = cls(embed_dim,n_heads)
-        attention.Wk = nx.array(Wk, dtype=nx.float32)
-        attention.Wq = nx.array(Wq, dtype=nx.float32)
-        attention.Wv = nx.array(Wv, dtype=nx.float32)
-        attention.Wo = nx.array(Wo, dtype=nx.float32)
+        attention.Wk = nx.array(Wk, dtype=nx.float16)
+        attention.Wq = nx.array(Wq, dtype=nx.float16)
+        attention.Wv = nx.array(Wv, dtype=nx.float16)
+        attention.Wo = nx.array(Wo, dtype=nx.float16)
 
         return attention
         

@@ -10,12 +10,14 @@ class AdamW:
         self.beta2 = nx.float_32(beta2)
         self.epilon = nx.float_32(epsilon)
         self.weight_decay = nx.float_32(weight_decay)
-    def step(self, name, params:Any, gradient:Any):
+
+    def step(self, name_param_gradient:tuple):
+        name,param,gradient = name_param_gradient
         param_id = name
         if param_id not in self.memory:
             self.memory[param_id] = {
-                "momentum_estimate":nx.zeros_like(params,dtype=nx.float32),
-                "velocity":nx.zeros_like(params, dtype=nx.float32),
+                "momentum_estimate":nx.zeros_like(param,dtype=nx.float32),
+                "velocity":nx.zeros_like(param, dtype=nx.float32),
                 "time_step":0
             }
         one = nx.float_32(1.0)
@@ -30,8 +32,15 @@ class AdamW:
         time_step = current["time_step"]
         m_hat =  nx.float_32(momentum_estimate / (one- self.beta1 ** time_step))
         v_hat =  nx.float_32(velocity / (one- self.beta2 ** time_step))
-        params -= self.lr * self.weight_decay * params
-        params -= self.lr * m_hat / (nx.sqrt(v_hat, dtype=nx.float32) + self.epilon)
+        param = param - self.lr * self.weight_decay * param
+        param = param - self.lr * m_hat / (nx.sqrt(v_hat, dtype=nx.float32) + self.epilon)
+        return param
+    
+    def step_many(self, params):
+        optimized = {}
+        for name, param, gradient in params:
+            optimized[name] = self.step((name, param, gradient))
+        return optimized
 
     def to_dict(self) -> dict:
         return self.memory

@@ -1,10 +1,10 @@
 from engine.backend import nx
 from engine.sessions import Session
-session_load = Session.load("/Users/rama/Desktop/project1/artifacts/sessions/session_2_blocks_3023129550237.ram2n")
-context = session_load.tokenizer.encode("Sherlock Holmes Watson")
+session_load = Session.load("artifacts/sessions/session_2_blocks_3023129550237.ram2n")
+context = session_load.tokenizer.encode("Hello!")
 print(f"context: {session_load.tokenizer.decode(context.tolist())} | {len(context)}")
-TEMPERATURE = .7
-TOP_K = 40
+TEMPERATURE = .8
+TOP_K = 20
 TOP_P = .9
 print(f"temperature={TEMPERATURE}")
 print(f"top_k={TOP_K}")

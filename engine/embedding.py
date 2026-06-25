@@ -7,8 +7,9 @@ from typing import Any
 class Embedding:
     def __init__(self, n:int, embed_dim:int) -> None:
         self.embed_dim = embed_dim
-        self.lookup_table = nx.uniform(low=-0.1, high=0.1, size=(n, self.embed_dim), dtype=nx.float32)
-    
+        self.lookup_table = nx.uniform(low=-0.1, high=0.1, size=(n, self.embed_dim), dtype=nx.float16)
+        self.f32_embedding_lookuptable = self.lookup_table.astype(nx.float32)
+
     def forward(self, token_list:Any):
         ''' loopup and convert to the vector for each token id'''
 
@@ -45,7 +46,7 @@ class Embedding:
                 loaded = json.load(f)["lookuptable"]
 
             embedding = cls(len(loaded), len(loaded[0]))
-            embedding.lookup_table = nx.array(loaded, dtype=nx.float32)
+            embedding.lookup_table = nx.array(loaded, dtype=nx.float16)
             return embedding
         except FileNotFoundError:
             raise FileNotFoundError("file not found")
