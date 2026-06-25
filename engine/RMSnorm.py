@@ -8,9 +8,14 @@ class RMSNorm:
 
     def forward(self, x:Any) -> Any:
         self.input = x
-        rms = nx.sqrt(nx.mean(x * x, axis=-1, keepdims=True) + self.epsilon)
+        x32 = x.astype(nx.float32)
+        rms = nx.sqrt(nx.mean(x32 * x32, axis=-1, keepdims=True) + self.epsilon)
+        # print(
+        #     "max abs x:", nx.max(nx.abs(x)),
+        #     "dtype:", x.dtype,
+        # )
         self.rms = rms
-        self.normalized = x / rms
+        self.normalized = x32 / rms
         return self.gamma * self.normalized
     
     def backward(self, gradient: Any) -> Any:

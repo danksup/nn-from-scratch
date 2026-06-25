@@ -18,6 +18,7 @@ finished:
 - mixed precision(jum 25 2026)
   
 ## Ongoing:
+- further optimization
 - something something inference related (maybe kv chaching)
   
 ## TODO (not in order):

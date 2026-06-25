@@ -2,6 +2,7 @@ from engine.feedforward import Layer
 from engine.attention import AttentionLayer
 from engine.RMSnorm import RMSNorm
 from engine.dropout import Dropout
+from engine.backend import nx
 
 class TransformerBlock:
     def __init__(self,embed_dim=None,ff_dim=None, n_heads=None) -> None:
@@ -14,16 +15,35 @@ class TransformerBlock:
             self.dropout1 = Dropout(0.1)
             self.dropout2 = Dropout(0.1)
 
-    def forward(self,x):
+    def forward(self, x):
+        # print("input", nx.max(nx.abs(x)))
+
         rmsn1_out = self.rmsnorm1.forward(x)
-        attn_out = self.attention.forward(rmsn1_out) 
+        # print("after rms1", nx.max(nx.abs(rmsn1_out)))
+
+        attn_out = self.attention.forward(rmsn1_out)
+        # print("attention", nx.max(nx.abs(attn_out)))
+
         attn_out = self.dropout1.forward(attn_out)
         self.attn_out = attn_out + x
+        # print("after residual1", nx.max(nx.abs(self.attn_out)))
 
         rmsn2_out = self.rmsnorm2.forward(self.attn_out)
-        ff_out = self.ff2.forward(self.ff1.forward(rmsn2_out)) 
+        # print("after rms2", nx.max(nx.abs(rmsn2_out)))
+
+        ff_out = self.ff2.forward(self.ff1.forward(rmsn2_out))
+        # print("ff", nx.max(nx.abs(ff_out)))
+
+        ff1_out = self.ff1.forward(rmsn2_out)
+        # print("ff1", nx.max(nx.abs(ff1_out)))
+
+        ff2_out = self.ff2.forward(ff1_out)
+        # print("ff2", nx.max(nx.abs(ff2_out)))
+
         ff_out = self.dropout2.forward(ff_out)
         self.ff_out = ff_out + self.attn_out
+        # print("after residual2", nx.max(nx.abs(self.ff_out)))
+
         return self.ff_out
 
     def backward(self, gradient):

@@ -70,7 +70,25 @@ class Transformer:
         for block in self.blocks[::-1]:
             current_grad = block.backward(current_grad)
         
+        
         for i,block in enumerate(self.blocks):
+            # print("dwq max abs min max before")
+            # print(nx.max(nx.abs(block.attention.dWq)))
+            # print(nx.min(block.attention.dWq))
+            # print(nx.max(block.attention.dWq))
+            # print("all param before optimizer")
+            # print("Wk", nx.max(nx.abs(block.attention.Wk)))
+            # print("dWk", nx.max(nx.abs(block.attention.dWk)))
+
+            # print("Wv", nx.max(nx.abs(block.attention.Wv)))
+            # print("dWv", nx.max(nx.abs(block.attention.dWv)))
+
+            # print("Wo", nx.max(nx.abs(block.attention.Wo)))
+            # print("dWo", nx.max(nx.abs(block.attention.dWo)))
+
+            # print("ff1_weights_", nx.max(nx.abs(block.ff1.weights)))
+            # print("ff2_weights_", nx.max(nx.abs(block.ff2.weights)))
+
             optimized = self.optimizer.step_many(
                 ((f"Wq_{i}", block.attention.Wq, block.attention.dWq),
                 (f"Wk_{i}", block.attention.Wk, block.attention.dWk),
@@ -83,6 +101,7 @@ class Transformer:
                 (f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma),
                 (f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma))
             )
+            # print("all param after optimizer")
             block.attention.Wq = optimized[f"Wq_{i}"]
             block.attention.Wk = optimized[f"Wk_{i}"]
             block.attention.Wv = optimized[f"Wv_{i}"]
@@ -94,7 +113,10 @@ class Transformer:
             block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
             block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
            
-       
+            # print("dwq max abs min max after")
+            # print(nx.max(nx.abs(block.attention.dWq)))
+            # print(nx.min(block.attention.dWq))
+            # print(nx.max(block.attention.dWq))
       
         return current_grad,d_table
 

@@ -1,15 +1,15 @@
 import os
-os.environ["USE_BACKEND"] = "auto"
+os.environ["USE_BACKEND"] = "e"
 import random
 
 SEED = 42
-EPOCHS = 1
+EPOCHS = 10
 LR = 1e-3
 EMBED_DIM = 64
 CONTEXT_SIZE = 64
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
-N_HEADS = 4
+N_HEADS = 8
 VAL = .9
 
 #not hooked yet to session
@@ -71,7 +71,7 @@ tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
-# transformer.add_block(tblock2)
+transformer.add_block(tblock2)
 configs["block_size"] = len(transformer.blocks)
 session1 = Session(transformer,tokenizer1,embedding1, configs)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])

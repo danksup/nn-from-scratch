@@ -101,6 +101,11 @@ class Backend:
             x = self.nx.array(x)
         return self.nx.max(x,axis=axis, keepdims=keepdims)
     
+    def min(self, x, axis=None, keepdims:bool=False):
+        if self.backend == "MLX":
+            x = self.nx.array(x)
+        return self.nx.min(x,axis=axis, keepdims=keepdims)
+    
     def exp(self, x, out=None, dtype=None):
         if dtype is None: 
             dtype = self.nx.float32

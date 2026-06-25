@@ -40,7 +40,7 @@ class Layer:
         '''
         compute layer output and some values needed for layer.backward()
         '''
-        inputs = inputs.astype(nx.float16)
+        inputs = inputs.astype(nx.float32)
         weights = self.weights
         biases = self.biases
         self.last_input = inputs

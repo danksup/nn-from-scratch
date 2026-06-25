@@ -13,6 +13,7 @@ class AdamW:
 
     def step(self, name_param_gradient:tuple):
         name,param,gradient = name_param_gradient
+        # print("before (step)", nx.max(nx.abs(param)))
         param_id = name
         if param_id not in self.memory:
             self.memory[param_id] = {
@@ -21,20 +22,33 @@ class AdamW:
                 "time_step":0
             }
         one = nx.float_32(1.0)
-        gradient = nx.clip(gradient, -one, one)
+        norm = nx.sqrt(nx.sum(gradient ** 2), dtype=nx.float32)
+        if norm > one:
+            gradient = gradient * (one / norm)
         current = self.memory[param_id]
         momentum_estimate = current["momentum_estimate"]
         velocity = current["velocity"]
-        momentum_estimate *= self.beta1
-        momentum_estimate += (one - self.beta1) * gradient
-        velocity *= self.beta2
-        velocity += (one-self.beta2) * (gradient * gradient) 
+        momentum_estimate = self.beta1 * momentum_estimate + (one - self.beta1) * gradient
+        velocity = self.beta2 * velocity + (one - self.beta2) * gradient * gradient
+        current["momentum_estimate"] = momentum_estimate
+        current["velocity"] = velocity
         current["time_step"] += 1 
         time_step = current["time_step"]
         m_hat =  nx.float_32(momentum_estimate / (one- self.beta1 ** time_step))
         v_hat =  nx.float_32(velocity / (one- self.beta2 ** time_step))
         param = param - self.lr * self.weight_decay * param
         param = param - self.lr * m_hat / (nx.sqrt(v_hat, dtype=nx.float32) + self.epilon)
+
+        # print("after(step)", nx.max(nx.abs(param)))
+        # print(name)
+        # print(param.shape)
+        # print(gradient.shape)
+        # print(param.dtype)
+        # print(gradient.dtype)
+        # print(nx.max(nx.abs(param)))
+        # print(nx.max(nx.abs(gradient)))
+        # print("after clip", nx.max(nx.abs(gradient)))
+
         return param
     
     def step_many(self, params):
