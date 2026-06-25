@@ -21,6 +21,7 @@ class AdamW:
                 "time_step":0
             }
         one = nx.float_32(1.0)
+        gradient = nx.clip(gradient, -one, one)
         current = self.memory[param_id]
         momentum_estimate = current["momentum_estimate"]
         velocity = current["velocity"]

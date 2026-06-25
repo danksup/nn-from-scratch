@@ -86,7 +86,7 @@ session1.train(dataloader, display_message=True)
 # print(f"training finished. time: {end - start:.3f}s")
 
 profiler.disable()
-# session1.save(f"val_test_{a}")
+session1.save(f"val_test_{a}")
 
 stats = pstats.Stats(profiler)
 stats.sort_stats("cumtime")

@@ -147,25 +147,25 @@ class Transformer:
             embedding.lookup_table = optimized
             embedding.f32_embedding_lookuptable = embedding.lookup_table.astype(nx.float32)
             nx.eval(loss, embedding.lookup_table, embedding.f32_embedding_lookuptable)
-            nx.eval(
-            *[
-                x
-                for block in self.blocks
-                for x in (
-                    block.attention.Wq,
-                    block.attention.Wk,
-                    block.attention.Wv,
-                    block.attention.Wo,
-                    block.ff1.weights,
-                    block.ff1.biases,
-                    block.ff2.weights,
-                    block.ff2.biases,
-                    block.rmsnorm1.gamma,
-                    block.rmsnorm2.gamma,
-                    )
-                ]
-            )
-        nx.eval(total_loss)
+        #     nx.eval(
+        #     *[
+        #         x
+        #         for block in self.blocks
+        #         for x in (
+        #             block.attention.Wq,
+        #             block.attention.Wk,
+        #             block.attention.Wv,
+        #             block.attention.Wo,
+        #             block.ff1.weights,
+        #             block.ff1.biases,
+        #             block.ff2.weights,
+        #             block.ff2.biases,
+        #             block.rmsnorm1.gamma,
+        #             block.rmsnorm2.gamma,
+        #             )
+        #         ]
+        #     )
+        # nx.eval(total_loss)
         return nx.float_32(total_loss / count)
     
     def validate(self, embedding,dataloader:DataLoader, batch_size, train_split=.9):

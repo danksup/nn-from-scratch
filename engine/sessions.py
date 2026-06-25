@@ -102,7 +102,9 @@ class Session:
                 start = time.perf_counter()
                 self.transformer.train_mode()
                 error = self.transformer.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
-                val = self.validation(dataloader)
+                val_loss = self.validation(dataloader)
+                # nx.eval(error)
+                # nx.eval(val_loss)
                 end = time.perf_counter()
 
                 time_ = end-start
@@ -133,7 +135,7 @@ class Session:
                         break
                 display_every = max(1, self.configs["epochs"] // 10)
                 if display_message and( i % display_every == 0 or i == self.configs["epochs"] - 1):
-                    print(f"epoch {epoch} | avg loss: {error} | val: {val} | time: {time_}")
+                    print(f"epoch {epoch} | avg loss: {error} | val: {val_loss} | time: {time_}")
                     # largest = 0
 
                     # for layer in self.model.layers:
