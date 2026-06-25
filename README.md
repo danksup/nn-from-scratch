@@ -15,10 +15,10 @@ finished:
 - dropout (jun 25 2026)
 
 ## Ongoing:
+- rope
   
 ## TODO (not in order):
 - lr scheduling
-- rope
 - training/validation split
 - better tokenization
 - kv caching
