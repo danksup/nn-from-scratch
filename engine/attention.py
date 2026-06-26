@@ -1,6 +1,6 @@
 from engine.backend import nx
 from engine.activations import softmax, softmax_derivative
-from engine.RoPE import precompute_freqs,rope_forward, rope_inverse
+from engine.rope import precompute_freqs,rope_forward, rope_inverse
 from typing import Any
 
 class AttentionLayer:

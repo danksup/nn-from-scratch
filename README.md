@@ -15,7 +15,8 @@ finished:
 - dropout (jun 25 2026)
 - rope (jun 25 2026)
 - train/valid split (jun 25 2026)
-- mixed precision(jum 25 2026)
+- mixed precision(jun 25 2026)
+- swiglu(jun 26 2026)
   
 ## Ongoing:
 - further optimization
@@ -30,5 +31,5 @@ finished:
 #### Maybe:
 - other gpus acceleration (maybe not)
 - better batching
-- better activation (swiglu)
 - kernel fusing
+- flash attention

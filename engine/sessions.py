@@ -5,6 +5,7 @@ from engine.dataloader import DataLoader
 from engine.activations import softmax
 from engine.optimizer import AdamW
 from engine.backend import nx
+from typing import Any
 import time
 import pickle
 
@@ -57,16 +58,15 @@ class Session:
         '''
         raise NotImplementedError("not yet")
     
-    def count_params(self):
+    def count_params(self) -> int:
         """
         whole architecture number of params
         """
         total = 0
         for i in self.transformer.blocks:
-            total += i.ff1.weights.size
-            total += i.ff2.weights.size
-            total += i.ff1.biases.size
-            total += i.ff2.biases.size
+            total += i.ff.Wgate.size
+            total += i.ff.Wvalue.size
+            total += i.ff.Wout.size
             total += i.attention.Wq.size
             total += i.attention.Wk.size
             total += i.attention.Wv.size
@@ -76,8 +76,9 @@ class Session:
         total += self.embedding.lookup_table.size
         return total
 
-    def validation(self, dataloader:DataLoader):
+    def validation(self, dataloader:DataLoader) -> Any:
         return self.transformer.validate(self.embedding, dataloader, self.configs["batch_size"], train_split=self.configs["train_split"])
+    
     def train(self,dataloader:DataLoader,patience:int=10, display_message:bool=True):
         """
         Args:
@@ -156,7 +157,7 @@ class Session:
             # self.save("overflow_save")
             raise
     
-    def predict(self, context, temperature=0.8, top_k=3, top_p=0.9):
+    def predict(self, context, temperature=0.8, top_k=3, top_p=0.9) -> Any:
         self.transformer.eval_mode()
         logits = self.transformer.predict(context, self.embedding)
         probs = softmax(logits / temperature)[0, -1]
@@ -211,7 +212,7 @@ class Session:
            pickle.dump(session, f)
     
     @classmethod
-    def load(cls, filepath) -> "Session":
+    def load(cls, filepath:str) -> "Session":
         """
         load the saved session file and build
         """

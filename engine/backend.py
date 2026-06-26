@@ -24,6 +24,7 @@ class Backend:
             self.nx = nx
             self.backend = "NumPy"
         
+        self.e = self.nx.e
         self.float16 = self.nx.float16
         self.float32 = self.nx.float32
         self.int64 = self.nx.int64

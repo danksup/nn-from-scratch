@@ -1,4 +1,4 @@
-from engine.feedforward import Layer
+from engine.swiglu import SwiGLU
 from engine.losses import cross_entropy_gradient, cross_entropy
 from engine.activations import softmax
 from engine.embedding import Embedding
@@ -94,10 +94,9 @@ class Transformer:
                 (f"Wk_{i}", block.attention.Wk, block.attention.dWk),
                 (f"Wv_{i}", block.attention.Wv, block.attention.dWv),
                 (f"Wo_{i}", block.attention.Wo, block.attention.dWo),
-                (f"ff1_weights_{i}", block.ff1.weights, block.ff1.d_weight),
-                (f"ff1_biases_{i}", block.ff1.biases, block.ff1.d_bias),
-                (f"ff2_weights_{i}", block.ff2.weights, block.ff2.d_weight),
-                (f"ff2_biases_{i}", block.ff2.biases, block.ff2.d_bias),
+                (f"ff_wgate_{i}", block.ff.Wgate, block.ff.dWgate),
+                (f"ff_wvalue_{i}", block.ff.Wvalue, block.ff.dWvalue),
+                (f"ff_wout_{i}", block.ff.Wout, block.ff.dWout),
                 (f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma),
                 (f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)])
             
@@ -107,10 +106,9 @@ class Transformer:
             block.attention.Wk = optimized[f"Wk_{i}"]
             block.attention.Wv = optimized[f"Wv_{i}"]
             block.attention.Wo = optimized[f"Wo_{i}"]
-            block.ff1.weights = optimized[f"ff1_weights_{i}"]
-            block.ff1.biases = optimized[f"ff1_biases_{i}"]
-            block.ff2.weights = optimized[f"ff2_weights_{i}"]
-            block.ff2.biases = optimized[f"ff2_biases_{i}"]
+            block.ff.Wgate = optimized[f"ff_wgate_{i}"]
+            block.ff.Wvalue = optimized[f"ff_wvalue_{i}"]
+            block.ff.Wout = optimized[f"ff_wout_{i}"]
             block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
             block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
            

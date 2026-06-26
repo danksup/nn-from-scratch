@@ -4,7 +4,7 @@ from engine.backend import nx
 from typing import Any
 
 class Layer:
-    def __init__(self, n_neuron:int, m_weight:int, layer_type:str="hidden",activation=unit.leaky_relu, activation_derivative = unit.leaky_relu_derivative) -> None:
+    def __init__(self, n_neuron:int, m_weight:int, layer_type:str="hidden",activation=unit.swish, activation_derivative = unit.swish_derivative) -> None:
         '''
         Args:
             n_neuron: number of neurons

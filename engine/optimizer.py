@@ -22,6 +22,7 @@ class AdamW:
 
         optimized = {}
         for shape, thing in group.items():
+            # print(f"Stacking shape {shape} with {len(thing)} items: {[i[0] for i in thing]}")
             names = [i[0] for i in thing]
             params = nx.stack([i[1] for i in thing])
             gradients = nx.stack([i[2] for i in thing])
