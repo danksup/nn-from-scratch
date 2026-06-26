@@ -70,7 +70,7 @@ class Transformer:
         for block in self.blocks[::-1]:
             current_grad = block.backward(current_grad)
         
-        
+        all_network_params = []
         for i,block in enumerate(self.blocks):
             # print("dwq max abs min max before")
             # print(nx.max(nx.abs(block.attention.dWq)))
@@ -89,8 +89,8 @@ class Transformer:
             # print("ff1_weights_", nx.max(nx.abs(block.ff1.weights)))
             # print("ff2_weights_", nx.max(nx.abs(block.ff2.weights)))
 
-            optimized = self.optimizer.step_many(
-                ((f"Wq_{i}", block.attention.Wq, block.attention.dWq),
+            all_network_params.extend(
+                [(f"Wq_{i}", block.attention.Wq, block.attention.dWq),
                 (f"Wk_{i}", block.attention.Wk, block.attention.dWk),
                 (f"Wv_{i}", block.attention.Wv, block.attention.dWv),
                 (f"Wo_{i}", block.attention.Wo, block.attention.dWo),
@@ -99,9 +99,10 @@ class Transformer:
                 (f"ff2_weights_{i}", block.ff2.weights, block.ff2.d_weight),
                 (f"ff2_biases_{i}", block.ff2.biases, block.ff2.d_bias),
                 (f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma),
-                (f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma))
-            )
-            # print("all param after optimizer")
+                (f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)])
+            
+        optimized = self.optimizer.step_many(all_network_params)
+        for i,block in enumerate(self.blocks):
             block.attention.Wq = optimized[f"Wq_{i}"]
             block.attention.Wk = optimized[f"Wk_{i}"]
             block.attention.Wv = optimized[f"Wv_{i}"]
@@ -113,11 +114,7 @@ class Transformer:
             block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
             block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
            
-            # print("dwq max abs min max after")
-            # print(nx.max(nx.abs(block.attention.dWq)))
-            # print(nx.min(block.attention.dWq))
-            # print(nx.max(block.attention.dWq))
-      
+        
         return current_grad,d_table
 
     def train_mode(self):
@@ -165,29 +162,29 @@ class Transformer:
             total_embedding_gradient = embedding_gradient + d_table
             # print("tot embed grad shape",total_embedding_gradient.shape)
             # print("tot embed grad sum abs",nx.sum(nx.abs(total_embedding_gradient)))
-            optimized = self.optimizer.step(("embedding",embedding.lookup_table, total_embedding_gradient))  
-            embedding.lookup_table = optimized
+            optimized = self.optimizer.step_many([("embedding",embedding.lookup_table, total_embedding_gradient)])  
+            embedding.lookup_table = optimized["embedding"]
             embedding.f32_embedding_lookuptable = embedding.lookup_table.astype(nx.float32)
             nx.eval(loss, embedding.lookup_table, embedding.f32_embedding_lookuptable)
-        #     nx.eval(
-        #     *[
-        #         x
-        #         for block in self.blocks
-        #         for x in (
-        #             block.attention.Wq,
-        #             block.attention.Wk,
-        #             block.attention.Wv,
-        #             block.attention.Wo,
-        #             block.ff1.weights,
-        #             block.ff1.biases,
-        #             block.ff2.weights,
-        #             block.ff2.biases,
-        #             block.rmsnorm1.gamma,
-        #             block.rmsnorm2.gamma,
-        #             )
-        #         ]
-        #     )
-        # nx.eval(total_loss)
+            nx.eval(
+            *[
+                x
+                for block in self.blocks
+                for x in (
+                    block.attention.Wq,
+                    block.attention.Wk,
+                    block.attention.Wv,
+                    block.attention.Wo,
+                    block.ff1.weights,
+                    block.ff1.biases,
+                    block.ff2.weights,
+                    block.ff2.biases,
+                    block.rmsnorm1.gamma,
+                    block.rmsnorm2.gamma,
+                    )
+                ]
+            )
+        nx.eval(total_loss)
         return nx.float_32(total_loss / count)
     
     def validate(self, embedding,dataloader:DataLoader, batch_size, train_split=.9):

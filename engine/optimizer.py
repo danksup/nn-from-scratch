@@ -4,67 +4,109 @@ from typing import Any
 
 class AdamW:
     def __init__(self, lr=0.01, beta:float=0.9, beta2:float=0.999, epsilon:float=1e-8, weight_decay=0.01) -> None:
-        self.memory = {}
+        # self.memory = {}
+        self.state = {}
         self.lr = nx.float_32(lr)
         self.beta1 = nx.float_32(beta)
         self.beta2 = nx.float_32(beta2)
-        self.epilon = nx.float_32(epsilon)
+        self.epsilon = nx.float_32(epsilon)
         self.weight_decay = nx.float_32(weight_decay)
 
-    def step(self, name_param_gradient:tuple):
-        name,param,gradient = name_param_gradient
-        # print("before (step)", nx.max(nx.abs(param)))
-        param_id = name
-        if param_id not in self.memory:
-            self.memory[param_id] = {
-                "momentum_estimate":nx.zeros_like(param,dtype=nx.float32),
-                "velocity":nx.zeros_like(param, dtype=nx.float32),
-                "time_step":0
-            }
-        one = nx.float_32(1.0)
-        norm = nx.sqrt(nx.sum(gradient ** 2), dtype=nx.float32)
-        if norm > one:
-            gradient = gradient * (one / norm)
-        current = self.memory[param_id]
-        momentum_estimate = current["momentum_estimate"]
-        velocity = current["velocity"]
-        momentum_estimate = self.beta1 * momentum_estimate + (one - self.beta1) * gradient
-        velocity = self.beta2 * velocity + (one - self.beta2) * gradient * gradient
-        current["momentum_estimate"] = momentum_estimate
-        current["velocity"] = velocity
-        current["time_step"] += 1 
-        time_step = current["time_step"]
-        m_hat =  nx.float_32(momentum_estimate / (one- self.beta1 ** time_step))
-        v_hat =  nx.float_32(velocity / (one- self.beta2 ** time_step))
-        param = param - self.lr * self.weight_decay * param
-        param = param - self.lr * m_hat / (nx.sqrt(v_hat, dtype=nx.float32) + self.epilon)
+    def step_many(self, name_param_gradient:list) -> dict:
+        group = {}
+        for name,param,gradient in name_param_gradient:
+            shape = param.shape
+            if shape not in group:
+                group[shape] = []
+            group[shape].append((name,param,gradient))
 
-        # print("after(step)", nx.max(nx.abs(param)))
-        # print(name)
-        # print(param.shape)
-        # print(gradient.shape)
-        # print(param.dtype)
-        # print(gradient.dtype)
-        # print(nx.max(nx.abs(param)))
-        # print(nx.max(nx.abs(gradient)))
-        # print("after clip", nx.max(nx.abs(gradient)))
-
-        return param
-    
-    def step_many(self, params):
         optimized = {}
-        for name, param, gradient in params:
-            optimized[name] = self.step((name, param, gradient))
-        return optimized
+        for shape, thing in group.items():
+            names = [i[0] for i in thing]
+            params = nx.stack([i[1] for i in thing])
+            gradients = nx.stack([i[2] for i in thing])
+            
+            new_params = self._step(shape,params,gradients)
 
+            for idx, name in enumerate(names):
+                optimized[name] = new_params[idx]
+        return optimized
+    
+    def _step(self, shape, params:Any, grads:Any) -> Any:
+        if shape not in self.state:
+            self.state[shape] = {
+                "m": nx.zeros_like(params),
+                "v": nx.zeros_like(params),
+                "t": 0
+            }
+        
+        norm = nx.sqrt(nx.sum(grads**2, axis=tuple(range(1, grads.ndim)), keepdims=True))
+        grads = nx.where(norm > 1.0, grads * (1.0 / norm), grads)
+        state = self.state[shape]
+        state["m"] = self.beta1 * state["m"] + (1.0 - self.beta1) * grads
+        state["v"] = self.beta2 * state["v"] + (1.0 - self.beta2) * (grads**2)
+        state["t"] += 1
+        m_hat = state["m"] / (1.0 - self.beta1 ** state["t"])
+        v_hat = state["v"] / (1.0 - self.beta2 ** state["t"])
+        params = params - self.lr * self.weight_decay * params
+        params = params - self.lr * m_hat / (nx.sqrt(v_hat) + self.epsilon)
+        return params
+    
     def to_dict(self) -> dict:
-        return self.memory
+        return self.state
 
     @classmethod
     def from_dict(cls, thing):
         adam = cls()
-        adam.memory = thing
+        adam.state = thing
         return adam
+
+
+    # def step(self, name_param_gradient:tuple):
+    #     name,param,gradient = name_param_gradient
+    #     # print("before (step)", nx.max(nx.abs(param)))
+    #     param_id = name
+    #     if param_id not in self.memory:
+    #         self.memory[param_id] = {
+    #             "momentum_estimate":nx.zeros_like(param,dtype=nx.float32),
+    #             "velocity":nx.zeros_like(param, dtype=nx.float32),
+    #             "time_step":0
+    #         }
+    #     one = nx.float_32(1.0)
+    #     norm = nx.sqrt(nx.sum(gradient ** 2), dtype=nx.float32)
+    #     if norm > one:
+    #         gradient = gradient * (one / norm)
+    #     current = self.memory[param_id]
+    #     momentum_estimate = current["momentum_estimate"]
+    #     velocity = current["velocity"]
+    #     momentum_estimate = self.beta1 * momentum_estimate + (one - self.beta1) * gradient
+    #     velocity = self.beta2 * velocity + (one - self.beta2) * gradient * gradient
+    #     current["momentum_estimate"] = momentum_estimate
+    #     current["velocity"] = velocity
+    #     current["time_step"] += 1 
+    #     time_step = current["time_step"]
+    #     m_hat =  nx.float_32(momentum_estimate / (one- self.beta1 ** time_step))
+    #     v_hat =  nx.float_32(velocity / (one- self.beta2 ** time_step))
+    #     param = param - self.lr * self.weight_decay * param
+    #     param = param - self.lr * m_hat / (nx.sqrt(v_hat, dtype=nx.float32) + self.epilon)
+
+    #     # print("after(step)", nx.max(nx.abs(param)))
+    #     # print(name)
+    #     # print(param.shape)
+    #     # print(gradient.shape)
+    #     # print(param.dtype)
+    #     # print(gradient.dtype)
+    #     # print(nx.max(nx.abs(param)))
+    #     # print(nx.max(nx.abs(gradient)))
+    #     # print("after clip", nx.max(nx.abs(gradient)))
+
+    #     return param
+    
+    # def step_many(self, params):
+    #     optimized = {}
+    #     for name, param, gradient in params:
+    #         optimized[name] = self.step((name, param, gradient))
+    #     return optimized
 
 # class SGD:
 #     def __init__(self, lr=0.05) -> None:

@@ -32,3 +32,4 @@ finished:
 - other gpus acceleration (maybe not)
 - better batching
 - better activation (swiglu)
+- kernel fusing

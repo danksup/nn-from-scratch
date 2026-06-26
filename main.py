@@ -3,13 +3,13 @@ os.environ["USE_BACKEND"] = "auto"
 import random
 
 SEED = 42
-EPOCHS = 10
+EPOCHS = 1
 LR = 1e-3
 EMBED_DIM = 64
 CONTEXT_SIZE = 64
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
-N_HEADS = 8
+N_HEADS = 4
 VAL = .9
 
 #not hooked yet to session
@@ -80,10 +80,10 @@ a = random.randint(1,9999999999999)
 a = str(a)
 profiler = cProfile.Profile()
 profiler.enable()
-# start = time.time()
+start = time.time()
 session1.train(dataloader, display_message=True)
-# end = time.time()
-# print(f"training finished. time: {end - start:.3f}s")
+end = time.time()
+print(f"training finished. time: {end - start:.3f}s")
 
 profiler.disable()
 session1.save(f"val_test_{a}")
