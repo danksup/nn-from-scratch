@@ -2,7 +2,6 @@ import os
 os.environ["USE_BACKEND"] = "auto"
 import random
 
-SEED = 42
 EPOCHS = 1
 LR = 1e-3
 EMBED_DIM = 64

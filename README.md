@@ -19,7 +19,6 @@ finished:
   
 ## Ongoing:
 - further optimization
-- something something inference related (maybe kv chaching)
   
 ## TODO (not in order):
 - lr scheduling
