@@ -4,6 +4,12 @@ from engine.rope import precompute_freqs,rope_forward, rope_inverse
 from typing import Any
 
 class AttentionLayer:
+    """
+    Explanation:
+        Q (query): what the current token is looking for\n
+        K (key): describe what each token contains\n
+        V (key): What information is offered by each token\n
+        """
     def __init__(self,embed_dim:int, n_heads:int) -> None:
         self.embed_dim = embed_dim
         self.n_heads = n_heads
@@ -12,67 +18,83 @@ class AttentionLayer:
         self.scale = nx.float_32(nx.sqrt(self.head_dim))
         
         scale = nx.float_32(1/self.scale)
-        self.Wq = nx.uniform(-scale, scale, (embed_dim,embed_dim), dtype=nx.float16) #query, current context
-        self.Wk = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) #key, what information is contained
-        self.Wv = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) #value, what information should be sent
+        self.Wq = nx.uniform(-scale, scale, (embed_dim,embed_dim), dtype=nx.float16)
+        self.Wk = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) 
+        self.Wv = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) 
         self.Wo = nx.uniform(-scale,scale, (embed_dim,embed_dim), dtype=nx.float16) #projection
        
+        assert self.head_dim % 2 == 0, "head dim !% 2"
         self.freqs = precompute_freqs(self.head_dim)
-
-    def forward(self, x:Any) -> Any: #x shape (batch_size, context_size, embed_dim)
-        self.x = x.astype(nx.float16)
-        
-        self.Q = self.x @ self.Wq 
-        self.K = self.x @ self.Wk 
-        self.V = self.x @ self.Wv 
- 
-        B, T, _ = x.shape
-        self.Q = self.Q.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)
-        self.K = self.K.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)
-        self.V = self.V.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)
-
-        self.Q = rope_forward(self.Q, self.freqs)
-        self.K = rope_forward(self.K, self.freqs)
-
-        self.scores = self.Q @ self.K.transpose(0, 1, 3, 2)
-        self.scores = self.scores.astype(nx.float32)
-        self.scores /= self.scale
-
-        mask = nx.triu(nx.ones((T, T), dtype=nx.bool), k=1)
-        self.scores = nx.where(mask, nx.float_32(-1e5), self.scores)
-        self.weights = softmax(self.scores)
-        self.output = self.weights @ self.V
-        self.output_concat = self.output.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
-        self.output_projected = self.output_concat @ self.Wo
-        return self.output_projected
     
-    def backward(self, output_gradient) -> Any:
+    def forward(self, x:Any) -> tuple[Any, tuple]:
+        """
+        f(x) = softmax((Q @ K.T) / scale) * V \n
+        rope(x): inject position
+        Q K.T: calculate how close 2 contexts are (dot products. the smaller the less relevant it is, the bigger the more relevant it is)\n
+        softmax(Q K.T): turns it into probability distribution\n
+        divide by scale = sqrt(head_dim): scaling to prevent numbers getting too large\n
+        times by v: use weights to retrieve information. v contains information carried by each tokens\n
+        \n
+        return output projection Wo: all information from multiple heads back into one embedding size of embed_dim
+        """
+        fp16_x = x.astype(nx.float16)
+        Q = fp16_x @ self.Wq
+        K = fp16_x @ self.Wk
+        V = fp16_x @ self.Wv
+
+        B, T, _ = fp16_x.shape
+        Q = Q.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)
+        K = K.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)
+        V = V.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)
+
+        Q = rope_forward(Q, self.freqs)
+        K = rope_forward(K, self.freqs)
+
+        scores = (Q @ K.transpose(0,1,3,2).astype(nx.float32)) / self.scale
+
+        #causal mask makes it decoder only. cant look into future contexts.
+        mask = nx.triu(nx.ones((T, T), dtype=nx.bool), k=1)
+        scores = nx.where(mask, -1e9, scores)
+        weights = softmax(scores)
+        output = weights @ V
+        output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
+        output_projected = output_concat @ self.Wo
+        cache =  (fp16_x, Q, K, V, weights, output_concat)
+        return output_projected, cache
+    
+    
+    def backward(self, output_gradient:Any, cache:tuple) -> Any:
+        """
+        backprop
+        """
+        fp16_x, Q, K, V, weights, output_concat = cache
         d_output_concat = output_gradient @ self.Wo.T
-        B, T, _ = self.x.shape
+        B, T, _ = fp16_x.shape
         d_output = d_output_concat.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)
-        dweights = d_output @ self.V.transpose(0, 1, 3, 2)
-        self.dV = self.weights.transpose(0, 1, 3, 2) @ d_output
-        dscores = softmax_derivative(self.weights, dweights)
+        dweights = d_output @ V.transpose(0, 1, 3, 2)
+        dV = weights.transpose(0, 1, 3, 2) @ d_output
+        dscores = softmax_derivative(weights, dweights)
         dscores /= self.scale
-        self.dQ = dscores @ self.K
-        self.dK = dscores.transpose(0, 1, 3, 2) @ self.Q
+        dQ = dscores @ K
+        dK = dscores.transpose(0, 1, 3, 2) @ Q
 
-        self.dQ = rope_inverse(self.dQ, self.freqs)
-        self.dK = rope_inverse(self.dK, self.freqs)
+        dQ = rope_inverse(dQ, self.freqs)
+        dK = rope_inverse(dK, self.freqs)
 
-        dQ = self.dQ.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
-        dK = self.dK.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
-        dV = self.dV.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
+        dQ = dQ.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
+        dK = dK.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
+        dV = dV.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
 
-        self.dWq = nx.sum(self.x.transpose(0,2,1) @ dQ, axis=0, dtype=nx.float32)
-        self.dWk = nx.sum(self.x.transpose(0,2,1) @ dK, axis=0, dtype=nx.float32)
-        self.dWv = nx.sum(self.x.transpose(0,2,1) @ dV, axis=0, dtype=nx.float32)
-        self.dWo = nx.sum(self.output_concat.transpose(0,2,1)@ output_gradient,axis=0,dtype=nx.float32)
+        self.dWq = nx.sum(fp16_x.transpose(0,2,1) @ dQ, axis=0, dtype=nx.float32)
+        self.dWk = nx.sum(fp16_x.transpose(0,2,1) @ dK, axis=0, dtype=nx.float32)
+        self.dWv = nx.sum(fp16_x.transpose(0,2,1) @ dV, axis=0, dtype=nx.float32)
+        self.dWo = nx.sum(output_concat.transpose(0,2,1)@ output_gradient,axis=0,dtype=nx.float32)
 
         dx = dQ @ self.Wq.T + dK @ self.Wk.T + dV @ self.Wv.T
         return dx
         
-    def to_dict(self):
+    def to_dict(self) -> dict:
+        '''serialize into dict with weights turned into list'''
         return {
             "embed_dim":self.embed_dim,
             "n_heads":self.n_heads,
@@ -84,6 +106,7 @@ class AttentionLayer:
     
     @classmethod
     def from_dict(cls,thing) -> "AttentionLayer":
+        """deserialize"""
         embed_dim = thing["embed_dim"]
         n_heads = thing["n_heads"]
         Wq = thing["Wq"]

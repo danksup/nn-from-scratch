@@ -1,6 +1,5 @@
-from .activations import leaky_relu, leaky_relu_derivative
+from ..activations import leaky_relu, leaky_relu_derivative
 from .utils import dot
-
 
 #1 neuron
 def forward(inputs:list, weights:list, b:float, active:bool=True, activation = leaky_relu) -> float:

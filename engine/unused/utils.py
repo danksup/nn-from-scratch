@@ -1,6 +1,6 @@
 from engine.backend import nx
 
-def dot(u:list,v:list) -> float:
+def dot(u,v) -> float:
     """
     dot product
     """

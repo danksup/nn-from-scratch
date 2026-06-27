@@ -13,7 +13,6 @@ def rope_forward(x, angles):
     current_angles = angles[:T,:]
     sin = nx.sin(current_angles)
     cos = nx.cos(current_angles)
-
     x1 = x[..., ::2] 
     x2 = x[..., 1::2]
     

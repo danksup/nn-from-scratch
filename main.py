@@ -1,14 +1,14 @@
 import os
-os.environ["USE_BACKEND"] = "auto"
+os.environ["USE_BACKEND"] = "mlx"
 import random
 
-EPOCHS = 1
+EPOCHS = 5
 LR = 1e-3
 EMBED_DIM = 64
 CONTEXT_SIZE = 64
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
-N_HEADS = 4
+N_HEADS = 8
 VAL = .9
 
 #not hooked yet to session
@@ -61,7 +61,6 @@ for file in files:
         corpus += data + "\n\n\n"
 
 tokenizer1.fit(corpus)
-
 configs["dataset"] = f"{len(files)} files"
 vocab_size = len(tokenizer1.chartoid)
 weight_n = CONTEXT_SIZE * EMBED_DIM
@@ -70,25 +69,27 @@ tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
-transformer.add_block(tblock2)
+# transformer.add_block(tblock2)
 configs["block_size"] = len(transformer.blocks)
-session1 = Session(transformer,tokenizer1,embedding1, configs)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
+configs["corpus char len"] = dataloader.tokens.size
+session1 = Session(transformer,tokenizer1,embedding1, configs)
+
 
 a = random.randint(1,9999999999999)
 a = str(a)
-profiler = cProfile.Profile()
-profiler.enable()
+# profiler = cProfile.Profile()
+# profiler.enable()
 start = time.time()
 session1.train(dataloader, display_message=True)
 end = time.time()
 print(f"training finished. time: {end - start:.3f}s")
 
-profiler.disable()
+# profiler.disable()
 session1.save(f"val_test_{a}")
 
-stats = pstats.Stats(profiler)
-stats.sort_stats("cumtime")
-stats.print_stats(100)
+# stats = pstats.Stats(profiler)
+# stats.sort_stats("cumtime")
+# stats.print_stats(100)
 
 

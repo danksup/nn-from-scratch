@@ -16,50 +16,43 @@ class TransformerBlock:
             self.dropout2 = Dropout(0.1)
 
     def forward(self, x:Any) -> Any:
-        # print("input", nx.max(nx.abs(x)))
 
         rmsn1_out = self.rmsnorm1.forward(x)
-        # print("after rms1", nx.max(nx.abs(rmsn1_out)))
 
-        attn_out = self.attention.forward(rmsn1_out)
-        # print("attention", nx.max(nx.abs(attn_out)))
+        attn_out, attention_cache = self.attention.forward(rmsn1_out)
 
         attn_out = self.dropout1.forward(attn_out)
-        self.attn_out = attn_out + x
-        # print("after residual1", nx.max(nx.abs(self.attn_out)))
+        attn_out = attn_out + x
 
-        rmsn2_out = self.rmsnorm2.forward(self.attn_out)
-        # print("after rms2", nx.max(nx.abs(rmsn2_out)))
+        rmsn2_out = self.rmsnorm2.forward(attn_out)
 
         ff_out = self.ff.forward(rmsn2_out)
-        # print("ff", nx.max(nx.abs(ff_out)))
 
         ff_out = self.dropout2.forward(ff_out)
-        self.ff_out = ff_out + self.attn_out
-        # print("after residual2", nx.max(nx.abs(self.ff_out)))
+        ff_out = ff_out + attn_out
 
-        return self.ff_out
+        return ff_out, attention_cache
 
-    def backward(self, gradient:Any) -> Any:
+    def backward(self, gradient:Any, attention_cache:Any) -> Any:
         #ff
         d_ff = self.dropout2.backward(gradient)
-        self.d_ff = self.ff.backward(d_ff)
+        dx_ff = self.ff.backward(d_ff)
 
-        self.d_rmsn2 = self.rmsnorm2.backward(self.d_ff)
+        d_rmsn2 = self.rmsnorm2.backward(dx_ff)
 
         #ff_out residual
-        self.d_attn_out = gradient + self.d_rmsn2
+        d_attn_out = gradient + d_rmsn2
 
         #attn
-        self.d_attn = self.dropout1.backward(self.d_attn_out)
-        self.d_attn = self.attention.backward(self.d_attn)
+        d_attn = self.dropout1.backward(d_attn_out)
+        d_attn = self.attention.backward(d_attn, attention_cache)
 
-        self.d_rmsn1 = self.rmsnorm1.backward(self.d_attn)
+        d_rmsn1 = self.rmsnorm1.backward(d_attn)
 
         #attn_out residual
-        self.dx = self.d_rmsn1 + self.d_attn_out
+        dx = d_rmsn1 + d_attn_out
 
-        return self.dx
+        return dx
     
     def train(self) -> None:
         self.dropout1.train()
@@ -89,3 +82,5 @@ class TransformerBlock:
         transformer_block.dropout1 = Dropout(thing["dropout1"])
         transformer_block.dropout2 = Dropout(thing["dropout2"])
         return transformer_block
+
+  

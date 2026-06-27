@@ -10,7 +10,6 @@ class Tokenizer:
 
     def split_input(self, char:str) -> list[str]:
         """character level tokenizer"""
-        # return re.findall(r"\w+|\s+|[^\w\s]", text)
         return list(char)
 
     def fit(self, x:str) -> None:
@@ -32,20 +31,14 @@ class Tokenizer:
         tokens = self.split_input(char)
         encoded = [self.chartoid.get(token, self.chartoid["<UNK>"])for token in tokens]
         return nx.array(encoded, dtype=nx.int32)
+        # return encoded
 
 
-    def decode(self, thing: list[int]) -> str:
+    def decode(self, thing: Any) -> str:
         decoded = ""
 
         for token_id in thing:
             decoded += self.idtochar[int(token_id)]
-
-            # if re.match(r"[^\w\s]", token):
-            #     decoded += token
-            # else:
-            #     if decoded:
-            #         decoded += " "
-            #     decoded += token
 
         return decoded
     
@@ -55,15 +48,6 @@ class Tokenizer:
             "chartoid":self.chartoid
         }
         return vocab
-
-    def save(self, filename:str):
-        """
-        save the token
-        """
-        vocab = self.to_dict()
-        filename = f"artifacts/tokens/tokenizer_char_level_{filename}.json"
-        with open(filename, "w") as f:
-            json.dump(vocab, f, indent=4)
     
     @classmethod
     def from_dict(cls,thing) -> "Tokenizer":
@@ -76,21 +60,3 @@ class Tokenizer:
             tokenizer.chartoid[char] = int(id)
 
         return tokenizer
-
-    def load(self, filename:str) -> "Tokenizer":
-        """
-        load the token
-        """
-        try:
-            with open(filename, 'r') as f:
-                vocab = json.load(f)
-            
-            tokenizer = Tokenizer.from_dict(vocab)
-            self.chartoid = tokenizer.chartoid
-            self.idtochar = tokenizer.idtochar
-
-            return self
-        except FileNotFoundError:
-            raise FileNotFoundError("file not found")
-        except json.JSONDecodeError:
-            raise ValueError("decode eror")

@@ -1,7 +1,7 @@
 # nn-from-scratch
 just a fun little project i do on my days off. a small llm project built for (my) learning purposes.
 
-finished:
+logs:
 - older stuff (did not track)
 - save/load (did not track)
 - layernorm (did not track) (replaced by rmsnorm)
@@ -17,11 +17,13 @@ finished:
 - train/valid split (jun 25 2026)
 - mixed precision(jun 25 2026)
 - swiglu(jun 26 2026)
+- purely optimizing in june 27 2026
   
 ## Ongoing:
 - further optimization
   
 ## TODO (not in order):
+- checkpoint
 - lr scheduling
 - better tokenization
 - kv caching
@@ -31,5 +33,5 @@ finished:
 #### Maybe:
 - other gpus acceleration (maybe not)
 - better batching
-- kernel fusing
-- flash attention
+- kernel fusing (maybe not)
+- flash attention (maybe not)

@@ -1,5 +1,6 @@
 from engine.backend import nx
 from engine.activations import swish,swish_derivative
+
 class SwiGLU:
     def __init__(self, hidden_width:int, embed_dim) -> None:
         self.hidden_width = hidden_width

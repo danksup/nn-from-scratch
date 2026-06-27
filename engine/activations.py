@@ -3,75 +3,57 @@ from typing import Any
 #rectified linear unit
 
 def leaky_relu(x:Any) -> Any:
+    """
+    f(x) = max(0.01,x)
+    """
     return nx.where(x > 0, x, nx.float_32(0.01) * x)  #irl, x is unlikely to be 0 so we can ignore it
 
 def leaky_relu_derivative(x:Any) -> Any:
+    """
+    derivative of leaky relu
+    """
     one = nx.float_32(1.0)
     alpha = nx.float_32(0.01)
     return nx.where(x > 0, one, alpha)
 
 def softmax(x:Any, axis:Any=-1) -> Any:
+    """
+    turns logit into probability distribution that sums into 1.\n
+    f(x) = exp(x - max(x)) / sum(exp(x - max(x)))
+    """
     max_x = nx.max(x, axis=axis, keepdims=True)
     exp_x = nx.exp(x - max_x, dtype=nx.float32)
     return exp_x / nx.sum(exp_x, axis=axis, keepdims=True, dtype=nx.float32)
 
 def softmax_derivative(s:Any, grad:Any) -> Any:
+    """
+    derivative of softmax
+    """
     return  s * (grad -nx.sum(grad * s, axis=-1, keepdims=True,dtype=nx.float32))
 
 def sigmoid(x:Any) -> Any:
+    """
+    turns x into value between 0 and 1 \n
+    f(x) = 1 / (1 + e**(-x))
+    """
     one = nx.float_32(1.0)
     return one / (one + nx.exp(-x))
 
 def sigmoid_derivative(x:Any):
-
     s = sigmoid(x)
     return s * (1.0 - s)
 
 def swish(x:Any) -> Any:
+    """
+    f(x) = x * sigmoid(Bx)\n
+    B, beta, is 1 by default.
+    """
     return x * sigmoid(x)
 
 def swish_derivative(x: Any) -> Any:
+    """
+    derivative of swish
+    f(x) = σ(x) + x * σ(x) * (1 - σ)
+    """
     s = sigmoid(x)
     return s + x * s * (1.0 - s)
-
-class Swiglu:
-    def __init__(self, hidden_width:int, embed_dim) -> None:
-        scale = nx.float_32(1.0/nx.sqrt(embed_dim))
-        self.Wgate = nx.uniform(-scale,scale, (hidden_width,embed_dim), dtype=nx.float16)
-        self.Wvalue = nx.uniform(-scale,scale, (hidden_width,embed_dim), dtype=nx.float16)
-        self.Wout = nx.uniform(-scale,scale, (embed_dim,hidden_width), dtype=nx.float16)
-
-    def forward(self, x):
-        self.x = x
-        self.gate_linear = x @ self.Wgate.T
-        self.gate = swish(self.gate_linear)
-        self.value = x @ self.Wvalue.T
-        self.hidden = self.gate * self.value
-
-
-        self.output = self.hidden @ self.Wout
-        return self.output
-    
-    def backward(self, gradient):
-        batch_size, seq_len, _ = self.x.shape
-
-        X = self.x.reshape(-1, self.x.shape[-1])                 # (B*S, embed)
-        H = self.hidden.reshape(-1, self.hidden.shape[-1])       # (B*S, hidden)
-        G = gradient.reshape(-1, gradient.shape[-1])             # (B*S, embed)
-
-        self.dWout = (H.T @ G).T / (batch_size * seq_len)
-
-        d_hidden = gradient @ self.Wout.T
-
-        d_gate = d_hidden * self.value * swish_derivative(self.gate_linear)
-        d_value = d_hidden * self.gate
-
-        DG = d_gate.reshape(-1, d_gate.shape[-1])      # (B*S, hidden)
-        DV = d_value.reshape(-1, d_value.shape[-1])    # (B*S, hidden)
-
-        self.dWgate = (DG.T @ X) / (batch_size * seq_len)
-        self.dWvalue = (DV.T @ X) / (batch_size * seq_len)
-
-        dx = d_gate @ self.Wgate + d_value @ self.Wvalue
-
-        return dx

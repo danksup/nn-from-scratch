@@ -7,6 +7,8 @@ from engine.optimizer import  AdamW
 from engine.transformer_block import TransformerBlock
 from engine.backend import nx
 from typing import Any
+import gc
+FLUSH_EVERY = 32
 
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
@@ -42,52 +44,38 @@ class Transformer:
         '''
         raise DeprecationWarning("no")
         
-    def forward(self, inputs:Any, embedding:Embedding) -> Any:
+    def forward(self, inputs:Any, embedding:Embedding, return_cache= True) -> Any:
         '''
         inputs = list of inputs
         '''
         output = inputs.astype(nx.float16)
+        attention_caches = []
         for block in self.blocks:
-            output = block.forward(output)
-        self.last_output =output.astype(nx.float32)
-        # print("last output shape",self.last_output.shape)
-        # print("f32 lookuptable shape",embedding.f32_embedding_lookuptable.shape)
-        # print("f32 lookuptable transposed shape",embedding.f32_embedding_lookuptable.transpose(1,0).shape)
-        scores = self.last_output @ embedding.f32_embedding_lookuptable.T
+            output, cache = block.forward(output)
+            attention_caches.append(cache)
+        last_output =output.astype(nx.float32)
+
+        scores = last_output @ embedding.lookup_table.T
+        if return_cache:
+            return scores, attention_caches, last_output
         return scores
     
-    def backward(self, err_signal:Any, embedding:Embedding) -> Any:
+    def backward(self, err_signal:Any, embedding:Embedding, caches:list, last_output:Any) -> Any:
         '''
         Args:
             traces error contribution and then optimize
         '''
         err_signal =  err_signal.astype(nx.float32)
-        block_gradient = err_signal @ embedding.f32_embedding_lookuptable
-        d_table = err_signal.reshape(-1, self.vocab_size).T @ self.last_output.reshape(-1, self.embed_dim)
+        block_gradient = err_signal @ embedding.lookup_table
+        d_table = err_signal.reshape(-1, self.vocab_size).T @ last_output.reshape(-1, self.embed_dim) #type: ignore
         d_table /= (err_signal.shape[0]* err_signal.shape[1])
         
         current_grad = block_gradient
-        for block in self.blocks[::-1]:
-            current_grad = block.backward(current_grad)
+        for block, block_cache in zip(self.blocks[::-1], caches[::-1]):
+            current_grad = block.backward(current_grad, block_cache)
         
         all_network_params = []
         for i,block in enumerate(self.blocks):
-            # print("dwq max abs min max before")
-            # print(nx.max(nx.abs(block.attention.dWq)))
-            # print(nx.min(block.attention.dWq))
-            # print(nx.max(block.attention.dWq))
-            # print("all param before optimizer")
-            # print("Wk", nx.max(nx.abs(block.attention.Wk)))
-            # print("dWk", nx.max(nx.abs(block.attention.dWk)))
-
-            # print("Wv", nx.max(nx.abs(block.attention.Wv)))
-            # print("dWv", nx.max(nx.abs(block.attention.dWv)))
-
-            # print("Wo", nx.max(nx.abs(block.attention.Wo)))
-            # print("dWo", nx.max(nx.abs(block.attention.dWo)))
-
-            # print("ff1_weights_", nx.max(nx.abs(block.ff1.weights)))
-            # print("ff2_weights_", nx.max(nx.abs(block.ff2.weights)))
 
             all_network_params.extend(
                 [(f"Wq_{i}", block.attention.Wq, block.attention.dWq),
@@ -132,58 +120,42 @@ class Transformer:
         '''
         total_loss = nx.float_32(0.0)
         count = 0
+        i = 0
+        for contexts, next_tokens in dataloader.get_pairs(batch_size):  
+            i = i + 1
 
-        for contexts, next_tokens in dataloader.get_pairs(batch_size):            
             embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
-            # embedded += PE(dataloader.context_size, embedding.embed_dim)
             
-            batch_scores = self.forward(embedded, embedding)
+            batch_scores, attention_caches, last_output = self.forward(embedded, embedding)
 
             softmax_batch_scores = softmax(batch_scores)
             batch_gradient = cross_entropy_gradient(softmax_batch_scores, next_tokens)
+            batch_gradient /= (batch_gradient.shape[0] * batch_gradient.shape[1])
             
             loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
-            total_loss += loss
+            total_loss += loss.item() 
             count += next_tokens.size
-            current_grad,d_table = self.backward(batch_gradient, embedding)
+            current_grad,d_table = self.backward(batch_gradient, embedding, attention_caches, last_output)
             embedding_gradient = nx.zeros_like(embedding.lookup_table, dtype=nx.float32)
             embedding_gradient = nx.add_at(embedding_gradient, contexts, current_grad)
 
-            # print(embedding_gradient.shape)
-            # print(nx.sum(nx.abs(embedding_gradient)))
-            # print(
-            #     contexts.shape,
-            #     current_grad.shape,
-            #     embedding_gradient.shape
-            # )
-            # print(f"sum abs embed grad {nx.sum(nx.abs(embedding_gradient))},sum abs dtable{nx.sum(nx.abs(d_table))}")
             total_embedding_gradient = embedding_gradient + d_table
-            # print("tot embed grad shape",total_embedding_gradient.shape)
-            # print("tot embed grad sum abs",nx.sum(nx.abs(total_embedding_gradient)))
             optimized = self.optimizer.step_many([("embedding",embedding.lookup_table, total_embedding_gradient)])  
             embedding.lookup_table = optimized["embedding"]
-            embedding.f32_embedding_lookuptable = embedding.lookup_table.astype(nx.float32)
-            nx.eval(loss, embedding.lookup_table, embedding.f32_embedding_lookuptable)
-            # nx.eval(
-            # *[
-            #     x
-            #     for block in self.blocks
-            #     for x in (
-            #         block.attention.Wq,
-            #         block.attention.Wk,
-            #         block.attention.Wv,
-            #         block.attention.Wo,
-            #         block.ff1.weights,
-            #         block.ff1.biases,
-            #         block.ff2.weights,
-            #         block.ff2.biases,
-            #         block.rmsnorm1.gamma,
-            #         block.rmsnorm2.gamma,
-            #         )
-            #     ]
-            # )
-        nx.eval(total_loss)
-        return nx.float_32(total_loss / count)
+
+            del embedded, batch_scores, attention_caches, last_output, current_grad, d_table
+
+            
+            # if i % FLUSH_EVERY == 0:
+            #     nx.eval(loss, embedding.lookup_table, *optimized.values(),
+            #             *[w for block in self.blocks
+            #                 for w in (block.attention.Wq, block.attention.Wk, block.attention.Wv, block.attention.Wo,block.ff.Wgate, block.ff.Wvalue,
+            #                       block.ff.Wout, block.rmsnorm1.gamma, block.rmsnorm2.gamma)])
+                
+            #     self.optimizer.eval_state()
+
+        final_loss = total_loss / count
+        return nx.float_32(final_loss)
     
     def validate(self, embedding,dataloader:DataLoader, batch_size, train_split=.9):
         total_loss = nx.float_32(0.0)
@@ -192,16 +164,16 @@ class Transformer:
         dataloader.train_split = train_split
         for contexts, next_tokens in dataloader.get_validation_pairs(batch_size):
             embedded = embedding.forward(contexts) 
-            batch_validation_scores = self.forward(embedded, embedding)
+            batch_validation_scores = self.forward(embedded, embedding, False)
             softmax_batch_scores = softmax(batch_validation_scores)
             
             val_loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
 
-            total_loss +=  val_loss
+            total_loss += val_loss.item()
             count += next_tokens.size
-
-        nx.eval(total_loss)
-        return nx.float_32(total_loss / count)
+            
+        final_loss = total_loss / count
+        return nx.float_32(final_loss)
 
     def to_dict(self) -> dict:
         """
@@ -232,5 +204,5 @@ class Transformer:
     def predict(self, context:Any, embedding:Embedding) -> Any:
         embedded = embedding.forward(context)
         # embedded = embedded[None, :, :]
-        scores = self.forward(embedded, embedding)
+        scores = self.forward(embedded, embedding, False)
         return scores

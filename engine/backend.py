@@ -1,11 +1,13 @@
-from typing import Any
-nx: Any
+from typing import Any, Union
 import os
+import mlx.core as mx
+import numpy as np
+ArrayLike = Union[mx.array, np.ndarray]
+
 class Backend:
     def __init__(self) -> None:
         self.backend = os.environ.get("USE_BACKEND", "auto").lower()
         self.nx:Any
-
         if self.backend == "auto":
             try:
                 import mlx.core as nx
@@ -23,7 +25,6 @@ class Backend:
             import numpy as nx
             self.nx = nx
             self.backend = "NumPy"
-        
         self.e = self.nx.e
         self.float16 = self.nx.float16
         self.float32 = self.nx.float32
@@ -31,12 +32,12 @@ class Backend:
         self.int32 = self.nx.int32
         self.bool = self.nx.bool_
     
-    def array(self, x, dtype=None):
+    def array(self, x:list | ArrayLike, dtype=None) -> ArrayLike:
         if dtype is None:
             dtype = self.float32
         return self.nx.array(x, dtype=dtype)
     
-    def sum(self, a, axis:Any=None, keepdims:bool=False, dtype=None):
+    def sum(self, a:ArrayLike, axis:Any=None, keepdims:bool=False, dtype=None) -> Any:
         if dtype is None:
             dtype = self.nx.float32
         if self.backend == "MLX":
@@ -46,45 +47,45 @@ class Backend:
         
         return self.nx.sum(a,axis=axis,keepdims=keepdims,dtype=dtype)
     
-    def float_32(self,x:Any) -> Any:
+    def float_32(self,x:list | ArrayLike | float) -> Any:
         if self.backend == "NumPy":
             return self.nx.float32(x)
         return self.nx.array(x, dtype=self.float32)
     
-    def add_at(self, a:Any, idx, values) -> Any:
+    def add_at(self, a:Any, idx:Any, values:Any) -> Any:
         if self.backend == "MLX":
             return a.at[idx].add(values)
         self.nx.add.at(a, idx, values)
         return a
     
-    def zeros_like(self, a:Any, dtype=None):
+    def zeros_like(self, a:ArrayLike, dtype=None) -> ArrayLike:
         if dtype is None:
             dtype = self.nx.float32
         if self.backend == "MLX":
             a = self.nx.array(a, dtype=dtype)
         return self.nx.zeros_like(a)
     
-    def zeros(self, size:Any, dtype=None) -> Any:
+    def zeros(self, size:Any, dtype=None) -> ArrayLike:
         if dtype is None:
             dtype = self.float32
         return self.nx.zeros(size, dtype=dtype)
     
-    def ones_like(self, a:Any, dtype=None):
+    def ones_like(self, a:ArrayLike, dtype=None) -> ArrayLike:
         if dtype is None:
             dtype = self.nx.float32
         if self.backend == "MLX":
             a = self.nx.array(a)
         return self.nx.ones_like(a, dtype=dtype)
     
-    def ones(self, size:Any, dtype=None) -> Any:
+    def ones(self, size:Any, dtype=None) -> ArrayLike:
         if dtype is None:
             dtype = self.nx.float32
         return self.nx.ones(size, dtype=dtype)
     
-    def where(self, condition:Any,x:Any,y:Any) -> Any:
+    def where(self, condition:Any,x:Any,y:Any) -> ArrayLike:
         return self.nx.where(condition,x,y)
     
-    def triu(self, x, k=0, dtype=None):
+    def triu(self, x:ArrayLike, k=0, dtype=None) -> ArrayLike:
         if dtype is None:
             dtype = self.nx.float32
         if self.backend == "MLX":
@@ -97,17 +98,17 @@ class Backend:
             #     return y
         return self.nx.triu(x, k=k)
     
-    def max(self, x, axis=None, keepdims:bool=False):
+    def max(self, x:ArrayLike, axis=None, keepdims:bool=False) -> ArrayLike:
         if self.backend == "MLX":
             x = self.nx.array(x)
         return self.nx.max(x,axis=axis, keepdims=keepdims)
     
-    def min(self, x, axis=None, keepdims:bool=False):
+    def min(self, x:ArrayLike, axis=None, keepdims:bool=False) -> ArrayLike:
         if self.backend == "MLX":
             x = self.nx.array(x)
         return self.nx.min(x,axis=axis, keepdims=keepdims)
     
-    def exp(self, x, out=None, dtype=None):
+    def exp(self, x:ArrayLike, out=None, dtype=None) -> ArrayLike:
         if dtype is None: 
             dtype = self.nx.float32
         if self.backend == "MLX":
@@ -118,7 +119,7 @@ class Backend:
             raise NotImplementedError("out is a no for mlx")
         return self.nx.exp(x)
     
-    def clip(self, a:Any, a_min:Any, a_max:Any, dtype:Any=None) -> Any:
+    def clip(self, a:Any, a_min:Any, a_max:Any, dtype:Any=None) -> ArrayLike:
         if dtype is None: 
             dtype = self.nx.float32
         if self.backend == "MLX":
@@ -128,7 +129,7 @@ class Backend:
             return self.nx.clip(a,a_min, a_max)
         return self.nx.clip(a,a_min, a_max,dtype=dtype)
 
-    def log(self, a:Any, dtype:Any=None) -> Any:
+    def log(self, a:Any, dtype:Any=None) -> ArrayLike:
         if dtype == None:
             dtype = self.nx.float32
         if self.backend == "MLX":
@@ -136,7 +137,7 @@ class Backend:
             return self.nx.log(a)
         return self.nx.log(a, dtype=dtype)
     
-    def arange(self, x:Any, y:Any=None, z:Any=None, dtype=None) -> Any:
+    def arange(self, x:Any, y:Any=None, z:Any=None, dtype=None) -> ArrayLike:
         if dtype is None:
             dtype = self.nx.float32
         if self.backend == "MLX":
@@ -158,7 +159,7 @@ class Backend:
             result.append(idx)
         return self.nx.stack(result)
     
-    def sqrt(self,x, dtype=None):
+    def sqrt(self,x:Any, dtype=None) -> Any:
         if dtype is None:
             dtype = self.nx.float32
         if self.backend == "MLX":
@@ -166,7 +167,7 @@ class Backend:
             return self.nx.sqrt(x)
         return self.nx.sqrt(x,dtype=dtype)   
 
-    def uniform(self, low:float=0, high:float=1, size=None,*,dtype=None):
+    def uniform(self, low:float=0, high:float=1, size=None,*,dtype=None) -> Any:
         if dtype is None:
             dtype = self.nx.float32
         if self.backend == "NumPy":
@@ -179,7 +180,7 @@ class Backend:
             size = ()
         return self.nx.random.uniform(low, high, shape=size, dtype=dtype)
     
-    def sliding_window_view(self, x:Any, window_shape:int, axis=None):
+    def sliding_window_view(self, x:Any, window_shape:int, axis=None) -> ArrayLike:
         if self.backend == "NumPy":
             return self.nx.lib.stride_tricks.sliding_window_view(x, window_shape, axis=axis)
         x = self.nx.array(x)   
@@ -188,7 +189,7 @@ class Backend:
         strides = (1,1)
         return self.nx.as_strided(x,shape, strides)
     
-    def mean(self,x, *,axis=None, keepdims:bool=False,dtype=None):
+    def mean(self,x:ArrayLike, *,axis=None, keepdims:bool=False,dtype=None) -> ArrayLike:
         if dtype is None:
             dtype = self.nx.float32
 
@@ -197,7 +198,7 @@ class Backend:
             return self.nx.mean(x, axis=axis,keepdims=keepdims)
         return self.nx.mean(x, axis=axis,keepdims=keepdims, dtype=dtype)
     
-    def var(self, x,*,axis=None,keepdims=False,dtype=None):
+    def var(self, x:ArrayLike,*,axis=None,keepdims=False,dtype=None) -> ArrayLike:
         if dtype is None:
             dtype = self.nx.float32
 
@@ -206,7 +207,7 @@ class Backend:
             return self.nx.var(x, axis=axis,keepdims=keepdims)
         return self.nx.var(x, axis=axis,keepdims=keepdims, dtype=dtype)
     
-    def dot(self,u,v):
+    def dot(self,u:ArrayLike,v:ArrayLike) -> Any:
         return u @ v
     
     def sin(self,a:Any,dtype=None) -> Any:
@@ -230,10 +231,10 @@ class Backend:
             return self.nx.power(self.nx.array(a, dtype=dtype), self.nx.array(b,dtype=dtype))
         return self.nx.power(a,b,dtype=dtype)
     
-    def argpartition(self,x, kth, axis=None):
+    def argpartition(self,x:ArrayLike, kth, axis=None) -> ArrayLike:
         return self.nx.argpartition(x,kth, axis=axis)
     
-    def random_choice(self,a, *, p=None):
+    def random_choice(self,a:ArrayLike, *, p=None) -> Any:
         if self.backend == "MLX":
             cdf = self.nx.cumsum(p)
             r = self.nx.random.uniform()
@@ -241,10 +242,9 @@ class Backend:
             return a[idx]
         return self.nx.random.choice(a, p=p)
     
-    def copy(self,x):
+    def copy(self,x:Any) -> Any:
         if self.backend == "MLX":
             return self.nx.array(x)
-        
         return x.copy()
     
     def eval(self, *args):
@@ -252,12 +252,12 @@ class Backend:
             self.nx.eval(*args)
         pass
 
-    def concatenate(self,a):
+    def concatenate(self,a:ArrayLike) -> ArrayLike:
         if self.backend == "MLX":
             return self.nx.concatenate(a)
         return self.nx.concatenate(a)
     
-    def cumsum(self,a, *,axis=None, dtype=None):
+    def cumsum(self,a:ArrayLike, *,axis=None, dtype=None) -> ArrayLike:
         if dtype is None:
             dtype = self.nx.float32
         if self.backend == "MLX":
@@ -265,24 +265,36 @@ class Backend:
             return self.nx.cumsum(a, axis=axis)
         return self.nx.cumsum(a, axis=axis, dtype=dtype)
     
-    def argsort(self, a, axis=None):
+    def argsort(self, a:ArrayLike, axis=None) -> Any:
         if self.backend == "MLX":
             a = self.nx.array(a)
         return self.nx.argsort(a, axis=axis)
     
-    def all(self, a, *,axis=None, keepdims:bool=False):
+    def all(self, a:ArrayLike, *,axis=None, keepdims:bool=False) -> ArrayLike:
         if self.backend == "MLX":
             a = self.nx.array(a)
         return self.nx.all(a, axis=axis, keepdims=keepdims)
     
-    def argmax(self, a, axis=None, keepdims:bool=False):
+    def argmax(self, a:ArrayLike, axis=None, keepdims:bool=False) -> Any:
         if self.backend == "MLX":
             a = self.nx.array(a)
         return self.nx.argmax(a, axis=axis, keepdims=keepdims)
     
-    def abs(self, a):
+    def abs(self, a:Any) -> Any:
         return self.nx.abs(a)
     
-    def stack(self,a, axis=0):
+    def stack(self,a:Any, axis=0)-> Any:
         return self.nx.stack(a, axis=axis)
-nx = Backend()
+    
+    def any(self, a, *,keepdims:bool=False,axis=None):
+        return self.nx.any(a, keepdims=keepdims, axis=axis)
+    
+    def isnan(self, a):
+        return self.nx.isnan(a)
+    
+    def clear_cache(self):
+        if self.backend == "MLX":
+            self.nx.clear_cache()
+        pass
+    
+nx:Backend = Backend()

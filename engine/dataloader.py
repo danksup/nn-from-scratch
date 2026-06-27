@@ -5,12 +5,14 @@ class DataLoader:
     def __init__(self,data:str, tokenizer:Tokenizer, context_size:int=16, train_split=0.9) -> None:
         '''
         Args:
-            filepath: filepath to dataloader file
+            data: corpus
             tokenizer: tokenizer object
-            size: how much context is taken into computation at a time
+            context_size: how much context is taken into computation at a time
+            train_split: split contexts between training and validation
         '''
         self.train_split = train_split
         self.tokens = tokenizer.encode(data)
+        # nx.eval(self.tokens)
         self.context_size = context_size
 
         windows = nx.sliding_window_view(self.tokens, self.context_size + 1)

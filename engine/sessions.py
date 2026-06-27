@@ -8,6 +8,7 @@ from engine.backend import nx
 from typing import Any
 import time
 import pickle
+import gc
 
 DEFAULT_CONFIGS = {
             "epochs": 100,
@@ -95,8 +96,6 @@ class Session:
         try:
             prev_error = None
             bad_epoch = 0
-            # checkpoint = None
-            # best_loss = None
             THRESHOLD = 1e-4
             for i in range(self.configs["epochs"]):
                 epoch = i
@@ -104,8 +103,8 @@ class Session:
                 self.transformer.train_mode()
                 error = self.transformer.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
                 val_loss = self.validation(dataloader)
-                # nx.eval(error)
-                # nx.eval(val_loss)
+            
+                gc.collect()
                 end = time.perf_counter()
 
                 time_ = end-start
@@ -121,9 +120,6 @@ class Session:
                             bad_epoch_reason = "improvement too small" if too_small else "getting worse"
                             print(f"epoch {i}: bad epoch: {bad_epoch_reason} | delta: {error-prev_error:.5f} | ({bad_epoch}/{patience}) | time: {time_}")
                     else:
-                        #not how this works, checkpoint just references self so...
-                        # checkpoint = self
-                        # best_loss = error
                         if bad_epoch > 0:
                             if display_message:
                                 print(f"epoch: {i}: bad epoch count reset")
@@ -137,15 +133,6 @@ class Session:
                 display_every = max(1, self.configs["epochs"] // 10)
                 if display_message and( i % display_every == 0 or i == self.configs["epochs"] - 1):
                     print(f"epoch {epoch} | avg loss: {error} | val: {val_loss} | time: {time_}")
-                    # largest = 0
-
-                    # for layer in self.model.layers:
-                    #     largest = max(
-                    #         largest,
-                    #         np.max(np.abs(layer.weights))
-                    #     )
-
-                    # print("max weight:", largest)
                     
                 prev_error = error
         except ValueError as e:
