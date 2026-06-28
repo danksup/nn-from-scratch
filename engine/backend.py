@@ -290,6 +290,11 @@ class Backend:
     def isnan(self, a):
         return self.nx.isnan(a)
     
+    def compile(self,fx):
+        if self.backend == "MLX":
+            return self.nx.compile(fx)
+        return fx
+    
     def clear_cache(self):
         if self.backend == "MLX":
             self.nx.clear_cache()

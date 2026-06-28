@@ -12,7 +12,7 @@ data/*
 artifacts/sessions/*
 !artifacts/sessions/.gitkeep
 
-.DS_Store
+*.DS_Store
 
 test/*
 

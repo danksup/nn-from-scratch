@@ -50,8 +50,6 @@ class Session:
             optimizer_class = OPTIMIZERS[self.configs["optimizer"]]
             transformer.optimizer = optimizer_class(**self.configs["optimizer_args"])
 
-        
-
     @classmethod
     def build_from_files(cls):
         '''

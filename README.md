@@ -21,7 +21,7 @@ logs:
 - purely optimizing in june 28 2026
   
 ## Ongoing:
-- further optimization
+- currently optimizing optimizer
   
 ## TODO (not in order):
 - checkpoint

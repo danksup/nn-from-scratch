@@ -27,6 +27,38 @@ class AttentionLayer:
         assert self.head_dim % 2 == 0, "head dim !% 2"
         self.freqs = precompute_freqs(self.head_dim)
     
+    @nx.nx.compile
+    @staticmethod
+    def _forward(fp16_x, embed_dim, n_heads, head_dim,freqs, Wqkv,scale, Wo):
+        combined = fp16_x @ Wqkv.T
+
+        Q = combined[..., :embed_dim]
+        K = combined[..., embed_dim:2*embed_dim]
+        V = combined[..., 2*embed_dim:]
+
+        B, T, _ = fp16_x.shape
+        Q = Q.reshape(B, T, n_heads, head_dim).transpose(0,2,1,3)
+        K = K.reshape(B, T, n_heads, head_dim).transpose(0,2,1,3)
+        V = V.reshape(B, T, n_heads, head_dim).transpose(0,2,1,3)
+
+        Q = rope_forward(Q, freqs)
+        K = rope_forward(K, freqs)
+
+        Q = Q.astype(nx.float32)
+        K = K.astype(nx.float32)
+
+        scores = (Q @ K.transpose(0,1,3,2)) / scale
+
+        #causal mask makes it decoder only. cant look into future contexts.
+        mask = nx.triu(nx.ones((T, T), dtype=nx.bool), k=1)
+        scores = nx.where(mask, -1e9, scores)
+        weights = softmax(scores)
+        output = weights @ V
+        output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
+        output_projected = output_concat @ Wo
+        cache =  (fp16_x,Q,K, V, weights, output_concat)
+        return output_projected, cache
+    
     def forward(self, x:Any) -> tuple[Any, tuple]:
         """
         f(x) = softmax((Q @ K.T) / scale) * V \n
@@ -39,74 +71,52 @@ class AttentionLayer:
         return output projection Wo: all information from multiple heads back into one embedding size of embed_dim
         """
         fp16_x = x.astype(nx.float16)
-        # Q = fp16_x @ self.Wq
-        # K = fp16_x @ self.Wk
-        # V = fp16_x @ self.Wv
-        combined = fp16_x @ self.Wqkv.T
-
-        Q = combined[..., :self.embed_dim]
-        K = combined[..., self.embed_dim:2*self.embed_dim]
-        V = combined[..., 2*self.embed_dim:]
-
-        B, T, _ = fp16_x.shape
-        Q = Q.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)
-        K = K.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)
-        V = V.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)
-
-        Q = rope_forward(Q, self.freqs)
-        K = rope_forward(K, self.freqs)
-
-        Q = Q.astype(nx.float32)
-        K = K.astype(nx.float32)
-
-        scores = (Q @ K.transpose(0,1,3,2)) / self.scale
-
-        #causal mask makes it decoder only. cant look into future contexts.
-        mask = nx.triu(nx.ones((T, T), dtype=nx.bool), k=1)
-        scores = nx.where(mask, -1e9, scores)
-        weights = softmax(scores)
-        output = weights @ V
-        output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
-        output_projected = output_concat @ self.Wo
-        cache =  (fp16_x,Q,K, V, weights, output_concat)
+        output_projected, cache = self._forward(fp16_x, self.embed_dim, self.n_heads, self.head_dim, self.freqs, self.Wqkv, self.scale, self.Wo)
         return output_projected, cache
     
+    @nx.nx.compile
+    @staticmethod
+    def _backward(gradient,weights,fp16_x ,B, T, n_heads, head_dim, embed_dim, Wo, freqs, scale, K, Q,V, output_concat, Wqkv):
+        d_output_concat = gradient @ Wo.T
+        d_output = d_output_concat.reshape(B, T, n_heads, head_dim).transpose(0, 2, 1, 3)
+        dweights = d_output @ V.transpose(0, 1, 3, 2)
+        dV = weights.transpose(0, 1, 3, 2) @ d_output
+        dscores = softmax_derivative(weights, dweights)
+        dscores /= scale
+        dQ = dscores @ K
+        dK = dscores.transpose(0, 1, 3, 2) @ Q
+
+        dQ = rope_inverse(dQ, freqs)
+        dK = rope_inverse(dK, freqs)
+
+        dQ = dQ.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
+        dK = dK.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
+        dV = dV.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
+
+        dQKV = nx.concatenate([dQ, dK,dV], axis=-1)
+        DQKV = dQKV.reshape(-1, embed_dim * 3)
+
+        X = fp16_x.astype(nx.float32).reshape(-1, embed_dim)
+        dWqkv = (DQKV.T @ X) / (B * T)
+
+        H = output_concat.reshape(-1, embed_dim)
+        G = gradient.reshape(-1, embed_dim)
+
+        dWo = (H.T @ G) / (B * T)
+        dx = dQKV @ Wqkv
+
+        return dWqkv,dWo, dx
     
     def backward(self, output_gradient:Any, cache:tuple) -> Any:
         """
         backprop
         """
         fp16_x, Q, K, V, weights, output_concat = cache
-        d_output_concat = output_gradient @ self.Wo.T
         B, T, _ = fp16_x.shape
-        d_output = d_output_concat.reshape(B, T, self.n_heads, self.head_dim).transpose(0, 2, 1, 3)
-        dweights = d_output @ V.transpose(0, 1, 3, 2)
-        dV = weights.transpose(0, 1, 3, 2) @ d_output
-        dscores = softmax_derivative(weights, dweights)
-        dscores /= self.scale
-        dQ = dscores @ K
-        dK = dscores.transpose(0, 1, 3, 2) @ Q
-
-        dQ = rope_inverse(dQ, self.freqs)
-        dK = rope_inverse(dK, self.freqs)
-
-        dQ = dQ.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
-        dK = dK.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
-        dV = dV.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
-
-        dQKV = nx.concatenate([dQ, dK,dV], axis=-1)
-        X = fp16_x.astype(nx.float32).reshape(-1, self.embed_dim)
-        DQKV = dQKV.reshape(-1, self.embed_dim * 3)
-
-        self.dWqkv = (DQKV.T @ X) / (B * T)
-        # self.dWq = nx.sum(fp16_x.transpose(0,2,1) @ dQ, axis=0, dtype=nx.float32)
-        # self.dWk = nx.sum(fp16_x.transpose(0,2,1) @ dK, axis=0, dtype=nx.float32)
-        # self.dWv = nx.sum(fp16_x.transpose(0,2,1) @ dV, axis=0, dtype=nx.float32)
-        H = output_concat.reshape(-1, self.embed_dim)
-        G = output_gradient.reshape(-1, self.embed_dim)
-
-        self.dWo = (H.T @ G) / (B * T)
-        dx = dQKV @ self.Wqkv
+        
+        dWqkv, dWo, dx = self._backward(output_gradient,weights,fp16_x ,B, T, self.n_heads, self.head_dim, self.embed_dim, self.Wo, self.freqs, self.scale, K, Q,V, output_concat, self.Wqkv)
+        self.dWqkv = dWqkv
+        self.dWo = dWo
         return dx
         
     def to_dict(self) -> dict:
