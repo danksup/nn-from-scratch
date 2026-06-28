@@ -65,12 +65,9 @@ class Session:
         """
         total = 0
         for i in self.transformer.blocks:
-            total += i.ff.Wgate.size
-            total += i.ff.Wvalue.size
+            total += i.ff.Wcombined.size
             total += i.ff.Wout.size
-            total += i.attention.Wq.size
-            total += i.attention.Wk.size
-            total += i.attention.Wv.size
+            total += i.attention.Wqkv.size
             total += i.attention.Wo.size
             total += i.rmsnorm1.gamma.size
             total += i.rmsnorm2.gamma.size

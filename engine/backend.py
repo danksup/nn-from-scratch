@@ -252,10 +252,8 @@ class Backend:
             self.nx.eval(*args)
         pass
 
-    def concatenate(self,a:ArrayLike) -> ArrayLike:
-        if self.backend == "MLX":
-            return self.nx.concatenate(a)
-        return self.nx.concatenate(a)
+    def concatenate(self,a:list[ArrayLike], axis=None) -> ArrayLike:
+        return self.nx.concatenate(a,axis=axis)
     
     def cumsum(self,a:ArrayLike, *,axis=None, dtype=None) -> ArrayLike:
         if dtype is None:

@@ -18,6 +18,7 @@ logs:
 - mixed precision(jun 25 2026)
 - swiglu(jun 26 2026)
 - purely optimizing in june 27 2026
+- purely optimizing in june 28 2026
   
 ## Ongoing:
 - further optimization

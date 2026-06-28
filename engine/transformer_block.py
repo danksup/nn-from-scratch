@@ -19,24 +19,24 @@ class TransformerBlock:
 
         rmsn1_out = self.rmsnorm1.forward(x)
 
-        attn_out, attention_cache = self.attention.forward(rmsn1_out)
+        attn_out, attention_caches = self.attention.forward(rmsn1_out)
 
         attn_out = self.dropout1.forward(attn_out)
         attn_out = attn_out + x
 
         rmsn2_out = self.rmsnorm2.forward(attn_out)
 
-        ff_out = self.ff.forward(rmsn2_out)
+        ff_out,ff_caches = self.ff.forward(rmsn2_out)
 
         ff_out = self.dropout2.forward(ff_out)
         ff_out = ff_out + attn_out
 
-        return ff_out, attention_cache
+        return ff_out, attention_caches, ff_caches
 
-    def backward(self, gradient:Any, attention_cache:Any) -> Any:
+    def backward(self, gradient:Any, attention_caches:Any, ff_caches:Any) -> Any:
         #ff
         d_ff = self.dropout2.backward(gradient)
-        dx_ff = self.ff.backward(d_ff)
+        dx_ff = self.ff.backward(d_ff, ff_caches)
 
         d_rmsn2 = self.rmsnorm2.backward(dx_ff)
 
@@ -45,7 +45,7 @@ class TransformerBlock:
 
         #attn
         d_attn = self.dropout1.backward(d_attn_out)
-        d_attn = self.attention.backward(d_attn, attention_cache)
+        d_attn = self.attention.backward(d_attn, attention_caches)
 
         d_rmsn1 = self.rmsnorm1.backward(d_attn)
 

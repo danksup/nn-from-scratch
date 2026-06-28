@@ -15,3 +15,5 @@ artifacts/sessions/*
 .DS_Store
 
 test/*
+
+*.gputrace

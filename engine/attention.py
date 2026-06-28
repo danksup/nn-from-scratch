@@ -18,9 +18,10 @@ class AttentionLayer:
         self.scale = nx.float_32(nx.sqrt(self.head_dim))
         
         scale = nx.float_32(1/self.scale)
-        self.Wq = nx.uniform(-scale, scale, (embed_dim,embed_dim), dtype=nx.float16)
-        self.Wk = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) 
-        self.Wv = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) 
+        # self.Wq = nx.uniform(-scale, scale, (embed_dim,embed_dim), dtype=nx.float16)
+        # self.Wk = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) 
+        # self.Wv = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) 
+        self.Wqkv = nx.uniform(-scale, scale, (embed_dim * 3, embed_dim), dtype=nx.float16)
         self.Wo = nx.uniform(-scale,scale, (embed_dim,embed_dim), dtype=nx.float16) #projection
        
         assert self.head_dim % 2 == 0, "head dim !% 2"
@@ -38,9 +39,14 @@ class AttentionLayer:
         return output projection Wo: all information from multiple heads back into one embedding size of embed_dim
         """
         fp16_x = x.astype(nx.float16)
-        Q = fp16_x @ self.Wq
-        K = fp16_x @ self.Wk
-        V = fp16_x @ self.Wv
+        # Q = fp16_x @ self.Wq
+        # K = fp16_x @ self.Wk
+        # V = fp16_x @ self.Wv
+        combined = fp16_x @ self.Wqkv.T
+
+        Q = combined[..., :self.embed_dim]
+        K = combined[..., self.embed_dim:2*self.embed_dim]
+        V = combined[..., 2*self.embed_dim:]
 
         B, T, _ = fp16_x.shape
         Q = Q.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)
@@ -50,7 +56,10 @@ class AttentionLayer:
         Q = rope_forward(Q, self.freqs)
         K = rope_forward(K, self.freqs)
 
-        scores = (Q @ K.transpose(0,1,3,2).astype(nx.float32)) / self.scale
+        Q = Q.astype(nx.float32)
+        K = K.astype(nx.float32)
+
+        scores = (Q @ K.transpose(0,1,3,2)) / self.scale
 
         #causal mask makes it decoder only. cant look into future contexts.
         mask = nx.triu(nx.ones((T, T), dtype=nx.bool), k=1)
@@ -59,7 +68,7 @@ class AttentionLayer:
         output = weights @ V
         output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
         output_projected = output_concat @ self.Wo
-        cache =  (fp16_x, Q, K, V, weights, output_concat)
+        cache =  (fp16_x,Q,K, V, weights, output_concat)
         return output_projected, cache
     
     
@@ -85,12 +94,19 @@ class AttentionLayer:
         dK = dK.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
         dV = dV.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
 
-        self.dWq = nx.sum(fp16_x.transpose(0,2,1) @ dQ, axis=0, dtype=nx.float32)
-        self.dWk = nx.sum(fp16_x.transpose(0,2,1) @ dK, axis=0, dtype=nx.float32)
-        self.dWv = nx.sum(fp16_x.transpose(0,2,1) @ dV, axis=0, dtype=nx.float32)
-        self.dWo = nx.sum(output_concat.transpose(0,2,1)@ output_gradient,axis=0,dtype=nx.float32)
+        dQKV = nx.concatenate([dQ, dK,dV], axis=-1)
+        X = fp16_x.astype(nx.float32).reshape(-1, self.embed_dim)
+        DQKV = dQKV.reshape(-1, self.embed_dim * 3)
 
-        dx = dQ @ self.Wq.T + dK @ self.Wk.T + dV @ self.Wv.T
+        self.dWqkv = (DQKV.T @ X) / (B * T)
+        # self.dWq = nx.sum(fp16_x.transpose(0,2,1) @ dQ, axis=0, dtype=nx.float32)
+        # self.dWk = nx.sum(fp16_x.transpose(0,2,1) @ dK, axis=0, dtype=nx.float32)
+        # self.dWv = nx.sum(fp16_x.transpose(0,2,1) @ dV, axis=0, dtype=nx.float32)
+        H = output_concat.reshape(-1, self.embed_dim)
+        G = output_gradient.reshape(-1, self.embed_dim)
+
+        self.dWo = (H.T @ G) / (B * T)
+        dx = dQKV @ self.Wqkv
         return dx
         
     def to_dict(self) -> dict:
@@ -98,9 +114,7 @@ class AttentionLayer:
         return {
             "embed_dim":self.embed_dim,
             "n_heads":self.n_heads,
-            "Wq":self.Wq.tolist(),
-            "Wk":self.Wk.tolist(),
-            "Wv":self.Wv.tolist(),
+            "Wqkv":self.Wqkv.tolist(),
             "Wo":self.Wo.tolist(),
         }
     
@@ -109,15 +123,11 @@ class AttentionLayer:
         """deserialize"""
         embed_dim = thing["embed_dim"]
         n_heads = thing["n_heads"]
-        Wq = thing["Wq"]
-        Wk = thing["Wk"]
-        Wv = thing["Wv"]
+        Wqkv = thing["Wqkv"]
         Wo = thing["Wo"]
 
         attention = cls(embed_dim,n_heads)
-        attention.Wk = nx.array(Wk, dtype=nx.float16)
-        attention.Wq = nx.array(Wq, dtype=nx.float16)
-        attention.Wv = nx.array(Wv, dtype=nx.float16)
+        attention.Wqkv = nx.array(Wqkv, dtype=nx.float16)
         attention.Wo = nx.array(Wo, dtype=nx.float16)
 
         return attention

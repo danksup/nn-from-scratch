@@ -6,48 +6,49 @@ class SwiGLU:
         self.hidden_width = hidden_width
         self.embed_dim = embed_dim
         scale = nx.float_32(1.0/nx.sqrt(embed_dim))
-        self.Wgate = nx.uniform(-scale,scale, (hidden_width,embed_dim), dtype=nx.float16)
-        self.Wvalue = nx.uniform(-scale,scale, (hidden_width,embed_dim), dtype=nx.float16)
+        # self.Wgate = nx.uniform(-scale,scale, (hidden_width,embed_dim), dtype=nx.float16)
+        # self.Wvalue = nx.uniform(-scale,scale, (hidden_width,embed_dim), dtype=nx.float16)
+        self.Wcombined = nx.uniform(-scale,scale, (hidden_width * 2,embed_dim),dtype=nx.float16)
         self.Wout = nx.uniform(-scale,scale, (hidden_width,embed_dim), dtype=nx.float16)
 
     def forward(self, x):
-        self.x = x
-        self.gate_linear = x @ self.Wgate.T
-        self.gate = swish(self.gate_linear)
-        self.value = x @ self.Wvalue.T
-        self.hidden = self.gate * self.value
-
-        self.output = self.hidden @ self.Wout
-        return self.output
+        fp16_x = x.astype(nx.float16)
+        combined_linear = fp16_x @ self.Wcombined.T
+        gate_linear = combined_linear[...,:self.hidden_width]
+        value = combined_linear[..., self.hidden_width:]
+        gate = swish(gate_linear)
+        hidden = gate * value
+        output = hidden @ self.Wout
+        cache = (fp16_x, gate_linear, gate, value, hidden)
+        return output, cache
     
-    def backward(self, gradient):
-        batch_size, seq_len, _ = self.x.shape
+    def backward(self, gradient, cache):
+        fp16_x, gate_linear, gate, value, hidden = cache
+        x = fp16_x.astype(nx.float32)
+        batch_size, seq_len, _ = x.shape
 
-        X = self.x.reshape(-1, self.x.shape[-1])                 # (B*S, embed)
-        H = self.hidden.reshape(-1, self.hidden.shape[-1])       # (B*S, hidden)
-        G = gradient.reshape(-1, gradient.shape[-1])             # (B*S, embed)
+        X = x.reshape(-1, x.shape[-1])
+        H = hidden.reshape(-1, hidden.shape[-1])
+        G = gradient.reshape(-1, gradient.shape[-1]) 
 
         self.dWout = (H.T @ G) / (batch_size * seq_len)
         d_hidden = gradient @ self.Wout.T
 
-        d_gate = d_hidden * self.value * swish_derivative(self.gate_linear)
-        d_value = d_hidden * self.gate
+        d_gate =  d_hidden * value * swish_derivative(gate_linear)
+        d_value = d_hidden * gate
 
-        DG = d_gate.reshape(-1, d_gate.shape[-1])      # (B*S, hidden)
-        DV = d_value.reshape(-1, d_value.shape[-1])    # (B*S, hidden)
+        d_combined = nx.concatenate([d_gate, d_value], axis=-1)
+        DC = d_combined.reshape(-1, d_combined.shape[-1])
+        self.dWcombined = DC.T @ X / (batch_size * seq_len)
 
-        self.dWgate = (DG.T @ X) / (batch_size * seq_len)
-        self.dWvalue = (DV.T @ X) / (batch_size * seq_len)
-
-        dx = d_gate @ self.Wgate + d_value @ self.Wvalue
-
+        dx = d_combined @ self.Wcombined
         return dx
+    
     
     def to_dict(self) -> dict:
         return {
             "configs":(self.hidden_width,self.embed_dim),
-            "Wgate":self.Wgate.tolist(),
-            "Wvalue":self.Wvalue.tolist(),
+            "Wcombine":self.Wcombined.tolist(),
             "Wout":self.Wout.tolist(),
         }
     
@@ -55,8 +56,7 @@ class SwiGLU:
     def from_dict(cls, thing) -> "SwiGLU":
         hidden_width, embed_dim = thing["configs"]
         swiglu = cls(hidden_width, embed_dim)
-        swiglu.Wgate = nx.array(thing["Wgate"], dtype=nx.float16)
-        swiglu.Wvalue = nx.array(thing["Wvalue"], dtype=nx.float16)
+        swiglu.Wcombined = nx.array(thing["Wcombine"], dtype=nx.float16)
         swiglu.Wout = nx.array(thing["Wout"], dtype=nx.float16)
 
         return swiglu
