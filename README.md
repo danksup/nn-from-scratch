@@ -21,8 +21,10 @@ logs:
 - purely optimizing in june 28 2026
   
 ## Ongoing:
-- currently optimizing optimizer
-  
+- fusing some operations
+- optimizing optimizer
+- adding comments, descriptions, typehints
+    
 ## TODO (not in order):
 - checkpoint
 - lr scheduling
