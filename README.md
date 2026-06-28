@@ -48,4 +48,4 @@ logs:
     dataset: 5 files | using: MLX | block_size: 1 | corpus char len: 3417355
     epoch 0 | avg loss: 1.9513719081878662 | val: 1.6405506134033203 | time: 239.55666874998133
     1092171 function calls in 231.626 seconds
-    ram peaked at ~ 800MBs
+    ram peaked at ~ 800MB
