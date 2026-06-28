@@ -38,3 +38,14 @@ logs:
 - better batching
 - kernel fusing (maybe not)
 - flash attention (maybe not)
+
+# Performance Logs
+- Date: 2026-06-28
+    MacBook M1 Pro
+    param: 72512 | epochs: 1 | context_size: 64 | batch_size: 256 | embed_dim: 64
+    ff_width: 256 | optimizer: adamw | train_split: 0.9 | n_heads: 8
+    optimizer_args: {'lr': 0.001, 'beta': 0.9, 'beta2': 0.999, 'epsilon': 1e-08, 'weight_decay': 0.01}
+    dataset: 5 files | using: MLX | block_size: 1 | corpus char len: 3417355
+    epoch 0 | avg loss: 1.9513719081878662 | val: 1.6405506134033203 | time: 239.55666874998133
+    1092171 function calls in 231.626 seconds
+    ram peaked at ~ 800MBs
