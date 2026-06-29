@@ -25,7 +25,7 @@ class TransformerBlock:
             self.rmsnorm2 = RMSNorm(embed_dim)
 
     
-    @nx.nx.compile
+    @nx.compile
     @staticmethod
     def _forward(x, embed_dim, n_heads, head_dim,freqs, Wqkv, Wo, Wcombined, hidden_width, Wout, epsilon:float, gamma1, gamma2, p:float, is_training:bool):
         fp16_x = x.astype(nx.float16)
@@ -59,7 +59,7 @@ class TransformerBlock:
 
         return ff_out, masks, caches
 
-    @nx.nx.compile
+    @nx.compile
     @staticmethod
     def _backward(gradient, mask1, mask2, caches_attn, caches_ff, caches_rmsnorm1, caches_rmsnorm2, d_attn_params, gamma1, gamma2,ff_params):
         d_ff = Dropout._backward(gradient, mask2, 0.1)

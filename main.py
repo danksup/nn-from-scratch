@@ -1,5 +1,5 @@
 import os
-os.environ["USE_BACKEND"] = "mlx"
+os.environ["USE_BACKEND"] = "s"
 import random
 # import mlx.core as mx
 EPOCHS = 3
@@ -81,19 +81,21 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)
-profiler = cProfile.Profile()
-profiler.enable()
-# start = time.time()
+# profiler = cProfile.Profile()
+# profiler.enable()
+start = time.time()
 # mx.metal.start_capture("transformer.gputrace")
 session1.train(dataloader, display_message=True)
-# end = time.time()
+end = time.time()
 # mx.metal.stop_capture()
-# print(f"training finished. time: {end - start:.3f}s")
+print(f"training finished. time: {end - start:.3f}s")
 
-profiler.disable()
+# profiler.disable()
+# stats = pstats.Stats(profiler)
+# stats.sort_stats("cumtime")
+# stats.print_stats(100)
+
 session1.save(f"val_test_{a}")
 
-stats = pstats.Stats(profiler)
-stats.sort_stats("cumtime")
-stats.print_stats(100)
+
 

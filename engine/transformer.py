@@ -81,7 +81,7 @@ class Transformer:
         return current_grad,d_table
     
     @staticmethod
-    @nx.nx.compile
+    @nx.compile
     def compiled_loss(batch_scores, next_tokens):
         softmax_batch_scores = softmax(batch_scores)
         loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)

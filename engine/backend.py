@@ -2,6 +2,7 @@ from typing import Any, Union
 import os
 import mlx.core as mx
 import numpy as np
+import functools
 ArrayLike = Union[mx.array, np.ndarray]
 
 class Backend:
@@ -290,10 +291,12 @@ class Backend:
     def isnan(self, a):
         return self.nx.isnan(a)
     
-    def compile(self,fx):
+    def compile(self, fn=None):
         if self.backend == "MLX":
-            return self.nx.compile(fx)
-        return fx
+            return self.nx.compile(fn) if fn is not None else self.nx.compile
+        def no_op_decorator(f):
+            return f
+        return no_op_decorator(fn) if fn is not None else no_op_decorator
     
     def clear_cache(self):
         if self.backend == "MLX":
