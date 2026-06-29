@@ -10,8 +10,9 @@ class SwiGLU:
         # self.Wvalue = nx.uniform(-scale,scale, (hidden_width,embed_dim), dtype=nx.float16)
         self.Wcombined = nx.uniform(-scale,scale, (hidden_width * 2,embed_dim),dtype=nx.float16)
         self.Wout = nx.uniform(-scale,scale, (hidden_width,embed_dim), dtype=nx.float16)
-
-    @nx.nx.compile
+        
+        self.dWcombined = None
+        self.dWout = None
     @staticmethod
     def _forward(x, hidden_width, Wcombined, Wout):
         fp16_x = x.astype(nx.float16)
@@ -24,13 +25,10 @@ class SwiGLU:
         cache = (fp16_x, gate_linear, gate, value, hidden)
         return output,cache
     
-    def forward(self, x):
-        output, cache = self._forward(x, self.hidden_width,self.Wcombined, self.Wout)
-        return output, cache
-    
-    @nx.nx.compile
     @staticmethod
-    def _backward(x, gradient, hidden, Wout, gate_linear,value,gate, Wcombined):
+    def _backward(gradient, caches, ff_params):
+        x, gate_linear, gate, value, hidden = caches
+        Wout, Wcombined = ff_params
         batch_size, seq_len, _ = x.shape
 
         X = x.reshape(-1, x.shape[-1])
@@ -47,17 +45,7 @@ class SwiGLU:
 
         dx = d_combined @ Wcombined
 
-        return dWout, dx, dWcombined
-
-    def backward(self, gradient, cache):
-        fp16_x, gate_linear, gate, value, hidden = cache
-        x = fp16_x.astype(nx.float32)
-        dWout,dx, dWcombined = self._backward(x,gradient, hidden, self.Wout, gate_linear, value,gate, self.Wcombined)
-        self.dWcombined = dWcombined
-        self.dWout = dWout
-       
-        return dx
-    
+        return dx, dWout, dWcombined
     
     def to_dict(self) -> dict:
         return {

@@ -15,22 +15,33 @@ class AttentionLayer:
         self.n_heads = n_heads
         assert embed_dim % n_heads == 0
         self.head_dim = embed_dim // n_heads
+
         self.scale = nx.float_32(nx.sqrt(self.head_dim))
-        
         scale = nx.float_32(1/self.scale)
+
         # self.Wq = nx.uniform(-scale, scale, (embed_dim,embed_dim), dtype=nx.float16)
         # self.Wk = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) 
         # self.Wv = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) 
         self.Wqkv = nx.uniform(-scale, scale, (embed_dim * 3, embed_dim), dtype=nx.float16)
         self.Wo = nx.uniform(-scale,scale, (embed_dim,embed_dim), dtype=nx.float16) #projection
-       
-        assert self.head_dim % 2 == 0, "head dim !% 2"
-        self.freqs = precompute_freqs(self.head_dim)
+        self.dWqkv = None
+        self.dWo = None
     
-    @nx.nx.compile
+    # @nx.nx.compile
     @staticmethod
-    def _forward(fp16_x, embed_dim, n_heads, head_dim,freqs, Wqkv,scale, Wo):
+    def _forward(fp16_x, embed_dim, n_heads, head_dim, freqs, Wqkv, Wo):
+        """
+        f(x) = softmax((Q @ K.T) / scale) * V \n
+        rope(x): inject position
+        Q K.T: calculate how close 2 contexts are (dot products. the smaller the less relevant it is, the bigger the more relevant it is)\n
+        softmax(Q K.T): turns it into probability distribution\n
+        divide by scale = sqrt(head_dim): scaling to prevent numbers getting too large\n
+        times by v: use weights to retrieve information. v contains information carried by each tokens\n
+        \n
+        return output projection Wo: all information from multiple heads back into one embedding size of embed_dim
+        """
         combined = fp16_x @ Wqkv.T
+        scale = nx.float_32(nx.sqrt(head_dim))
 
         Q = combined[..., :embed_dim]
         K = combined[..., embed_dim:2*embed_dim]
@@ -59,24 +70,13 @@ class AttentionLayer:
         cache =  (fp16_x,Q,K, V, weights, output_concat)
         return output_projected, cache
     
-    def forward(self, x:Any) -> tuple[Any, tuple]:
-        """
-        f(x) = softmax((Q @ K.T) / scale) * V \n
-        rope(x): inject position
-        Q K.T: calculate how close 2 contexts are (dot products. the smaller the less relevant it is, the bigger the more relevant it is)\n
-        softmax(Q K.T): turns it into probability distribution\n
-        divide by scale = sqrt(head_dim): scaling to prevent numbers getting too large\n
-        times by v: use weights to retrieve information. v contains information carried by each tokens\n
-        \n
-        return output projection Wo: all information from multiple heads back into one embedding size of embed_dim
-        """
-        fp16_x = x.astype(nx.float16)
-        output_projected, cache = self._forward(fp16_x, self.embed_dim, self.n_heads, self.head_dim, self.freqs, self.Wqkv, self.scale, self.Wo)
-        return output_projected, cache
-    
-    @nx.nx.compile
     @staticmethod
-    def _backward(gradient,weights,fp16_x ,B, T, n_heads, head_dim, embed_dim, Wo, freqs, scale, K, Q,V, output_concat, Wqkv):
+    def _backward(gradient, caches, attn_params):
+        fp16_x, Q, K, V, weights, output_concat = caches
+        n_heads, head_dim, embed_dim, Wo, freqs, Wqkv = attn_params
+
+        scale = nx.float_32(nx.sqrt(head_dim))
+        B, T, _ = fp16_x.shape
         d_output_concat = gradient @ Wo.T
         d_output = d_output_concat.reshape(B, T, n_heads, head_dim).transpose(0, 2, 1, 3)
         dweights = d_output @ V.transpose(0, 1, 3, 2)
@@ -105,19 +105,19 @@ class AttentionLayer:
         dWo = (H.T @ G) / (B * T)
         dx = dQKV @ Wqkv
 
-        return dWqkv,dWo, dx
+        return dx,dWqkv,dWo
     
-    def backward(self, output_gradient:Any, cache:tuple) -> Any:
-        """
-        backprop
-        """
-        fp16_x, Q, K, V, weights, output_concat = cache
-        B, T, _ = fp16_x.shape
+    # def backward(self, output_gradient:Any, cache:tuple) -> Any:
+    #     """
+    #     backprop
+    #     """
+    #     fp16_x, Q, K, V, weights, output_concat = cache
+    #     B, T, _ = fp16_x.shape
         
-        dWqkv, dWo, dx = self._backward(output_gradient,weights,fp16_x ,B, T, self.n_heads, self.head_dim, self.embed_dim, self.Wo, self.freqs, self.scale, K, Q,V, output_concat, self.Wqkv)
-        self.dWqkv = dWqkv
-        self.dWo = dWo
-        return dx
+    #     dWqkv, dWo, dx = self._backward(output_gradient,weights,fp16_x ,B, T, self.n_heads, self.head_dim, self.embed_dim, self.Wo, self.freqs, self.scale, K, Q,V, output_concat, self.Wqkv)
+    #     self.dWqkv = dWqkv
+    #     self.dWo = dWo
+    #     return dx
         
     def to_dict(self) -> dict:
         '''serialize into dict with weights turned into list'''

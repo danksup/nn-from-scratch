@@ -43,29 +43,28 @@ class Transformer:
         '''
         raise DeprecationWarning("no")
         
-    def forward(self, inputs:Any, embedding:Embedding, return_cache= True) -> Any:
+    def forward(self, inputs:Any, embedding:Embedding, return_cache= True, is_training=True) -> Any:
         '''
         inputs = list of inputs
         '''
         output = inputs.astype(nx.float16)
-        attention_caches = []
-        ff_caches = []
-        rmns1_caches = []
-        rmns2_caches = []
-        for block in self.blocks:
-            output, attention_cache, ff_cache, rmns1_cache, rmns2_cache = block.forward(output)
-            attention_caches.append(attention_cache)
-            ff_caches.append(ff_cache)
-            rmns1_caches.append(rmns1_cache)
-            rmns2_caches.append(rmns2_cache)
-        last_output =output.astype(nx.float32)
+        all_masks = []
+        all_caches = []
 
+        for block in self.blocks:
+            ff_out,masks, caches = block.forward(output, is_training)
+            output = ff_out
+            all_masks.append(masks)
+            all_caches.append(caches)
+
+        last_output =output.astype(nx.float32)
         scores = last_output @ embedding.lookup_table.T
+
         if return_cache:
-            return scores, attention_caches, ff_caches, last_output, rmns1_caches, rmns2_caches
+            return scores, last_output, all_masks, all_caches
         return scores
     
-    def backward(self, err_signal:Any, lookup_table, attention_caches:list,ff_caches:list, last_output:Any,  rmns1_caches:Any, rmns2_caches:Any) -> Any:
+    def backward(self, err_signal:Any, lookup_table, last_output, all_masks,all_caches) -> Any:
         '''
         Args:
             traces error contribution and then optimize
@@ -76,18 +75,10 @@ class Transformer:
         d_table /= (err_signal.shape[0]* err_signal.shape[1])
         
         current_grad = block_gradient
-        for block, block_cache,ff_cache, rmns1_cache, rmns2_cache in zip(self.blocks[::-1], attention_caches[::-1], ff_caches[::-1],  rmns1_caches[::-1], rmns2_caches[::-1]):
-            current_grad = block.backward(current_grad, block_cache, ff_cache, rmns1_cache, rmns2_cache)
+        for block, masks,caches in zip(self.blocks[::-1], all_masks[::-1],all_caches[::-1]):
+            current_grad = block.backward(current_grad, masks, caches)
         
         return current_grad,d_table
-
-    def train_mode(self):
-        for block in self.blocks:
-            block.train()
-
-    def eval_mode(self):
-        for block in self.blocks:
-            block.eval()
     
     @staticmethod
     @nx.nx.compile
@@ -110,14 +101,14 @@ class Transformer:
 
             embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
             
-            batch_scores, attention_caches,ff_caches, last_output, rmns1_caches, rmns2_caches = self.forward(embedded, embedding)
+            batch_scores, last_output, all_masks, all_caches = self.forward(embedded, embedding)
             loss, softmax_batch_scores = self.compiled_loss(batch_scores, next_tokens)
 
             batch_gradient = cross_entropy_gradient(softmax_batch_scores, next_tokens)
             batch_gradient /= (batch_gradient.shape[0] * batch_gradient.shape[1])
 
             
-            current_grad,d_table = self.backward(batch_gradient, embedding.lookup_table, attention_caches, ff_caches, last_output,rmns1_caches, rmns2_caches)
+            current_grad,d_table = self.backward(batch_gradient, embedding.lookup_table, last_output, all_masks, all_caches)
             embedding_gradient = nx.zeros_like(embedding.lookup_table, dtype=nx.float32)
             embedding_gradient = nx.add_at(embedding_gradient, contexts, current_grad)
 
@@ -147,7 +138,7 @@ class Transformer:
             total_loss += loss.item() 
             count += next_tokens.size
 
-            del embedded, batch_scores, attention_caches, last_output, current_grad, d_table, ff_caches, all_network_params, optimized
+            del embedded, batch_scores, all_caches,all_masks, last_output, current_grad, d_table, all_network_params, optimized
             
             # if i % FLUSH_EVERY == 0:
             #     nx.eval(loss, embedding.lookup_table, *optimized.values(),
@@ -163,12 +154,11 @@ class Transformer:
     def validate(self, embedding,dataloader:DataLoader, batch_size, train_split=.9):
         total_loss = nx.float_32(0.0)
         count = 0
-        self.eval_mode()
         dataloader.train_split = train_split
     
         for contexts, next_tokens in dataloader.get_validation_pairs(batch_size):
             embedded = embedding.forward(contexts) 
-            batch_validation_scores = self.forward(embedded, embedding, False)
+            batch_validation_scores = self.forward(embedded, embedding, False, False)
             softmax_batch_scores = softmax(batch_validation_scores)
             
             val_loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
@@ -207,6 +197,5 @@ class Transformer:
    
     def predict(self, context:Any, embedding:Embedding) -> Any:
         embedded = embedding.forward(context)
-        # embedded = embedded[None, :, :]
-        scores = self.forward(embedded, embedding, False)
+        scores = self.forward(embedded, embedding, False, False)
         return scores
