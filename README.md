@@ -37,8 +37,7 @@ logs:
 #### Maybe:
 - other gpus acceleration (maybe not)
 - better batching
-- kernel fusing (maybe not)
-- flash attention (maybe not)
+
 
 # Performance Logs
 Apple M1 Pro \

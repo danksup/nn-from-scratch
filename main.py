@@ -2,7 +2,7 @@ import os
 os.environ["USE_BACKEND"] = "mlx"
 import random
 # import mlx.core as mx
-EPOCHS = 1
+EPOCHS = 3
 LR = 1e-3
 EMBED_DIM = 64
 CONTEXT_SIZE = 64

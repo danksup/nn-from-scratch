@@ -10,16 +10,7 @@ class AdamW:
         self.beta2 = nx.float_32(beta2)
         self.epsilon = nx.float_32(epsilon)
         self.weight_decay = nx.float_32(weight_decay)
-
-    def eval_state(self):
-        state_arrays = []
-        for state_dict in self.state.values():
-            state_arrays.append(state_dict["m"])
-            state_arrays.append(state_dict["v"])
-        
-        if state_arrays:
-            nx.eval(*state_arrays)
-            
+    
     def step_many(self, name_param_gradient:list) -> dict:
         group = {}
         for name,param,gradient in name_param_gradient:
