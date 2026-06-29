@@ -21,36 +21,38 @@ class AdamW:
 
         optimized = {}
         for shape, thing in group.items():
-            # print(f"Stacking shape {shape} with {len(thing)} items: {[i[0] for i in thing]}")
             names = [i[0] for i in thing]
             params = nx.stack([i[1] for i in thing])
             gradients = nx.stack([i[2] for i in thing])
-            
-            new_params = self._step(shape,params,gradients)
+            if shape not in self.state:
+                self.state[shape] = {
+                    "m": nx.zeros_like(params),
+                    "v": nx.zeros_like(params),
+                    "t": nx.float_32(.0)
 
+                }
+            state_shape = self.state[shape]    
+            m_v_t = (state_shape["m"], state_shape["v"], state_shape["t"])
+            new_params, m,v,t = self.__step(m_v_t,params,gradients,self.lr,  self.epsilon, self.beta1, self.beta2, self.weight_decay)
+            self.state[shape] = {"m":m, "v":v, "t":t}
             for idx, name in enumerate(names):
                 optimized[name] = new_params[idx]
         return optimized
     
-    def _step(self, shape, params:Any, grads:Any) -> Any:
-        if shape not in self.state:
-            self.state[shape] = {
-                "m": nx.zeros_like(params),
-                "v": nx.zeros_like(params),
-                "t": 0
-            }
-        
+    @nx.compile
+    @staticmethod
+    def __step(m_v_t, params:Any, grads:Any, lr:float, epsilon:float, beta1:float, beta2:float, weight_decay:float) -> Any: 
+        m,v,t = m_v_t       
         norm = nx.sqrt(nx.sum(grads**2, axis=tuple(range(1, grads.ndim)), keepdims=True))
-        grads = nx.where(norm > 1.0, grads * (1.0 / (norm + self.epsilon)), grads)
-        state = self.state[shape]
-        state["m"] = self.beta1 * state["m"] + (1.0 - self.beta1) * grads
-        state["v"] = self.beta2 * state["v"] + (1.0 - self.beta2) * (grads**2)
-        state["t"] += 1
-        m_hat = state["m"] / (1.0 - self.beta1 ** state["t"])
-        v_hat = state["v"] / (1.0 - self.beta2 ** state["t"])
-        params = params - self.lr * self.weight_decay * params
-        params = params - self.lr * m_hat / (nx.sqrt(v_hat) + self.epsilon)
-        return params
+        grads = nx.where(norm > 1.0, grads * (1.0 / (norm + epsilon)), grads)
+        m = beta1 * m + (1.0 - beta1) * grads
+        v = beta2 * v + (1.0 - beta2) * (grads**2)
+        t += 1
+        m_hat = m / (1.0 - beta1 ** t)
+        v_hat = v / (1.0 - beta2 ** t)
+        params = params - lr * weight_decay * params
+        params = params - lr * m_hat / (nx.sqrt(v_hat) + epsilon)
+        return params, m, v, t
     
     def to_dict(self) -> dict:
         return self.state

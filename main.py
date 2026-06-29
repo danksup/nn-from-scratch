@@ -1,12 +1,12 @@
 import os
-os.environ["USE_BACKEND"] = "s"
+os.environ["USE_BACKEND"] = "mlx"
 import random
 # import mlx.core as mx
-EPOCHS = 3
+EPOCHS = 1
 LR = 1e-3
 EMBED_DIM = 64
 CONTEXT_SIZE = 64
-BATCH_SIZE = 256
+BATCH_SIZE = 512
 BASE_WIDTH = 4 * EMBED_DIM 
 N_HEADS = 8
 VAL = .9
@@ -81,19 +81,19 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)
-# profiler = cProfile.Profile()
-# profiler.enable()
-start = time.time()
+profiler = cProfile.Profile()
+profiler.enable()
+# start = time.time()
 # mx.metal.start_capture("transformer.gputrace")
 session1.train(dataloader, display_message=True)
-end = time.time()
+# end = time.time()
 # mx.metal.stop_capture()
-print(f"training finished. time: {end - start:.3f}s")
+# print(f"training finished. time: {end - start:.3f}s")
 
-# profiler.disable()
-# stats = pstats.Stats(profiler)
-# stats.sort_stats("cumtime")
-# stats.print_stats(100)
+profiler.disable()
+stats = pstats.Stats(profiler)
+stats.sort_stats("cumtime")
+stats.print_stats(100)
 
 session1.save(f"val_test_{a}")
 

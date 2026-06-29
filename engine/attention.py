@@ -1,6 +1,6 @@
 from engine.backend import nx
 from engine.activations import softmax, softmax_derivative
-from engine.rope import precompute_freqs,rope_forward, rope_inverse
+from engine.rope import rope_forward, rope_inverse
 from typing import Any
 
 class AttentionLayer:
@@ -29,7 +29,7 @@ class AttentionLayer:
     
     # @nx.nx.compile
     @staticmethod
-    def _forward(fp16_x, embed_dim, n_heads, head_dim, freqs, Wqkv, Wo):
+    def _forward(fp16_x, causal_mask, embed_dim, n_heads, head_dim, freqs, Wqkv, Wo):
         """
         f(x) = softmax((Q @ K.T) / scale) * V \n
         rope(x): inject position
@@ -61,8 +61,7 @@ class AttentionLayer:
         scores = (Q @ K.transpose(0,1,3,2)) / scale
 
         #causal mask makes it decoder only. cant look into future contexts.
-        mask = nx.triu(nx.ones((T, T), dtype=nx.bool), k=1)
-        scores = nx.where(mask, -1e9, scores)
+        scores = nx.where(causal_mask, -1e9, scores)
         weights = softmax(scores)
         output = weights @ V
         output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)

@@ -1,8 +1,9 @@
 from engine.backend import nx
 from engine.activations import swish,swish_derivative
+from typing import Any
 
 class SwiGLU:
-    def __init__(self, hidden_width:int, embed_dim) -> None:
+    def __init__(self, hidden_width:int, embed_dim:int) -> None:
         self.hidden_width = hidden_width
         self.embed_dim = embed_dim
         scale = nx.float_32(1.0/nx.sqrt(embed_dim))
@@ -13,8 +14,9 @@ class SwiGLU:
         
         self.dWcombined = None
         self.dWout = None
+
     @staticmethod
-    def _forward(x, hidden_width, Wcombined, Wout):
+    def _forward(x, hidden_width:int, Wcombined:Any, Wout:Any) -> tuple[Any, Any]:
         fp16_x = x.astype(nx.float16)
         combined_linear = fp16_x @ Wcombined.T
         gate_linear = combined_linear[...,:hidden_width]
@@ -26,7 +28,7 @@ class SwiGLU:
         return output,cache
     
     @staticmethod
-    def _backward(gradient, caches, ff_params):
+    def _backward(gradient:Any, caches:tuple[Any,...], ff_params:tuple[Any,...]) -> tuple[Any, Any, Any]:
         x, gate_linear, gate, value, hidden = caches
         Wout, Wcombined = ff_params
         batch_size, seq_len, _ = x.shape
@@ -55,7 +57,7 @@ class SwiGLU:
         }
     
     @classmethod
-    def from_dict(cls, thing) -> "SwiGLU":
+    def from_dict(cls, thing:dict) -> "SwiGLU":
         hidden_width, embed_dim = thing["configs"]
         swiglu = cls(hidden_width, embed_dim)
         swiglu.Wcombined = nx.array(thing["Wcombine"], dtype=nx.float16)
