@@ -1,4 +1,4 @@
-from engine.backend import nx
+import engine.backend as nx
 from engine.activations import swish,swish_derivative
 from typing import Any
 

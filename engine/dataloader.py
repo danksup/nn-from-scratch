@@ -1,5 +1,5 @@
 from engine.tokenizer import Tokenizer
-from engine.backend import nx
+import engine.backend as nx
 
 class DataLoader:
     def __init__(self,data:str, tokenizer:Tokenizer, context_size:int=16, train_split=0.9) -> None:

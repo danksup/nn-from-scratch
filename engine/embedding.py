@@ -1,6 +1,6 @@
 import random
 import json
-from engine.backend import nx
+import engine.backend as nx
 from typing import Any
 
 

@@ -1,4 +1,4 @@
-from engine.backend import nx
+import engine.backend as nx
 from engine.activations import softmax, softmax_derivative
 from engine.rope import rope_forward, rope_inverse
 from typing import Any

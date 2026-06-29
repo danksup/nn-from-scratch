@@ -1,5 +1,5 @@
 import json
-from engine.backend import nx
+import engine.backend as nx
 import re
 from typing import Any
 

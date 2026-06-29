@@ -1,12 +1,12 @@
 import os
-os.environ["USE_BACKEND"] = "mlx"
+backend = os.environ["BACKEND"] = "mlx"
 import random
 # import mlx.core as mx
 EPOCHS = 1
 LR = 1e-3
 EMBED_DIM = 64
 CONTEXT_SIZE = 64
-BATCH_SIZE = 512
+BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
 N_HEADS = 8
 VAL = .9
@@ -25,7 +25,7 @@ from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.sessions import Session
-from engine.sessions import nx
+import engine.backend as nx
 
 configs = {
             "epochs": EPOCHS,
@@ -43,7 +43,7 @@ configs = {
                 "beta2":0.999,
                 "weight_decay":1e-2
             },
-            "using":nx.backend
+            "using":backend
         }
 
 corpus = ""

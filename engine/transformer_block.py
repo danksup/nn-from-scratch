@@ -3,7 +3,7 @@ from engine.attention import AttentionLayer
 from engine.rmsnorm import RMSNorm
 from engine.dropout import Dropout
 from engine.rope import precompute_freqs
-from engine.backend import nx
+import engine.backend as nx
 from typing import Any
 
 class TransformerBlock:
@@ -58,7 +58,7 @@ class TransformerBlock:
         gamma1 = self.rmsnorm1.gamma
         gamma2 = self.rmsnorm2.gamma
         if self.mask is None or self.mask.shape[0] != T:
-            self.mask = nx.triu(nx.ones((T, T), dtype=nx.bool), k=1)
+            self.mask = nx.triu(nx.ones((T, T), dtype=nx.bool_), k=1)
         ff_out ,masks, caches = self._forward(x, self.mask, self.embed_dim, self.n_heads, self.head_dim,self.freqs, Wqkv, Wo, Wcombined, self.hidden_width, Wout, epsilon, gamma1, gamma2, 0.1, is_training)
 
         return ff_out, masks, caches

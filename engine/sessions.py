@@ -4,7 +4,7 @@ from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.activations import softmax
 from engine.optimizer import AdamW
-from engine.backend import nx
+import engine.backend as nx
 from typing import Any
 import time
 import pickle

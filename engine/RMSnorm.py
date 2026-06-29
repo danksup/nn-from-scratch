@@ -1,4 +1,4 @@
-from engine.backend import nx
+import engine.backend as nx
 from typing import Any
 
 class RMSNorm:

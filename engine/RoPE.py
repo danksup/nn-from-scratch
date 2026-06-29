@@ -1,4 +1,4 @@
-from engine.backend import nx
+import engine.backend as nx
 
 def precompute_freqs(head_dim, max_seq_len=1024):
     positions = nx.arange(max_seq_len)

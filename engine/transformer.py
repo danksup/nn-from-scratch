@@ -5,7 +5,7 @@ from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.optimizer import  AdamW
 from engine.transformer_block import TransformerBlock
-from engine.backend import nx
+import engine.backend as nx
 from typing import Any
 # FLUSH_EVERY = 32
 
