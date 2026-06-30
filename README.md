@@ -32,15 +32,17 @@ logs:
 - better tokenization
 - frequency penalty
 - more optimization
-
-### Bugs:
-- inferencing breaks when token length is too large -> generate freqs on demand when needed
-- inferencing degradation after a certain number of tokens
   
 #### Maybe:
 - other gpus acceleration (maybe not)
 - better batching
 
+## Bugs:
+### Fixed
+- inference degradation after a certain number of tokens (fixed jul 1 2026) -> fix: sliding kv position
+### Open
+- inference breaks when token length is too large -> generate freqs on demand when needed (jun 29 2026)
+  
 # Performance Logs
 Apple M1 Pro \
 param: 72512 | epochs: 1 | context_size: 64 | batch_size: 256 | embed_dim: 64 \

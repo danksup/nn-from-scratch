@@ -128,15 +128,10 @@ class AttentionLayer:
 
         return dx,dWqkv,dWo
         
-    def inference_forward(self, x, freqs, cached_k=None, cached_v=None):
+    def inference_forward(self, x, max_cache_len, freqs, cached_k=None, cached_v=None, position = 0):
         scale = nx.float_32(nx.sqrt(self.head_dim))
         combined = x @ self.Wqkv.T
-        B, T, _ = x.shape
-
-        if cached_k is None:
-            position = 0
-        else:
-            position = cached_k.shape[2]        
+        B, T, _ = x.shape    
 
         K = combined[..., self.embed_dim: self.embed_dim + (self.n_kv_heads * self.head_dim)] 
 
@@ -157,6 +152,12 @@ class AttentionLayer:
             cached_v = nx.concatenate([cached_v, V], axis = 2)
         else:
             cached_v = V
+
+        if cached_k.shape[2] > max_cache_len:
+            cached_k = cached_k[:, :, -max_cache_len:, :]
+
+            cached_v = cached_v[:, :, -max_cache_len:, :]
+
 
         Q = combined[..., :self.embed_dim]
         Q = Q.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)

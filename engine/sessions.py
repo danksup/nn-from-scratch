@@ -140,22 +140,25 @@ class Session:
     
     def inference(self, context:Any, temperature=0.8, top_k=3, top_p=0.9, n=100) -> Any:
         all_caches = None
-        logits, all_caches = self.transformer.inference(context, self.embedding, all_caches)
-        
+        position = 0
+        logits, all_caches = self.transformer.inference(context,self.configs["context_size"], self.embedding, all_caches, position)
+        position = context.shape[1]
+
         raw_token = nx.array(self._sample(logits,  temperature, top_k, top_p))
         token = raw_token.item()
         print(self.tokenizer.decode([token]),end="",flush=True)
         next_token = nx.array([[token]], dtype=nx.int32)
 
         for i in range(n-1):
-            logits, all_caches = self.transformer.inference(next_token,self.embedding ,all_caches)
+            position += 1
+            logits, all_caches = self.transformer.inference(next_token,self.configs["context_size"], self.embedding ,all_caches, position)
             raw_token = self._sample(logits, temperature, top_k, top_p)
             token = raw_token.item()
             print(self.tokenizer.decode([token]),end="",flush=True)
             next_token = nx.array([[token]], dtype=nx.int32)
 
     def _sample(self, logits, temperature=0.8, top_k=3, top_p=0.9):
-        probs = softmax(logits)[0, -1]
+        probs = softmax(logits[0, -1]/ temperature) 
         # print(nx.max(probs))
         #top k
         top_k = min(top_k, len(probs))

@@ -67,12 +67,12 @@ class TransformerBlock:
 
         return dx, dWout, dWcombined, dWqkv,dWo, d_gamma1, d_gamma2
     
-    def inference_forward(self, x, cached_k=None, cached_v=None):
+    def inference_forward(self, x, max_cache_len, cached_k=None, cached_v=None,  position=0,):
         fp16_x = x.astype(nx.float16)
 
         rmsnorm1_out, _ = RMSNorm._forward(x, self.rmsnorm1.gamma, self.rmsnorm1.epsilon)
 
-        attn_out, cached_k, cached_v = self.attention.inference_forward(rmsnorm1_out, self.freqs, cached_k, cached_v)
+        attn_out, cached_k, cached_v = self.attention.inference_forward(rmsnorm1_out,max_cache_len, self.freqs, cached_k, cached_v, position)
         attn_out = attn_out + fp16_x
 
         rmsnorm2_out, _ = RMSNorm._forward(attn_out, self.rmsnorm2.gamma, self.rmsnorm2.epsilon)

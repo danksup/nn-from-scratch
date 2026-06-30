@@ -1,4 +1,3 @@
-from engine.swiglu import SwiGLU
 from engine.losses import cross_entropy_gradient, cross_entropy
 from engine.activations import softmax
 from engine.embedding import Embedding
@@ -204,13 +203,13 @@ class Transformer:
             transformer.add_block(TransformerBlock.from_dict(block))
         return transformer
        
-    def inference(self, context:Any, embedding:Embedding, all_caches = None) -> Any:
+    def inference(self, context:Any, max_cache_len, embedding:Embedding, all_caches = None,  position = 0) -> Any:
         if all_caches is None:
             all_caches = [(None, None) for _ in range(len(self.blocks))]
         output = embedding.forward(context)
         for idx, block in enumerate(self.blocks):
             cached_k, cached_v = all_caches[idx]
-            ff_out, cache_k, cache_v = block.inference_forward(output, cached_k, cached_v)
+            ff_out, cache_k, cache_v = block.inference_forward(output,max_cache_len, cached_k, cached_v, position)
             all_caches[idx] = (cache_k, cache_v)
             output = ff_out
 
