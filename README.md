@@ -31,11 +31,13 @@ logs:
 - better tokenization
 - frequency penalty
 - more optimization
+
+### Bugs:
+- inferencing breaks when token length is too large -> generate freqs on demand when needed
   
 #### Maybe:
 - other gpus acceleration (maybe not)
 - better batching
-
 
 # Performance Logs
 Apple M1 Pro \

@@ -7,13 +7,13 @@ context = "Hello!"
 print(f"context: {context}")
 context = tokenizer.encode(context)
 context = context.reshape(-1, context.shape[0])
-print(context)
 
 TEMPERATURE = 0.8
 TOP_K = 20
 TOP_P = .9
-print(f"temp: {TEMPERATURE} | top_k: {TOP_K} | top_p: {TOP_P}")
-infered = session.inference(context, TEMPERATURE, TOP_K, TOP_P)
+N = 10000
+print(f"n: {N} | temp: {TEMPERATURE} | top_k: {TOP_K} | top_p: {TOP_P}")
+infered = session.inference(context, TEMPERATURE, TOP_K, TOP_P, N)
 infered = infered.reshape(infered.shape[0])
 decoded = tokenizer.decode(infered)
-print(decoded)
+print(decoded, flush=True)
