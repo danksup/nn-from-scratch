@@ -4,11 +4,11 @@ import random
 # import mlx.core as mx
 EPOCHS = 1
 LR = 1e-3
-EMBED_DIM = 64
+EMBED_DIM = 128
 CONTEXT_SIZE = 64
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
-N_HEADS = 8
+N_HEADS = 16
 N_KV_HEADS = N_HEADS//2
 VAL = .9
 #not hooked yet to session
@@ -67,12 +67,12 @@ vocab_size = len(tokenizer1.chartoid)
 weight_n = CONTEXT_SIZE * EMBED_DIM
 embedding1 = Embedding(vocab_size, EMBED_DIM)
 tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
+tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 # tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 # tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
-# transformer.add_block(tblock2)
+transformer.add_block(tblock2)
 # transformer.add_block(tblock3)
 # transformer.add_block(tblock4)
 configs["block_size"] = len(transformer.blocks)

@@ -35,6 +35,7 @@ logs:
 
 ### Bugs:
 - inferencing breaks when token length is too large -> generate freqs on demand when needed
+- inferencing degradation after a certain number of tokens
   
 #### Maybe:
 - other gpus acceleration (maybe not)

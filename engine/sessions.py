@@ -142,22 +142,21 @@ class Session:
         all_caches = None
         logits, all_caches = self.transformer.inference(context, self.embedding, all_caches)
         
-        generated = []
         raw_token = nx.array(self._sample(logits,  temperature, top_k, top_p))
-        next_token = nx.array([[raw_token.item()]], dtype=nx.int32)
-        generated.append(next_token)
+        token = raw_token.item()
+        print(self.tokenizer.decode([token]),end="",flush=True)
+        next_token = nx.array([[token]], dtype=nx.int32)
 
-        for i in range(n):
+        for i in range(n-1):
             logits, all_caches = self.transformer.inference(next_token,self.embedding ,all_caches)
             raw_token = self._sample(logits, temperature, top_k, top_p)
-            next_token = nx.array([[raw_token.item()]], dtype=nx.int32)
-            generated.append(next_token)
-        
-        generated = nx.array(generated, dtype=nx.int32)
-        return generated
+            token = raw_token.item()
+            print(self.tokenizer.decode([token]),end="",flush=True)
+            next_token = nx.array([[token]], dtype=nx.int32)
 
     def _sample(self, logits, temperature=0.8, top_k=3, top_p=0.9):
-        probs = softmax(logits / temperature)[0, -1]
+        probs = softmax(logits)[0, -1]
+        # print(nx.max(probs))
         #top k
         top_k = min(top_k, len(probs))
         top_indices = nx.argpartition(probs, -top_k)[-top_k:]

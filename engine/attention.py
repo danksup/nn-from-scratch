@@ -143,11 +143,12 @@ class AttentionLayer:
         K = K.reshape(B, T, self.n_kv_heads, self.head_dim).transpose(0,2,1,3)
         K = rope_forward(K, freqs, position) 
         K = K.astype(nx.float32)
-
         if cached_k is not None :
             cached_k = nx.concatenate([cached_k, K], axis = 2)
         else:
             cached_k = K
+
+        # print(max(abs(K - cached_k[:, :, -1:, :])))
        
         V = combined[..., self.embed_dim + (self.n_kv_heads * self.head_dim):]
         V = V.reshape(B, T, self.n_kv_heads, self.head_dim).transpose(0,2,1,3)
@@ -171,6 +172,7 @@ class AttentionLayer:
         output = weights @ repeats_cached_v
         output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
         output_projected = output_concat @ self.Wo
+        
         return output_projected, cached_k, cached_v
     
     def to_dict(self) -> dict:
