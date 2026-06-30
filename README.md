@@ -23,9 +23,7 @@ logs:
 - KV caching (jun 30 2026)
   
 ## Ongoing:
-- fusing some operations
-- optimizing optimizer
-- adding comments, descriptions, typehints
+- optimizing (GQA)
     
 ## TODO (not in order):
 - checkpoint
