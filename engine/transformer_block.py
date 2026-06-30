@@ -7,18 +7,20 @@ import engine.backend as nx
 from typing import Any
 
 class TransformerBlock:
-    def __init__(self,embed_dim,ff_dim, n_heads) -> None:
+    def __init__(self,embed_dim,ff_dim, n_heads, n_kv_heads) -> None:
         self.causal_mask = None
         self.embed_dim = embed_dim
         self.hidden_width = ff_dim
         self.n_heads = n_heads
+        self.n_kv_heads = n_kv_heads
+        self.n_rep = self.n_heads // self.n_kv_heads 
         assert embed_dim % n_heads == 0
         self.head_dim = embed_dim // n_heads
 
         assert self.head_dim % 2 == 0, "head dim !% 2"
-        self.freqs = precompute_freqs(self.head_dim)
+        self.freqs = precompute_freqs(self.head_dim, 16384)
 
-        self.attention = AttentionLayer(embed_dim, n_heads)
+        self.attention = AttentionLayer(embed_dim, n_heads, n_kv_heads)
         self.ff = SwiGLU(ff_dim, embed_dim)
         self.rmsnorm1 = RMSNorm(embed_dim)
         self.rmsnorm2 = RMSNorm(embed_dim)
@@ -26,12 +28,12 @@ class TransformerBlock:
     
     @nx.compile
     @staticmethod
-    def _forward(x, causal_mask:Any, embed_dim:int, n_heads:int, head_dim:int,freqs:Any, Wqkv:Any, Wo:Any, Wcombined:Any, hidden_width:int, Wout:Any, epsilon:float, gamma1:Any, gamma2:Any, p:float, is_training:bool) -> tuple[Any, Any, Any]:
+    def _forward(x, causal_mask:Any, embed_dim:int, n_heads:int,n_kv_heads,n_rep, head_dim:int,freqs:Any, Wqkv:Any, Wo:Any, Wcombined:Any, hidden_width:int, Wout:Any, epsilon:float, gamma1:Any, gamma2:Any, p:float, is_training:bool) -> tuple[Any, Any, Any]:
         fp16_x = x.astype(nx.float16)
 
         rmsnorm1_out, caches_rmsnorm1 = RMSNorm._forward(x, gamma1,epsilon)
 
-        attn_out, caches_attn = AttentionLayer._forward(rmsnorm1_out,causal_mask, embed_dim, n_heads, head_dim, freqs, Wqkv, Wo,)
+        attn_out, caches_attn = AttentionLayer._forward(rmsnorm1_out,causal_mask, embed_dim, n_kv_heads,n_heads, n_rep, head_dim, freqs, Wqkv, Wo,)
         attn_out, mask1 = Dropout._forward(attn_out, p,is_training)
         attn_out = attn_out + fp16_x
 
@@ -87,7 +89,8 @@ class TransformerBlock:
             "configs": {
                 "n_heads": self.n_heads,
                 "hidden_width":self.hidden_width,
-                "embed_dim":self.embed_dim
+                "embed_dim":self.embed_dim,
+                "n_kv_heads": self.n_kv_heads
             },
             "attention":self.attention.to_dict(),
             "ff":self.ff.to_dict(),
@@ -99,7 +102,7 @@ class TransformerBlock:
     @classmethod
     def from_dict(cls,thing:dict) -> "TransformerBlock":
         configs = thing["configs"]
-        transformer_block = cls(configs["embed_dim"], configs["hidden_width"], configs["n_heads"])
+        transformer_block = cls(configs["embed_dim"], configs["hidden_width"], configs["n_heads"], configs["n_kv_heads"])
         transformer_block.attention = AttentionLayer.from_dict(thing["attention"])
         transformer_block.ff = SwiGLU.from_dict(thing["ff"])
         transformer_block.rmsnorm1 = RMSNorm.from_dict(thing["rmsnorm1"])

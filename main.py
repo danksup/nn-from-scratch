@@ -4,11 +4,12 @@ import random
 # import mlx.core as mx
 EPOCHS = 1
 LR = 1e-3
-EMBED_DIM = 128
-CONTEXT_SIZE = 256
-BATCH_SIZE = 1024
+EMBED_DIM = 64
+CONTEXT_SIZE = 64
+BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
-N_HEADS = 16
+N_HEADS = 8
+N_KV_HEADS = N_HEADS//2
 VAL = .9
 #not hooked yet to session
 PATIENCE = 20
@@ -35,6 +36,7 @@ configs = {
             "ff_width": BASE_WIDTH,
             "train_split":VAL,
             "n_heads": N_HEADS,
+            "n_kv_heads": N_KV_HEADS,
             "optimizer":"adamw",
             "dataset":0,
             "optimizer_args":{
@@ -64,7 +66,7 @@ configs["dataset"] = f"{len(files)} files"
 vocab_size = len(tokenizer1.chartoid)
 weight_n = CONTEXT_SIZE * EMBED_DIM
 embedding1 = Embedding(vocab_size, EMBED_DIM)
-tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
+tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 # tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 # tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 # tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
@@ -81,8 +83,8 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)
-# profiler = cProfile.Profile()
-# profiler.enable()
+profiler = cProfile.Profile()
+profiler.enable()
 # start = time.time()
 # mx.metal.start_capture("transformer.gputrace")
 session1.train(dataloader, display_message=True)
@@ -90,10 +92,10 @@ session1.train(dataloader, display_message=True)
 # mx.metal.stop_capture()
 # print(f"training finished. time: {end - start:.3f}s")
 
-# profiler.disable()
-# stats = pstats.Stats(profiler)
-# stats.sort_stats("cumtime")
-# stats.print_stats(100)
+profiler.disable()
+stats = pstats.Stats(profiler)
+stats.sort_stats("cumtime")
+stats.print_stats(100)
 
 session1.save(f"val_test_{a}")
 

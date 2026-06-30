@@ -8,12 +8,11 @@ class Dropout:
     @staticmethod
     def _forward(x, p, is_training):
         assert 0 <= p < 1
-        if not is_training:
-            return x, None
+  
         s = nx.uniform(0.0, 1.0, x.shape)
         mask = nx.where(s > p, 1 ,0)
-        output = x * mask
-        output = output / (1.0 - p)
+        mask = nx.where(is_training, mask, 1.0)
+        output = (x * mask) / (1.0 - p if is_training else 1.0)
         return output, mask
     
     @staticmethod

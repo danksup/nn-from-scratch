@@ -295,3 +295,6 @@ def clear_cache():
     if backend == "MLX":
         _nx.clear_cache()
     pass
+
+def repeat(a, repeats:int, axis:int=None):
+    return _nx.repeat(a,repeats, axis=axis)

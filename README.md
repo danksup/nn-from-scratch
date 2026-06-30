@@ -21,9 +21,9 @@ logs:
 - purely optimizing in june 28 2026
 - purely optimizing in june 29 2026
 - KV caching (jun 30 2026)
-  
+- grouped query attention (jun 30 2026)
 ## Ongoing:
-- optimizing (GQA)
+- further optimization
     
 ## TODO (not in order):
 - checkpoint
@@ -49,3 +49,4 @@ dataset: 5 files | using: MLX | block_size: 1 | corpus char len: 3417355
 - Date: 2026-06-28 | 1092171 function calls in 239.626 seconds | ram peaked at ~ 800MB | compiled each layer backward an forward locally
 - Date: 2026-06-29 | 865328 function calls in 214.715 seconds | ram peaked at ~ 900MB | block level compilation
 - Date: 2026-06-29 | 504964 function calls in 211.726 seconds | ram peaked at ~ 800MB | compiled optimizers
+- Date 2026-06-30 | 623763 function calls in 204.493 seconds | ram peaked at ~ 800MB | grouped-query attention (8Q/4KV)

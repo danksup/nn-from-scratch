@@ -8,13 +8,11 @@ def precompute_freqs(head_dim, max_seq_len=1024):
 
     return angles
 
-def rope_forward(x, angles, position=None):
+def rope_forward(x, angles, position=0):
     T = x.shape[2]
 
-    if position is None:
-        current_angles = angles[:T,:]
-    else:
-        current_angles = angles[position:position+ T]
+    
+    current_angles = angles[position:position+ T]
 
     sin = nx.sin(current_angles)
     cos = nx.cos(current_angles)
