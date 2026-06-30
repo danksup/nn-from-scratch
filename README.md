@@ -20,6 +20,7 @@ logs:
 - purely optimizing in june 27 2026
 - purely optimizing in june 28 2026
 - purely optimizing in june 29 2026
+- KV caching (jun 30 2026)
   
 ## Ongoing:
 - fusing some operations
@@ -30,7 +31,6 @@ logs:
 - checkpoint
 - lr scheduling
 - better tokenization
-- kv caching
 - frequency penalty
 - more optimization
   

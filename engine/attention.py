@@ -27,7 +27,6 @@ class AttentionLayer:
         self.dWqkv = None
         self.dWo = None
     
-    # @nx.nx.compile
     @staticmethod
     def _forward(fp16_x, causal_mask, embed_dim, n_heads, head_dim, freqs, Wqkv, Wo):
         """
@@ -105,18 +104,6 @@ class AttentionLayer:
         dx = dQKV @ Wqkv
 
         return dx,dWqkv,dWo
-    
-    # def backward(self, output_gradient:Any, cache:tuple) -> Any:
-    #     """
-    #     backprop
-    #     """
-    #     fp16_x, Q, K, V, weights, output_concat = cache
-    #     B, T, _ = fp16_x.shape
-        
-    #     dWqkv, dWo, dx = self._backward(output_gradient,weights,fp16_x ,B, T, self.n_heads, self.head_dim, self.embed_dim, self.Wo, self.freqs, self.scale, K, Q,V, output_concat, self.Wqkv)
-    #     self.dWqkv = dWqkv
-    #     self.dWo = dWo
-    #     return dx
         
     def to_dict(self) -> dict:
         '''serialize into dict with weights turned into list'''
@@ -127,6 +114,48 @@ class AttentionLayer:
             "Wo":self.Wo.tolist(),
         }
     
+    def inference_forward(self, x, freqs, cached_k=None, cached_v=None):
+        scale = nx.float_32(nx.sqrt(self.head_dim))
+        combined = x @ self.Wqkv.T
+        B, T, _ = x.shape
+
+        if cached_k is None:
+            position = 0
+        else:
+            position = cached_k.shape[2]
+
+        K = combined[..., self.embed_dim:2*self.embed_dim]
+        x.shape
+        self.Wqkv.shape
+        combined.shape
+        K.shape
+        K = K.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)
+        K = rope_forward(K, freqs, position) 
+
+        if cached_k is not None :
+            cached_k = nx.concatenate([cached_k, K], axis = 2)
+        else:
+            cached_k = K
+       
+        V = combined[..., 2*self.embed_dim:]
+        V = V.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)
+        
+        if cached_v is not None:
+            cached_v = nx.concatenate([cached_v, V], axis = 2)
+        else:
+            cached_v = V
+
+        Q = combined[..., :self.embed_dim]
+        Q = Q.reshape(B, T, self.n_heads, self.head_dim).transpose(0,2,1,3)
+        Q = rope_forward(Q, freqs, position)
+
+        scores = (Q @ cached_k.transpose(0,1,3,2)) / scale
+        weights = softmax(scores)
+        output = weights @ cached_v
+        output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, self.embed_dim)
+        output_projected = output_concat @ self.Wo
+        return output_projected, cached_k, cached_v
+
     @classmethod
     def from_dict(cls,thing) -> "AttentionLayer":
         """deserialize"""

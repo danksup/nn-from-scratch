@@ -2,13 +2,13 @@ import os
 backend = os.environ["BACKEND"] = "mlx"
 import random
 # import mlx.core as mx
-EPOCHS = 1
+EPOCHS = 3
 LR = 1e-3
-EMBED_DIM = 64
+EMBED_DIM = 128
 CONTEXT_SIZE = 64
-BATCH_SIZE = 256
+BATCH_SIZE = 1024
 BASE_WIDTH = 4 * EMBED_DIM 
-N_HEADS = 8
+N_HEADS = 16
 VAL = .9
 #not hooked yet to session
 PATIENCE = 20
@@ -65,12 +65,12 @@ vocab_size = len(tokenizer1.chartoid)
 weight_n = CONTEXT_SIZE * EMBED_DIM
 embedding1 = Embedding(vocab_size, EMBED_DIM)
 tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
-# tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
+tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 # tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 # tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
 transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
-# transformer.add_block(tblock2)
+transformer.add_block(tblock2)
 # transformer.add_block(tblock3)
 # transformer.add_block(tblock4)
 configs["block_size"] = len(transformer.blocks)
@@ -81,8 +81,8 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)
-profiler = cProfile.Profile()
-profiler.enable()
+# profiler = cProfile.Profile()
+# profiler.enable()
 # start = time.time()
 # mx.metal.start_capture("transformer.gputrace")
 session1.train(dataloader, display_message=True)
@@ -90,10 +90,10 @@ session1.train(dataloader, display_message=True)
 # mx.metal.stop_capture()
 # print(f"training finished. time: {end - start:.3f}s")
 
-profiler.disable()
-stats = pstats.Stats(profiler)
-stats.sort_stats("cumtime")
-stats.print_stats(100)
+# profiler.disable()
+# stats = pstats.Stats(profiler)
+# stats.sort_stats("cumtime")
+# stats.print_stats(100)
 
 session1.save(f"val_test_{a}")
 

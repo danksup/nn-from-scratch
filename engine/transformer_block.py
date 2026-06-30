@@ -7,23 +7,21 @@ import engine.backend as nx
 from typing import Any
 
 class TransformerBlock:
-    def __init__(self,embed_dim=None,ff_dim=None, n_heads=None) -> None:
-        if embed_dim is not None and ff_dim is not None and n_heads is not None:
-            self.embed_dim = embed_dim
-            self.hidden_width = ff_dim
-            self.n_heads = n_heads
-            assert embed_dim % n_heads == 0
-            self.head_dim = embed_dim // n_heads
+    def __init__(self,embed_dim,ff_dim, n_heads) -> None:
+        self.causal_mask = None
+        self.embed_dim = embed_dim
+        self.hidden_width = ff_dim
+        self.n_heads = n_heads
+        assert embed_dim % n_heads == 0
+        self.head_dim = embed_dim // n_heads
 
-            assert self.head_dim % 2 == 0, "head dim !% 2"
-            self.freqs = precompute_freqs(self.head_dim)
+        assert self.head_dim % 2 == 0, "head dim !% 2"
+        self.freqs = precompute_freqs(self.head_dim)
 
-            self.attention = AttentionLayer(embed_dim, n_heads)
-            self.ff = SwiGLU(ff_dim, embed_dim)
-            self.rmsnorm1 = RMSNorm(embed_dim)
-            self.rmsnorm2 = RMSNorm(embed_dim)
-
-            self.mask = None
+        self.attention = AttentionLayer(embed_dim, n_heads)
+        self.ff = SwiGLU(ff_dim, embed_dim)
+        self.rmsnorm1 = RMSNorm(embed_dim)
+        self.rmsnorm2 = RMSNorm(embed_dim)
 
     
     @nx.compile
@@ -47,21 +45,6 @@ class TransformerBlock:
         masks = (mask1, mask2)
         caches = (caches_attn, caches_ff, caches_rmsnorm1, caches_rmsnorm2)
         return ff_out, masks, caches
-    
-    def forward(self, x:Any, is_training:bool) -> tuple[Any, Any, Any]:
-        B,T,_ = x.shape
-        Wqkv = self.attention.Wqkv
-        Wo = self.attention.Wo
-        Wcombined = self.ff.Wcombined
-        Wout = self.ff.Wout
-        epsilon = self.rmsnorm1.epsilon
-        gamma1 = self.rmsnorm1.gamma
-        gamma2 = self.rmsnorm2.gamma
-        if self.mask is None or self.mask.shape[0] != T:
-            self.mask = nx.triu(nx.ones((T, T), dtype=nx.bool_), k=1)
-        ff_out ,masks, caches = self._forward(x, self.mask, self.embed_dim, self.n_heads, self.head_dim,self.freqs, Wqkv, Wo, Wcombined, self.hidden_width, Wout, epsilon, gamma1, gamma2, 0.1, is_training)
-
-        return ff_out, masks, caches
 
     @nx.compile
     @staticmethod
@@ -81,41 +64,47 @@ class TransformerBlock:
         dx = d_rmsn1 + d_attn_out
 
         return dx, dWout, dWcombined, dWqkv,dWo, d_gamma1, d_gamma2
+    
+    def inference_forward(self, x, cached_k=None, cached_v=None):
+        fp16_x = x.astype(nx.float16)
 
-    def backward(self, gradient: tuple[Any,...], masks:tuple[Any,...], all_caches:tuple[Any,...]) -> Any:
-        caches_attn, caches_ff, caches_rmsnorm1, caches_rmsnorm2 = all_caches
-        mask1, mask2 = masks
-        d_attn_params = (self.n_heads, self.head_dim, self.embed_dim, self.attention.Wo, self.freqs, self.attention.Wqkv)
-        ff_params = (self.ff.Wout, self.ff.Wcombined)
-        dx, dWout, dWcombined,dWqkv,dWo, d_gamma1, d_gamma2 = self._backward(gradient, mask1=mask1, mask2=mask2, 
-                                                            caches_attn=caches_attn, caches_ff=caches_ff, caches_rmsnorm1=caches_rmsnorm1, caches_rmsnorm2=caches_rmsnorm2, 
-                                                            d_attn_params=d_attn_params, gamma1=self.rmsnorm1.gamma, gamma2=self.rmsnorm2.gamma, ff_params=ff_params)
-        
-        self.ff.dWout = dWout
-        self.ff.dWcombined = dWcombined
-        
-        self.attention.dWqkv=dWqkv
-        self.attention.dWo = dWo
+        rmsnorm1_out, _ = RMSNorm._forward(x, self.rmsnorm1.gamma, self.rmsnorm1.epsilon)
 
-        self.rmsnorm1.d_gamma = d_gamma1
-        self.rmsnorm2.d_gamma = d_gamma2
-        return dx
+        attn_out, cached_k, cached_v = self.attention.inference_forward(rmsnorm1_out, self.freqs, cached_k, cached_v)
+        attn_out = attn_out + fp16_x
+
+        rmsnorm2_out, _ = RMSNorm._forward(attn_out, self.rmsnorm2.gamma, self.rmsnorm2.epsilon)
+
+        ff_out,_ = SwiGLU._forward(rmsnorm2_out, self.hidden_width, self.ff.Wcombined, self.ff.Wout)
+        ff_out = ff_out + attn_out
+        
+        return ff_out, cached_k, cached_v
+        
+
 
     def to_dict(self) -> dict:
         return {
+            "configs": {
+                "n_heads": self.n_heads,
+                "hidden_width":self.hidden_width,
+                "embed_dim":self.embed_dim
+            },
             "attention":self.attention.to_dict(),
             "ff":self.ff.to_dict(),
             "rmsnorm1":self.rmsnorm1.to_dict(),
             "rmsnorm2":self.rmsnorm2.to_dict(),
+            # "causal_mask":self.causal_mask.tolist() if self.causal_mask is not None else None
         } 
     
     @classmethod
     def from_dict(cls,thing:dict) -> "TransformerBlock":
-        transformer_block = cls()
+        configs = thing["configs"]
+        transformer_block = cls(configs["embed_dim"], configs["hidden_width"], configs["n_heads"])
         transformer_block.attention = AttentionLayer.from_dict(thing["attention"])
         transformer_block.ff = SwiGLU.from_dict(thing["ff"])
         transformer_block.rmsnorm1 = RMSNorm.from_dict(thing["rmsnorm1"])
         transformer_block.rmsnorm2 = RMSNorm.from_dict(thing["rmsnorm2"])
+        # transformer_block.causal_mask = nx.array(thing["causal_mask"], dtype=nx.bool_)
         return transformer_block
 
   

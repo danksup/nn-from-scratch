@@ -138,10 +138,26 @@ class Session:
             # self.save("overflow_save")
             raise
     
-    def predict(self, context:Any, temperature=0.8, top_k=3, top_p=0.9) -> Any:
-        logits = self.transformer.predict(context, self.embedding)
-        probs = softmax(logits / temperature)[0, -1]
+    def inference(self, context:Any, temperature=0.8, top_k=3, top_p=0.9, n=100) -> Any:
+        all_caches = None
+        logits, all_caches = self.transformer.inference(context, self.embedding, all_caches)
+        
+        generated = []
+        raw_token = nx.array(self._sample(logits,  temperature, top_k, top_p))
+        next_token = nx.array([[raw_token.item()]], dtype=nx.int32)
+        generated.append(next_token)
 
+        for i in range(n):
+            logits, all_caches = self.transformer.inference(next_token,self.embedding ,all_caches)
+            raw_token = self._sample(logits, temperature, top_k, top_p)
+            next_token = nx.array([[raw_token.item()]], dtype=nx.int32)
+            generated.append(next_token)
+        
+        generated = nx.array(generated, dtype=nx.int32)
+        return generated
+
+    def _sample(self, logits, temperature=0.8, top_k=3, top_p=0.9):
+        probs = softmax(logits / temperature)[0, -1]
         #top k
         top_k = min(top_k, len(probs))
         top_indices = nx.argpartition(probs, -top_k)[-top_k:]
