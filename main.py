@@ -4,17 +4,17 @@ import random
 # import mlx.core as mx
 EPOCHS = 10
 LR = 1e-3
-EMBED_DIM = 64
+EMBED_DIM = 128
 CONTEXT_SIZE = 64
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS//2
-VAL = 1
+VAL = .9
 #not hooked yet to session
 PATIENCE = 20
 TRESHOLD = 1e-2
-VOCAB_SIZE = 1024
+VOCAB_SIZE = 2048
 
 from pathlib import Path
 import time
@@ -62,19 +62,26 @@ for file in files:
         data = f.read()
         corpus += data + "\n\n\n"
 
+# print(len(corpus))
 start = time.perf_counter()
 tokenizer1.fit(corpus)
+tokenizer1.save("tokenizer1")
 end = time.perf_counter()
 print(f"fitting finished in {end-start:.3f}")
 
 configs["dataset"] = f"{len(files)} files"
+
 weight_n = CONTEXT_SIZE * EMBED_DIM
-embedding1 = Embedding(VOCAB_SIZE, EMBED_DIM)
+real_vocab_size = len(tokenizer1.vocab)
+
+embedding1 = Embedding(real_vocab_size, EMBED_DIM)
+
+start = time.perf_counter()
 tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-transformer = Transformer(VOCAB_SIZE,EMBED_DIM, "adamw")
+transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
 transformer.add_block(tblock2)
 transformer.add_block(tblock3)
@@ -83,7 +90,8 @@ configs["block_size"] = len(transformer.blocks)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 configs["corpus char len"] = dataloader.tokens.size
 session1 = Session(transformer,tokenizer1,embedding1, configs)
-
+end = time.perf_counter()
+print(f"something is happening here {end-start:.3f}")
 
 a = random.randint(1,9999999999999)
 a = str(a)

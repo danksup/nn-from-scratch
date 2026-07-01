@@ -158,8 +158,11 @@ class Session:
             next_token = nx.array([[token]], dtype=nx.int32)
 
     def _sample(self, logits, temperature=0.8, top_k=3, top_p=0.9):
-        probs = softmax(logits[0, -1]/ temperature) 
-        # print(nx.max(probs))
+        if temperature == 0.0:
+            return nx.argmax(logits[0,-1])
+        
+        probs = softmax(logits[0, -1]/temperature) 
+
         #top k
         top_k = min(top_k, len(probs))
         top_indices = nx.argpartition(probs, -top_k)[-top_k:]

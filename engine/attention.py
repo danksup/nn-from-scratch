@@ -118,12 +118,12 @@ class AttentionLayer:
         DQKV = dQKV.reshape(-1, embed_dim + 2 * (n_kv_heads * head_dim))
 
         X = fp16_x.astype(nx.float32).reshape(-1, embed_dim)
-        dWqkv = (DQKV.T @ X) / (B * T)
+        dWqkv = DQKV.T @ X
 
         H = output_concat.reshape(-1, embed_dim)
         G = gradient.reshape(-1, embed_dim)
 
-        dWo = (H.T @ G) / (B * T)
+        dWo = H.T @ G
         dx = dQKV @ Wqkv
 
         return dx,dWqkv,dWo

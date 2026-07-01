@@ -1,15 +1,15 @@
-import json
 import engine.backend as nx
-import re
 from collections import Counter
 from typing import Any
+import pickle
+
 
 class Tokenizer:
-    def __init__(self, vocab_size= 1024):
-        self.vocab_size = vocab_size
-        self.merges = {}
+    def __init__(self, target_vocab_size= 1024):
+        self.target_vocab_size = target_vocab_size
+        self.merge_rank = {}
         self.id_to_token = {0:"<PAD>", 1:"<UNK>", 2: "<EOT>", 3:"</w>"}
-        self.vocab = {"<PAD>":0,"<UNK>":1, "<EOT>":2, "<w/>":3}
+        self.vocab = {"<PAD>":0,"<UNK>":1, "<EOT>":2, "</w>":3}
 
     @staticmethod
     def get_pair_counts( words:list) -> Counter:
@@ -21,7 +21,7 @@ class Tokenizer:
         return counts
 
     @staticmethod
-    def merge_pair(words:list, best_pair:str):
+    def merge_pair(words:list, best_pair:tuple):
         merged = []
         for word in words:
             i = 0
@@ -50,7 +50,7 @@ class Tokenizer:
                     self.vocab[i] = next_id
                     self.id_to_token[next_id] = i
 
-        while len(self.vocab) < self.vocab_size:
+        while len(self.vocab) < self.target_vocab_size:
             counts = self.get_pair_counts(words)
             if not counts:
                 break
@@ -60,21 +60,39 @@ class Tokenizer:
 
             words = self.merge_pair(words, best_pair)
             
-            self.merges[best_pair] = merged_best
+            self.merge_rank[best_pair] = (len(self.merge_rank), merged_best)
             self.vocab[merged_best] = len(self.vocab)
             self.id_to_token[len(self.vocab)-1] = merged_best
         
     def encode(self, text: str):
         words = [list(word) +  ["</w>"]  for word in text.split()]
 
-        for pair, merged in self.merges.items():
-            words = self.merge_pair(words, pair)
+        for idx, word in enumerate(words):
+            while True:
+                best_pair = None
+                best_rank = float("inf")
+
+                for i in range(len(word) - 1):
+                    pair = (word[i], word[i + 1])
+
+                    if pair in self.merge_rank:
+                        rank, merged = self.merge_rank[pair]
+
+                        if rank < best_rank:
+                            best_rank = rank
+                            best_pair = pair
+
+                if best_pair is None:
+                    break
+
+                word = self.merge_pair([word], best_pair)[0]
+                words[idx] = word
 
         tokens = [token for word in words for token in word]
         encoded = [self.vocab.get(token, self.vocab["<UNK>"]) for token in tokens]
         return nx.array(encoded, dtype=nx.int32)
 
-    def decode(self, thing: Any) -> str:
+    def decode(self, thing:Any) -> str:
         decoded = ""
 
         for token_id in thing:
@@ -87,7 +105,7 @@ class Tokenizer:
     
     def to_dict(self) -> dict:
         vocab = {
-            "merges":self.merges,
+            "merge_rank":self.merge_rank,
             "vocab":self.vocab,
             "id_to_token":self.id_to_token
         }
@@ -99,6 +117,28 @@ class Tokenizer:
 
         tokenizer.vocab = thing["vocab"]
         tokenizer.id_to_token = thing["id_to_token"]
-        tokenizer.merges = thing["merges"]
+        tokenizer.merge_rank = thing["merge_rank"]
+
+        return tokenizer
+    
+    def save(self, filename):
+        tokenizer = self.to_dict()
+        filename = f"session_{filename}.tokenizer"
+        with open(f"artifacts/tokenizer/{filename}", "wb") as f:
+            f.write(b"tokenizer")
+            f.write((1).to_bytes(4, "little"))
+            pickle.dump(tokenizer, f)
+    
+    @classmethod
+    def load(cls, filepath) -> "Tokenizer":
+        with open(filepath, "rb") as f:
+            magic = f.read(9)
+            if magic != b"tokenizer":
+                raise ValueError("unknown file")
+            version = int.from_bytes(f.read(4), "little")
+            loaded = pickle.load(f)
+
+        
+        tokenizer = cls.from_dict(loaded)
 
         return tokenizer

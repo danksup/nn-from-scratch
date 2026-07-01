@@ -122,7 +122,6 @@ class Transformer:
 
             block_gradient = batch_gradient @ embedding.lookup_table
             d_table = batch_gradient.reshape(-1, self.vocab_size).T @ last_output.reshape(-1, self.embed_dim) 
-            d_table /= (batch_gradient.shape[0]* batch_gradient.shape[1])
             
             current_grad = self.backward(block_gradient, embedding.lookup_table, last_output, all_masks, all_caches)
 
