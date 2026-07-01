@@ -31,7 +31,6 @@ logs:
 ## TODO (not in order):
 - checkpoint
 - lr scheduling
-- better tokenization
 - frequency penalty
 - more optimization
   
