@@ -2,18 +2,19 @@ import os
 backend = os.environ["BACKEND"] = "mlx"
 import random
 # import mlx.core as mx
-EPOCHS = 1
+EPOCHS = 10
 LR = 1e-3
-EMBED_DIM = 128
+EMBED_DIM = 64
 CONTEXT_SIZE = 64
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
-N_HEADS = 16
+N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS//2
-VAL = .9
+VAL = 1
 #not hooked yet to session
 PATIENCE = 20
 TRESHOLD = 1e-2
+VOCAB_SIZE = 1024
 
 from pathlib import Path
 import time
@@ -49,11 +50,11 @@ configs = {
         }
 
 corpus = ""
-tokenizer1 = Tokenizer()
+tokenizer1 = Tokenizer(VOCAB_SIZE)
 files = []
 folder = Path("data")
 for file in folder.iterdir():
-    if file.name != ".gitkeep":
+    if file.name != ".gitkeep" and file.name[-1:-5:-1] == "txt." :
         files.append(file)
 
 for file in files:
@@ -61,20 +62,23 @@ for file in files:
         data = f.read()
         corpus += data + "\n\n\n"
 
+start = time.perf_counter()
 tokenizer1.fit(corpus)
+end = time.perf_counter()
+print(f"fitting finished in {end-start:.3f}")
+
 configs["dataset"] = f"{len(files)} files"
-vocab_size = len(tokenizer1.chartoid)
 weight_n = CONTEXT_SIZE * EMBED_DIM
-embedding1 = Embedding(vocab_size, EMBED_DIM)
+embedding1 = Embedding(VOCAB_SIZE, EMBED_DIM)
 tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
-# tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS)
-transformer = Transformer(vocab_size,EMBED_DIM, "adamw")
+tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
+tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
+transformer = Transformer(VOCAB_SIZE,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
 transformer.add_block(tblock2)
-# transformer.add_block(tblock3)
-# transformer.add_block(tblock4)
+transformer.add_block(tblock3)
+transformer.add_block(tblock4)
 configs["block_size"] = len(transformer.blocks)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 configs["corpus char len"] = dataloader.tokens.size
@@ -83,19 +87,19 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)
-profiler = cProfile.Profile()
-profiler.enable()
-# start = time.time()
+# profiler = cProfile.Profile()
+# profiler.enable()
+start = time.perf_counter()
 # mx.metal.start_capture("transformer.gputrace")
 session1.train(dataloader, display_message=True)
-# end = time.time()
+end = time.perf_counter()
 # mx.metal.stop_capture()
-# print(f"training finished. time: {end - start:.3f}s")
+print(f"training finished. time: {end - start:.3f}s")
 
-profiler.disable()
-stats = pstats.Stats(profiler)
-stats.sort_stats("cumtime")
-stats.print_stats(100)
+# profiler.disable()
+# stats = pstats.Stats(profiler)
+# stats.sort_stats("cumtime")
+# stats.print_stats(100)
 
 session1.save(f"val_test_{a}")
 

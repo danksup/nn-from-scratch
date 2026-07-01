@@ -22,10 +22,12 @@ logs:
 - purely optimizing in june 29 2026
 - KV caching (jun 30 2026)
 - grouped query attention (jun 30 2026)
-  
+- BPE tokenizer (jul 1 2026)
+
 ## Ongoing:
-- further optimization
-    
+- optimizing BPE
+- comments/description
+
 ## TODO (not in order):
 - checkpoint
 - lr scheduling

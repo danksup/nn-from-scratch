@@ -1,62 +1,104 @@
 import json
 import engine.backend as nx
 import re
+from collections import Counter
 from typing import Any
 
 class Tokenizer:
-    def __init__(self):
-        self.idtochar = {0:"<PAD>", 1:"<UNK>", 2: "<EOT>"}
-        self.chartoid = {"<PAD>":0,"<UNK>":1, "<EOT>":2}
+    def __init__(self, vocab_size= 1024):
+        self.vocab_size = vocab_size
+        self.merges = {}
+        self.id_to_token = {0:"<PAD>", 1:"<UNK>", 2: "<EOT>", 3:"</w>"}
+        self.vocab = {"<PAD>":0,"<UNK>":1, "<EOT>":2, "<w/>":3}
 
-    def split_input(self, char:str) -> list[str]:
-        """character level tokenizer"""
-        return list(char)
+    @staticmethod
+    def get_pair_counts( words:list) -> Counter:
+        counts = Counter()
+        for word in words:
+           for i in range(len(word) - 1):
+                pair = (word[i], word[i+1])
+                counts[pair] += 1
+        return counts
 
-    def fit(self, x:str) -> None:
-        """
-        Args:
-            x: input
+    @staticmethod
+    def merge_pair(words:list, best_pair:str):
+        merged = []
+        for word in words:
+            i = 0
+            n = len(word)
+            new_word = []
+            while i < n - 1:
+                pair = word[i], word[i + 1]
+                if pair == best_pair:
+                    new_word.append(word[i] + word[i+1])
+                    i += 2
+                else:
+                    new_word.append(word[i])
+                    i+=1
+            if i == n - 1:
+                new_word.append(word[n-1])
+            merged.append(new_word)
+        return merged
 
-        fit x if not fitted.
-        """
-
-        tokens = self.split_input(x)
-        for i in tokens:
-            if i not in self.chartoid:
-                next_id = len(self.chartoid)
-                self.chartoid[i] = next_id
-                self.idtochar[next_id] = i
+    def fit(self, corpus:str):
+        words = [list(word) +  ["</w>"]  for word in corpus.split()]
         
-    def encode(self, char: str):
-        tokens = self.split_input(char)
-        encoded = [self.chartoid.get(token, self.chartoid["<UNK>"])for token in tokens]
-        return nx.array(encoded, dtype=nx.int32)
-        # return encoded
+        for word in words:
+            for i in word:
+                if i not in self.vocab:
+                    next_id = len(self.vocab)
+                    self.vocab[i] = next_id
+                    self.id_to_token[next_id] = i
 
+        while len(self.vocab) < self.vocab_size:
+            counts = self.get_pair_counts(words)
+            if not counts:
+                break
+            
+            best_pair = counts.most_common(1)[0][0]
+            merged_best = best_pair[0] + best_pair[1]
+
+            words = self.merge_pair(words, best_pair)
+            
+            self.merges[best_pair] = merged_best
+            self.vocab[merged_best] = len(self.vocab)
+            self.id_to_token[len(self.vocab)-1] = merged_best
+        
+    def encode(self, text: str):
+        words = [list(word) +  ["</w>"]  for word in text.split()]
+
+        for pair, merged in self.merges.items():
+            words = self.merge_pair(words, pair)
+
+        tokens = [token for word in words for token in word]
+        encoded = [self.vocab.get(token, self.vocab["<UNK>"]) for token in tokens]
+        return nx.array(encoded, dtype=nx.int32)
 
     def decode(self, thing: Any) -> str:
         decoded = ""
 
         for token_id in thing:
-            decoded += self.idtochar[int(token_id)]
+            if int(token_id) == self.vocab["<PAD>"]:
+                continue
+            decoded += self.id_to_token[int(token_id)]
 
+        decoded = decoded.replace("</w>", " ")
         return decoded
     
     def to_dict(self) -> dict:
         vocab = {
-            "idtochar":self.idtochar,
-            "chartoid":self.chartoid
+            "merges":self.merges,
+            "vocab":self.vocab,
+            "id_to_token":self.id_to_token
         }
         return vocab
     
     @classmethod
     def from_dict(cls,thing) -> "Tokenizer":
         tokenizer = cls()
-        tokenizer.idtochar = {}
-        tokenizer.chartoid = {}
-        for token_id, char in thing["idtochar"].items():   
-            tokenizer.idtochar[int(token_id)] = char
-        for char, id in thing["chartoid"].items():   
-            tokenizer.chartoid[char] = int(id)
+
+        tokenizer.vocab = thing["vocab"]
+        tokenizer.id_to_token = thing["id_to_token"]
+        tokenizer.merges = thing["merges"]
 
         return tokenizer
