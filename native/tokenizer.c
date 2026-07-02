@@ -132,16 +132,40 @@ TokenCorpus split(WordList *words){
 
     for (int i = 0; i < words->count; i++){
         char *raw = words->array[i];
+
         int len = strlen(raw);
         WordList split_word;
         split_word.capacity = len + 1;
         split_word.array = malloc((len + 1) * sizeof(char *));
         split_word.count = 0;
-        for (int j = 0; j < len; j++){
-            char *token = malloc(2);
-            token[0] = raw[j];
-            token[1] = '\0';
+        int j = 0;
+        while (j < len){
+            unsigned char first_byte = (unsigned char)raw[j];
+            int char_len = 1;
+
+            if ((first_byte & 0x80) == 0x00){
+                char_len = 1;
+            }
+            else if ((first_byte & 0xE0) == 0xC0){
+                char_len = 2;
+            }
+            else if ((first_byte & 0xF0) == 0xE0){
+                char_len = 3;
+            }
+            else if ((first_byte & 0xF8) == 0xF0){
+                char_len = 4;
+            }
+
+            if (j + char_len > len){
+                char_len = 1;
+            }
+
+            char *token = malloc(char_len + 1);
+            memcpy(token, raw + j, char_len);
+            token[char_len] = '\0';
+
             add_token(&split_word, token);
+            j += char_len;
         }
         add_token(&split_word, "</w>");
         corpus.words[i] = split_word;

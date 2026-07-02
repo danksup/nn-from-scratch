@@ -40,18 +40,16 @@ class Tokenizer(ctypes.Structure):
 lib.fit_from_words.argtypes = [ctypes.POINTER(ctypes.c_char_p), ctypes.c_int, ctypes.c_int]
 lib.fit_from_words.restype = Tokenizer
 
-def fit_native(corpus:str, target_vocab_size):
-    print("[native] C tokenizer fit called")
-    
+def fit_native(corpus:str, target_vocab_size):    
     vocab = {}
     id_to_token = {}
     merge_rank = {}
 
+    corpus = corpus.encode("ascii", "ignore").decode("ascii")
     words = corpus.split()
     words = [w.encode("utf-8") for w in words]
     arr = (ctypes.c_char_p * len(words))(*words)
     tokenizer = lib.fit_from_words(arr, len(words), target_vocab_size)
-    print("[native] returned", tokenizer.vocab.count, tokenizer.mergelist.count)
     for i in range(tokenizer.vocab.count):
         entry = tokenizer.vocab.entries[i]
         token = entry.token.decode("utf-8")
