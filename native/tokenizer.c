@@ -5,42 +5,6 @@
 
 #include "tokenizer.h"
 
-typedef struct {
-    char **array;
-    int count;
-    int capacity;
-} WordList;
-
-typedef struct {
-    char *first;
-    char *second;
-    int frequency;
-}Pair;
-
-typedef struct {
-    Pair *pairs;
-    int count;
-    int capacity;
-}PairList;
-
-typedef struct {
-    WordList *words;
-    int count;
-}TokenCorpus;
-
-typedef struct {
-    char *first;
-    char *second;
-    char *merged;
-    int rank;
-} MergeRule;
-
-typedef struct {
-    MergeRule *rules;
-    int count;
-    int capacity;
-} MergeList;
-
 WordList word_list(char **words, int capacity){
     WordList list;
     list.capacity = capacity;
@@ -91,6 +55,25 @@ void add_merge_rule(MergeList *mergelist, MergeRule mergerule){
     mergelist->count++;
 }
 
+int add_vocab(Vocab *vocab, char*token){
+    for (int i = 0; i < vocab->count;i++){
+        if (strcmp(vocab->entries[i].token, token) == 0){
+            return vocab->entries[i].id;
+        }
+    }
+
+    if (vocab->count >= vocab->capacity){
+        vocab->capacity *= 2;
+        vocab->entries = realloc(vocab->entries, vocab->capacity * sizeof(VocabEntry));
+    }
+
+    int id = vocab->count;
+    vocab->entries[id].token = strdup(token);
+    vocab->entries[id].id = id;
+    vocab->count++;
+    return id;
+}
+
 PairList get_pair_count(TokenCorpus tokencorpus){
     PairList pairlist;
     pairlist.capacity = 16;
@@ -120,8 +103,8 @@ TokenCorpus split(WordList *words){
         char *raw = words->array[i];
         int len = strlen(raw);
         WordList split_word;
-        split_word.capacity = len;
-        split_word.array = malloc(len * sizeof(char *));
+        split_word.capacity = len + 1;
+        split_word.array = malloc((len + 1) * sizeof(char *));
         split_word.count = 0;
         for (int j = 0; j < len; j++){
             char *token = malloc(2);
@@ -129,7 +112,7 @@ TokenCorpus split(WordList *words){
             token[1] = '\0';
             add_token(&split_word, token);
         }
-
+        add_token(&split_word, "</w>");
         corpus.words[i] = split_word;
     }
     return corpus;
@@ -175,7 +158,7 @@ void merge_pair(TokenCorpus *corpus, Pair best_pair){
                     corpus->words[i].array[k] = corpus->words[i].array[k+1];
                 }
                 corpus->words[i].count--;
-                j++;
+                // j++;
                 n--;
             }
             else{
@@ -185,43 +168,96 @@ void merge_pair(TokenCorpus *corpus, Pair best_pair){
     }
 }
 
-// fit(corpus, num_merges):
-//     for step in range(num_merges):
-//         pairlist = get_pair_count(corpus)
-//         if pairlist.count == 0:
-//             break
-//         best = best_pair(pairlist)
-//         merge_pair(corpus, best)
-//         free(pairlist.pairs)
+Tokenizer fit(TokenCorpus *corpus, int target_vocab_size){
+    Vocab vocab;
+    vocab.count = 0;
+    vocab.capacity = 16;
+    vocab.entries = malloc(vocab.capacity * sizeof(VocabEntry));
 
-void fit(TokenCorpus *corpus, int target_vocab_size){
+    MergeList merges;
+    merges.count = 0;
+    merges.capacity = 16;
+    merges.rules = malloc(merges.capacity * sizeof(MergeRule));
+
     for (int i = 0; i < corpus->count; i++){
         for (int j = 0; j < corpus->words[i].count; j++){
-            
+            add_vocab(&vocab, corpus->words[i].array[j]);
         }
     }
 
-    // for (int i = 0; i < target_vocab_size; i++){
-    //     PairList pairlist = get_pair_count(*corpus);
-    //     if (pairlist.count == 0){
-    //         break;
-    //     }
-    //     Pair best = best_pair(&pairlist);
-    //     merge_pair(corpus, best);
-    //     free(pairlist.pairs);
-    //     for (int i = 0; i < corpus->count; i++){
-    //         for (int j=0; j < corpus->words[i].count; j++){
-    //             printf(" %s\n", corpus->words[i].array[j]);
-    //         }
-    //     }
-    // }
+    while (vocab.count < target_vocab_size) {
+        PairList count = get_pair_count(*corpus);
+        if (count.count == 0){
+            free(count.pairs);
+            break;
+        }
+        Pair best = best_pair(&count);
+        char *merged_best = merge(best.first, best.second);
+
+        MergeRule rule;
+        rule.first = best.first;
+        rule.second = best.second;
+        rule.merged = merged_best;
+        rule.rank = merges.count;
+        add_merge_rule(&merges, rule);
+        add_vocab(&vocab, merged_best);
+        merge_pair(corpus, best);
+        free(count.pairs);
+
+
+    }
+    Tokenizer tokenizer;
+    tokenizer.vocab = vocab;
+    tokenizer.mergelist = merges;
+    return tokenizer; 
+
 }
 
+Tokenizer fit_from_words(char **words, int word_count, int target_vocab_size){
+    WordList wordlist = word_list(words, word_count);
+    TokenCorpus corpus = split(&wordlist);
+    Tokenizer tokenizer = fit(&corpus, target_vocab_size);
+    return tokenizer;
+}
+
+#ifdef TEST_TOKENIZER
 int main(){
-    int capacity = 2;
-    char *hello[] = {"hello", "hello"};
+    char *hello[] = {
+    "The", "quick", "brown", "fox", "jumps", "over", "the", "lazy", "dog.",
+    "Building", "a", "custom", "sub-word", "tokenizer", "from", "scratch", "requires", "careful", "memory", "alignment.",
+    "Deep", "learning", "models", "rely", "on", "structured", "data", "pipelines", "to", "feed", "matrices.",
+    "If", "a", "model", "has", "too", "much", "capacity", "it", "will", "memorize", "instead", "of", "generalizing.",
+    "Managing", "pointers", "manually", "prevents", "silent", "data", "corruption", "and", "keeps", "execution", "boundaries", "clean.",
+    "To", "break", "repetitive", "sampling", "loops", "try", "lowering", "the", "temperature", "or", "adding", "a", "penalty."
+    };
+    int capacity = sizeof(hello) / sizeof(hello[0]);
     WordList str_array = word_list(hello, capacity);
     TokenCorpus corpus = split(&str_array);
-    fit(&corpus, 100);
-}
+    Tokenizer tokenizer = fit(&corpus, 100);
+    printf("=== Vocabulary ===\n");
+    for (int i = 0; i < tokenizer.vocab.count; i++) {
+        printf("%3d : %s\n",
+            tokenizer.vocab.entries[i].id,
+            tokenizer.vocab.entries[i].token);
+    }
 
+    printf("\n=== Merge Rules ===\n");
+    for (int i = 0; i < tokenizer.mergelist.count; i++) {
+        MergeRule rule = tokenizer.mergelist.rules[i];
+        printf("%3d : (%s, %s) -> %s\n",
+            rule.rank,
+            rule.first,
+            rule.second,
+            rule.merged);
+    }
+
+    printf("\n=== Final Corpus ===\n");
+    for (int i = 0; i < corpus.count; i++) {
+        printf("Word %d: ", i);
+        for (int j = 0; j < corpus.words[i].count; j++) {
+            printf("%s ", corpus.words[i].array[j]);
+        }
+        printf("\n");
+    }
+}
+#endif

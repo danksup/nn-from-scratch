@@ -23,9 +23,10 @@ logs:
 - KV caching (jun 30 2026)
 - grouped query attention (jun 30 2026)
 - BPE tokenizer (jul 1 2026)
+- rewrote some BPE function in C (jul 2 2026)
 
 ## Ongoing:
-- optimizing BPE (rewriting some tokenizer funcs into C)
+- optimizing BPE
 
 ## TODO (not in order):
 - checkpoint
@@ -56,4 +57,4 @@ dataset: 5 files | using: MLX | block_size: 1 | corpus char len: 3417355
 - Date 2026-06-30 | 623763 function calls in 204.493 seconds | ram peaked at ~ 800MB | grouped-query attention (8Q/4KV)
 
 Tokenizer
-- 11296590 corpus len | fitting finished in 1614.249 py
+- 11296590 corpus len | 2048 | fitting finished in 1614.249 py

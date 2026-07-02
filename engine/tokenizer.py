@@ -1,8 +1,7 @@
 import engine.backend as nx
-from collections import Counter
 from typing import Any
 import pickle
-
+from native.ctokenizer import fit_native
 
 class Tokenizer:
     def __init__(self, target_vocab_size= 1024):
@@ -10,15 +9,6 @@ class Tokenizer:
         self.merge_rank = {}
         self.id_to_token = {0:"<PAD>", 1:"<UNK>", 2: "<EOT>", 3:"</w>"}
         self.vocab = {"<PAD>":0,"<UNK>":1, "<EOT>":2, "</w>":3}
-
-    @staticmethod
-    def get_pair_counts( words:list) -> Counter:
-        counts = Counter()
-        for word in words:
-           for i in range(len(word) - 1):
-                pair = (word[i], word[i+1])
-                counts[pair] += 1
-        return counts
 
     @staticmethod
     def merge_pair(words:list, best_pair:tuple):
@@ -39,31 +29,13 @@ class Tokenizer:
                 new_word.append(word[n-1])
             merged.append(new_word)
         return merged
-
+    
     def fit(self, corpus:str):
-        words = [list(word) +  ["</w>"]  for word in corpus.split()]
-        
-        for word in words:
-            for i in word:
-                if i not in self.vocab:
-                    next_id = len(self.vocab)
-                    self.vocab[i] = next_id
-                    self.id_to_token[next_id] = i
+       vocab, id_to_token, merge_rank = fit_native(corpus, self.target_vocab_size)
+       self.vocab = vocab
+       self.id_to_token = id_to_token
+       self.merge_rank = merge_rank
 
-        while len(self.vocab) < self.target_vocab_size:
-            counts = self.get_pair_counts(words)
-            if not counts:
-                break
-            
-            best_pair = counts.most_common(1)[0][0]
-            merged_best = best_pair[0] + best_pair[1]
-
-            words = self.merge_pair(words, best_pair)
-            
-            self.merge_rank[best_pair] = (len(self.merge_rank), merged_best)
-            self.vocab[merged_best] = len(self.vocab)
-            self.id_to_token[len(self.vocab)-1] = merged_best
-        
     def encode(self, text: str):
         words = [list(word) +  ["</w>"]  for word in text.split()]
 
