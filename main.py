@@ -50,7 +50,7 @@ configs = {
         }
 
 corpus = ""
-tokenizer1 = Tokenizer(VOCAB_SIZE)
+tokenizer1 = Tokenizer()
 files = []
 folder = Path("data")
 for file in folder.iterdir():
@@ -62,13 +62,11 @@ for file in files:
         data = f.read()
         corpus += data + "\n\n\n"
 
-# print(len(corpus))
 start = time.perf_counter()
 tokenizer1.fit(corpus)
 tokenizer1.save("tokenizer1")
 end = time.perf_counter()
 print(f"fitting finished in {end-start:.3f}")
-
 configs["dataset"] = f"{len(files)} files"
 
 weight_n = CONTEXT_SIZE * EMBED_DIM
@@ -76,7 +74,6 @@ real_vocab_size = len(tokenizer1.vocab)
 
 embedding1 = Embedding(real_vocab_size, EMBED_DIM)
 
-start = time.perf_counter()
 tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
@@ -86,12 +83,13 @@ transformer.add_block(tblock)
 transformer.add_block(tblock2)
 transformer.add_block(tblock3)
 transformer.add_block(tblock4)
+start = time.perf_counter()
 configs["block_size"] = len(transformer.blocks)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
-configs["corpus char len"] = dataloader.tokens.size
-session1 = Session(transformer,tokenizer1,embedding1, configs)
 end = time.perf_counter()
 print(f"something is happening here {end-start:.3f}")
+configs["corpus char len"] = dataloader.tokens.size
+session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)

@@ -26,7 +26,7 @@ def extract_json_to_txt(filepath, query, answer):
 
         for q in queries:
             txt += f"Question: {q}\n"
-            txt += f"Answer: {answers}\n\n"
+            txt += f"Answer: {answers}<EOT>\n\n"
 
     return txt
 
@@ -35,4 +35,4 @@ def save_txt(filename, txt):
         f.write(txt)
     print(f"saved {filename}.txt")
 
-save_txt("qoac",extract_json_to_txt("data/json/qoac.json", "questions", "answers"))
+save_txt("qa",extract_json_to_txt("data/json/qa_dataset-2.json", "question", "answer"))
