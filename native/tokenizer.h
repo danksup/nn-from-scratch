@@ -1,6 +1,8 @@
 #ifndef TOKENIZER_H
 #define TOKENIZER_H
 
+
+
 typedef struct {
     char **array;
     int count;
@@ -13,11 +15,16 @@ typedef struct {
     int frequency;
 } Pair;
 
+typedef struct PairNode {
+    Pair pair;
+    struct PairNode *next;
+} PairNode;
+
 typedef struct {
-    Pair *pairs;
+    PairNode **buckets;
+    int bucket_count;
     int count;
-    int capacity;
-} PairList;
+} PairHashMap;
 
 typedef struct {
     WordList *words;
@@ -56,18 +63,22 @@ typedef struct {
 
 
 WordList word_list(char **words, int capacity);
-void add_pair(PairList *pairlist, Pair pair);
 void add_token(WordList *words, char* token);
 void add_merge_rule(MergeList *mergelist, MergeRule mergerule);
 int add_vocab(Vocab *vocab, char* token);
 
-PairList get_pair_count(TokenCorpus tokencorpus);
 TokenCorpus split(WordList *words);
-Pair best_pair(PairList *pairlist);
 char *merge(char *first, char *second);
 void merge_pair(TokenCorpus *corpus, Pair best_pair);
 
 Tokenizer fit(TokenCorpus *corpus, int target_vocab_size);
 Tokenizer fit_from_words(char **words, int word_count, int target_vocab_size);
+
+unsigned long hash_string(const char *str);
+unsigned long hash_pair(char *first, char *second);
+void add_pair_hash(PairHashMap *map, Pair pair);
+PairHashMap get_pair_count_hash(TokenCorpus tokencorpus);
+Pair best_pair_hash(PairHashMap *map);
+void free_pair_hashmap(PairHashMap *map);
 
 #endif // TOKENIZER_H

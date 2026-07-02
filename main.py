@@ -64,10 +64,11 @@ for file in files:
 
 # print(len(corpus))
 start = time.perf_counter()
-tokenizer1.fit(corpus)
+tokenizer1.fit("hello word")
 end = time.perf_counter()
 print(f"fitting finished in {end-start:.3f}")
 configs["dataset"] = f"{len(files)} files"
+print(tokenizer1.vocab)
 # tokenizer1.save("tokenizer1")
 
 # weight_n = CONTEXT_SIZE * EMBED_DIM

@@ -23,7 +23,8 @@ logs:
 - KV caching (jun 30 2026)
 - grouped query attention (jun 30 2026)
 - BPE tokenizer (jul 1 2026)
-- rewrote some BPE function in C (jul 2 2026)
+- rewrote some BPE functions in C (jul 2 2026)
+- use hashing for counting on C BPE (jul 2 2026)
 
 ## Ongoing:
 - optimizing BPE

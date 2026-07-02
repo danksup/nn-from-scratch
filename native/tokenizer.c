@@ -19,21 +19,70 @@ WordList word_list(char **words, int capacity){
     return list;
 }
 
-void add_pair(PairList *pairlist, Pair pair){
-    pair.frequency = 1;
-    if (pairlist->count >= pairlist->capacity){
-        pairlist->capacity *= 2;
-        pairlist->pairs = realloc(pairlist->pairs, pairlist->capacity * sizeof(Pair));
+unsigned long hash_string(const char *str) {
+    unsigned long hash = 5381;
+    int c;
+
+    while ((c = *str++)) {
+        hash = ((hash << 5) + hash) + c;
     }
-    for (int i = 0; i < pairlist->count; i++){
-        if (strcmp(pairlist->pairs[i].first, pair.first) == 0 && strcmp(pairlist->pairs[i].second, pair.second) == 0){
-            pairlist->pairs[i].frequency++;
-            return;
+
+    return hash;
+}
+
+unsigned long hash_pair(char *first, char *second) {
+    unsigned long hash = hash_string(first);
+
+    hash = ((hash << 5) + hash) + '|';
+
+    int c;
+    while ((c = *second++)) {
+        hash = ((hash << 5) + hash) + c;
+    }
+
+    return hash;
+}
+
+PairHashMap get_pair_count_hash(TokenCorpus tokencorpus){
+    PairHashMap map;
+    map.bucket_count = 8192;
+    map.count = 0;
+    map.buckets = calloc(map.bucket_count, sizeof(PairNode *));
+
+    for (int i = 0; i < tokencorpus.count; i++){
+        for (int j = 0; j < tokencorpus.words[i].count - 1; j++){
+            Pair pair;
+            pair.first = tokencorpus.words[i].array[j];
+            pair.second = tokencorpus.words[i].array[j + 1];
+            add_pair_hash(&map, pair);
         }
     }
-    pairlist->pairs[pairlist->count] = pair;
-    pairlist->count++;
 
+    return map;
+}
+
+void add_pair_hash(PairHashMap *map, Pair pair) {
+    unsigned long hash = hash_pair(pair.first, pair.second);
+    int index = hash % map->bucket_count;
+
+    PairNode *node = map->buckets[index];
+
+    while (node != NULL) {
+        if (strcmp(node->pair.first, pair.first) == 0 &&
+            strcmp(node->pair.second, pair.second) == 0) {
+            node->pair.frequency++;
+            return;
+        }
+
+        node = node->next;
+    }
+
+    PairNode *new_node = malloc(sizeof(PairNode));
+    pair.frequency = 1;
+    new_node->pair = pair;
+    new_node->next = map->buckets[index];
+    map->buckets[index] = new_node;
+    map->count++;
 }
 
 void add_token(WordList *words, char* token){
@@ -74,24 +123,6 @@ int add_vocab(Vocab *vocab, char*token){
     return id;
 }
 
-PairList get_pair_count(TokenCorpus tokencorpus){
-    PairList pairlist;
-    pairlist.capacity = 16;
-    pairlist.pairs = malloc(pairlist.capacity * sizeof(Pair));
-    pairlist.count = 0;
-
-    for (int i = 0; i < tokencorpus.count; i++){
-        for (int j = 0; j < tokencorpus.words[i].count - 1; j++){
-            char *pair1 = tokencorpus.words[i].array[j];
-            char *pair2 = tokencorpus.words[i].array[j+1];
-            Pair pair;
-            pair.first = pair1;
-            pair.second = pair2;
-            add_pair(&pairlist, pair);
-        }
-    } 
-    return pairlist;
-}
 
 TokenCorpus split(WordList *words){
     TokenCorpus corpus;
@@ -116,16 +147,6 @@ TokenCorpus split(WordList *words){
         corpus.words[i] = split_word;
     }
     return corpus;
-}
-
-Pair best_pair(PairList *pairlist){
-    Pair best = pairlist->pairs[0];
-    for (int i = 1; i < pairlist->count; i++){
-        if (pairlist->pairs[i].frequency > best.frequency) {
-            best = pairlist->pairs[i];
-        }
-    }
-    return best;
 }
 
 char *merge(char *first, char *second){
@@ -158,7 +179,7 @@ void merge_pair(TokenCorpus *corpus, Pair best_pair){
                     corpus->words[i].array[k] = corpus->words[i].array[k+1];
                 }
                 corpus->words[i].count--;
-                // j++;
+                j++;
                 n--;
             }
             else{
@@ -166,6 +187,43 @@ void merge_pair(TokenCorpus *corpus, Pair best_pair){
             }
         }
     }
+}
+
+Pair best_pair_hash(PairHashMap *map) {
+    Pair best;
+    best.first = NULL;
+    best.second = NULL;
+    best.frequency = -1;
+
+    for (int i = 0; i < map->bucket_count; i++) {
+        PairNode *current = map->buckets[i];
+        while (current != NULL) {
+            if (current->pair.frequency > best.frequency) {
+                best = current->pair;
+            }
+            
+            PairNode *next_node = current->next;
+            current = next_node;
+        }
+    }
+    return best;
+}
+
+void free_pair_hashmap(PairHashMap *map){
+    for (int i = 0; i < map->bucket_count; i++){
+        PairNode *node = map->buckets[i];
+        while (node != NULL){
+            PairNode *next = node->next;
+            free(node);
+            node = next;
+        }
+    }
+
+    free(map->buckets);
+    map->buckets = NULL;
+    map->bucket_count = 0;
+    map->count = 0;
+
 }
 
 Tokenizer fit(TokenCorpus *corpus, int target_vocab_size){
@@ -186,31 +244,33 @@ Tokenizer fit(TokenCorpus *corpus, int target_vocab_size){
     }
 
     while (vocab.count < target_vocab_size) {
-        PairList count = get_pair_count(*corpus);
+        PairHashMap count = get_pair_count_hash(*corpus);
+
         if (count.count == 0){
-            free(count.pairs);
+            free_pair_hashmap(&count);
             break;
         }
-        Pair best = best_pair(&count);
+
+        Pair best = best_pair_hash(&count);
         char *merged_best = merge(best.first, best.second);
 
         MergeRule rule;
-        rule.first = best.first;
-        rule.second = best.second;
+        rule.first = strdup(best.first);
+        rule.second = strdup(best.second);
         rule.merged = merged_best;
         rule.rank = merges.count;
+
         add_merge_rule(&merges, rule);
         add_vocab(&vocab, merged_best);
         merge_pair(corpus, best);
-        free(count.pairs);
 
-
+        free_pair_hashmap(&count);
     }
+
     Tokenizer tokenizer;
     tokenizer.vocab = vocab;
     tokenizer.mergelist = merges;
-    return tokenizer; 
-
+    return tokenizer;
 }
 
 Tokenizer fit_from_words(char **words, int word_count, int target_vocab_size){
