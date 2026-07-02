@@ -25,7 +25,7 @@ logs:
 - BPE tokenizer (jul 1 2026)
 - rewrote some BPE functions in C (jul 2 2026)
 - use hashing for counting on C BPE (jul 2 2026)
-
+- revert back to pythonic BPE
 ## Ongoing:
 - optimizing BPE
 

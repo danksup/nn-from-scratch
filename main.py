@@ -4,7 +4,7 @@ import random
 # import mlx.core as mx
 EPOCHS = 20
 LR = 1e-3
-EMBED_DIM = 128
+EMBED_DIM = 64
 CONTEXT_SIZE = 64
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
@@ -14,7 +14,7 @@ VAL = .9
 #not hooked yet to session
 PATIENCE = 20
 TRESHOLD = 1e-2
-VOCAB_SIZE = 4096
+VOCAB_SIZE = 1024
 
 from pathlib import Path
 import time
@@ -50,7 +50,7 @@ configs = {
         }
 
 corpus = ""
-tokenizer1 = Tokenizer.load("artifacts/tokenizer/session_tokenizer1.tokenizer")
+tokenizer1 = Tokenizer.load("artifacts/tokenizer/session_1024.tokenizer")
 files = []
 folder = Path("data")
 for file in folder.iterdir():
@@ -62,14 +62,14 @@ for file in files:
         data = f.read()
         corpus += data + "\n\n\n"
 
-print(len(corpus))
+# print(len(corpus))
 # start = time.perf_counter()
 # tokenizer1.fit(corpus)
 # end = time.perf_counter()
 # print(f"fitting finished in {end-start:.3f}")
-configs["dataset"] = f"{len(files)} files"
-# print(tokenizer1.vocab)
-tokenizer1.save("tokenizer1")
+# configs["dataset"] = f"{len(files)} files"
+# # print(tokenizer1.vocab)
+# tokenizer1.save("1024")
 
 weight_n = CONTEXT_SIZE * EMBED_DIM
 real_vocab_size = len(tokenizer1.vocab)
