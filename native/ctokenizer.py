@@ -45,7 +45,6 @@ def fit_native(corpus:str, target_vocab_size):
     id_to_token = {}
     merge_rank = {}
 
-    corpus = corpus.encode("ascii", "ignore").decode("ascii")
     words = corpus.split()
     words = [w.encode("utf-8") for w in words]
     arr = (ctypes.c_char_p * len(words))(*words)
