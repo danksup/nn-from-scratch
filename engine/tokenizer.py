@@ -22,18 +22,66 @@ class Tokenizer:
                 counter[tword] = 1
         
         return counter
-
+    
+    @staticmethod
+    def get_pairs(word:list[str]|tuple[str,...]) -> list[tuple[str,...]]:
+        pairs = []
+        for i in range(len(word) - 1):
+            pair = (word[i], word[i+1])
+            pairs.append(pair)
+        return pairs
+    
     @staticmethod
     def get_pair_counts( word_counts:dict) -> Counter:
         counts = Counter()
         for word, count in word_counts.items():
-            for i in range(len(word) - 1):
-                pair = (word[i], word[i+1])
-                counts[pair] += 1 * count
+            for pair in Tokenizer.get_pairs(word):
+                counts[pair] += count
         return counts
 
     @staticmethod
-    def merge(word:list, best_pair):
+    def build_pair_index(word_counts:dict) -> tuple[Counter, dict]:
+        counts = Counter()
+        pair_to_words = {}
+        for word, count in word_counts.items():
+            for pair in Tokenizer.get_pairs(word):
+                counts[pair] += count
+                if pair not in pair_to_words:
+                    pair_to_words[pair] = set()
+                pair_to_words[pair].add(word)
+        
+        return counts, pair_to_words
+
+    @staticmethod
+    def remove_word(word:tuple[str,...], freq:int, pair_counts:Counter[tuple[str,...]], pair_to_words:dict[tuple[str,...],set[tuple[str,...]]]):
+        word_pairs = Tokenizer.get_pairs(word)
+        for pair in word_pairs:
+            pair_counts[pair] -= freq
+
+            if pair_counts[pair] <= 0:
+                del pair_counts[pair]
+
+        for pair in set(word_pairs):
+            pair_to_words[pair].remove(word)
+
+            if not pair_to_words[pair]:
+                pair_to_words.pop(pair)
+    
+    @staticmethod
+    def add_word(word:tuple[str,...], freq:int, pair_counts:Counter[tuple[str,...]], pair_to_words:dict[tuple[str,...],set[tuple[str,...]]]):
+        word_pairs = Tokenizer.get_pairs(word)
+        
+        for pair in word_pairs:
+            pair_counts[pair] += freq
+
+        for pair in set(word_pairs):
+            if pair not in pair_to_words:
+                pair_to_words[pair] = set()
+
+            pair_to_words[pair].add(word)
+
+    @staticmethod
+    def merge(word:tuple, best_pair):
         i = 0
         n = len(word)
         found = False
@@ -43,7 +91,6 @@ class Tokenizer:
             if pair == best_pair:
                 found = True
                 break
-            found = False
             i += 1
 
         i = 0
@@ -59,9 +106,9 @@ class Tokenizer:
                     i+=1
             if i == n - 1:
                 new_word.append(word[n-1])
-            return (new_word)
+            return new_word
         else:
-            return(word)
+            return word
 
 
     @staticmethod
@@ -81,20 +128,22 @@ class Tokenizer:
                     self.id_to_token[next_id] = i
 
         word_counts = self.get_word_counts(words)
-        while len(self.vocab) < self.target_vocab_size:
-            counts = self.get_pair_counts(word_counts)
-            if not counts:
+        pair_counts, pair_to_words = self.build_pair_index(word_counts)
+
+        while len(self.vocab) < self.target_vocab_size:     
+            if not pair_counts:
                 break
-            
-            best_pair = counts.most_common(1)[0][0]
+            best_pair = pair_counts.most_common(1)[0][0]
+            affected_words = pair_to_words[best_pair].copy()
+
+            for affected_word in affected_words:
+                freq = word_counts.pop(affected_word)
+                self.remove_word(affected_word, freq, pair_counts, pair_to_words)
+                merged = tuple(self.merge(affected_word, best_pair))
+                word_counts[merged] = word_counts.get(merged, 0) + freq
+                self.add_word(merged, freq, pair_counts, pair_to_words)
+
             merged_best = best_pair[0] + best_pair[1]
-            
-            new_word_count = {}
-            for tword, freq in word_counts.items():
-                lword = list(tword)
-                merged = tuple(self.merge(lword, best_pair))
-                new_word_count[merged] = new_word_count.get(merged, 0) + freq
-            word_counts = new_word_count
 
             len_vocab = len(self.vocab)
             self.merge_rank[best_pair] = (len(self.merge_rank), merged_best)

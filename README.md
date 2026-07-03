@@ -27,6 +27,7 @@ logs:
 - use hashing for counting on C BPE (jul 2 2026)
 - revert back to pythonic BPE (jul 2 2026)
 - optimizing BPE in jul 3 2026
+- incremental BPE in jul 4 2026
 
 ## Ongoing:
 
@@ -63,3 +64,4 @@ Tokenizer
 - 11296590 corpus len | 2048 | fitting finished in 1614.249 py 
 - 11296590 corpus len | 2048 | fitting finished in 579.541 C
 - 11296590 corpus len | 2048 | fitting finished in 629.932 post optimized py (3 jul 2026)
+- 11296590 corpus len | 2048 | fitting finished in 17.050 incremental BPE py (4 jul 2026)

@@ -52,7 +52,7 @@ configs = {
 
 corpus = ""
 tokenizer1 = Tokenizer(VOCAB_SIZE)
-# tokenizer1 = Tokenizer.load("artifacts/tokenizer/session_4096_1783094185.tokenizer")
+# tokenizer1 = Tokenizer.load("artifacts/tokenizer/session_2048_1783113214.tokenizer")
 files = []
 folder = Path("data")
 for file in folder.iterdir():
@@ -65,14 +65,15 @@ for file in files:
         corpus += data + "\n\n\n"
 
 
-# print(len(tokenizer1.vocab))
+
 
 t = int(time.time())
 profiler = cProfile.Profile()
 profiler.enable()
 print(len(corpus))
 start = time.perf_counter()
-tokenizer1.fit(corpus)
+a =tokenizer1.fit(corpus)
+
 profiler.disable()
 stats = pstats.Stats(profiler)
 stats.sort_stats("cumtime")
