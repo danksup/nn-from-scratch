@@ -18,6 +18,7 @@ VOCAB_SIZE = 2048
 
 from pathlib import Path
 import time
+
 import cProfile
 import pstats
 
@@ -50,7 +51,8 @@ configs = {
         }
 
 corpus = ""
-tokenizer1 = Tokenizer(1024)
+tokenizer1 = Tokenizer(VOCAB_SIZE)
+# tokenizer1 = Tokenizer.load("artifacts/tokenizer/session_4096_1783094185.tokenizer")
 files = []
 folder = Path("data")
 for file in folder.iterdir():
@@ -63,22 +65,26 @@ for file in files:
         corpus += data + "\n\n\n"
 
 
+# print(len(tokenizer1.vocab))
+
+t = int(time.time())
 profiler = cProfile.Profile()
 profiler.enable()
 print(len(corpus))
-# start = time.perf_counter()
+start = time.perf_counter()
 tokenizer1.fit(corpus)
 profiler.disable()
 stats = pstats.Stats(profiler)
 stats.sort_stats("cumtime")
 stats.print_stats(100)
 
-# end = time.perf_counter()
-# print(f"fitting finished in {end-start:.3f}")
-# configs["dataset"] = f"{len(files)} files"
+end = time.perf_counter()
 # # print(tokenizer1.vocab)
-# tokenizer1.save("1024")
+tokenizer_save_name = f"{VOCAB_SIZE}_{t}"
+tokenizer1.save(tokenizer_save_name)
+print(f"{tokenizer_save_name} saved. fitting finished in {end-start:.3f}")
 
+# configs["dataset"] = f"{len(files)} files"
 # weight_n = CONTEXT_SIZE * EMBED_DIM
 # real_vocab_size = len(tokenizer1.vocab)
 

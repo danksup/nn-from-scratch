@@ -29,9 +29,9 @@ logs:
 - optimizing BPE in jul 3 2026
 
 ## Ongoing:
-- optimizing BPE
 
 ## TODO (not in order):
+- incremental BPE
 - checkpoint
 - lr scheduling
 - frequency penalty
@@ -62,4 +62,4 @@ dataset: 5 files | using: MLX | block_size: 1 | corpus char len: 3417355
 Tokenizer
 - 11296590 corpus len | 2048 | fitting finished in 1614.249 py 
 - 11296590 corpus len | 2048 | fitting finished in 579.541 C
-- 11296590 corpus len | 2048 | fitting finished in 274.600 post optimized py
+- 11296590 corpus len | 2048 | fitting finished in 629.932 post optimized py (3 jul 2026)
