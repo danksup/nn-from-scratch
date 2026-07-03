@@ -25,7 +25,9 @@ logs:
 - BPE tokenizer (jul 1 2026)
 - rewrote some BPE functions in C (jul 2 2026)
 - use hashing for counting on C BPE (jul 2 2026)
-- revert back to pythonic BPE
+- revert back to pythonic BPE (jul 2 2026)
+- optimizing BPE in jul 3 2026
+
 ## Ongoing:
 - optimizing BPE
 
@@ -60,3 +62,4 @@ dataset: 5 files | using: MLX | block_size: 1 | corpus char len: 3417355
 Tokenizer
 - 11296590 corpus len | 2048 | fitting finished in 1614.249 py 
 - 11296590 corpus len | 2048 | fitting finished in 579.541 C
+- 11296590 corpus len | 2048 | fitting finished in 274.600 post optimized py

@@ -11,21 +11,43 @@ class Tokenizer:
         self.id_to_token = {0:"<PAD>", 1:"<UNK>", 2: "<EOT>", 3:"</w>"}
         self.vocab = {"<PAD>":0,"<UNK>":1, "<EOT>":2, "</w>":3}
 
-    @staticmethod
-    def get_pair_counts( words:list) -> Counter:
-        counts = Counter()
+    @staticmethod 
+    def get_word_counts(words:list) -> dict:
+        counter = {}
         for word in words:
-           for i in range(len(word) - 1):
+            tword = tuple(word)
+            if tword in counter:
+                counter[tword] += 1
+            else:
+                counter[tword] = 1
+        
+        return counter
+
+    @staticmethod
+    def get_pair_counts( word_counts:dict) -> Counter:
+        counts = Counter()
+        for word, count in word_counts.items():
+            for i in range(len(word) - 1):
                 pair = (word[i], word[i+1])
-                counts[pair] += 1
+                counts[pair] += 1 * count
         return counts
 
     @staticmethod
-    def merge_pair(words:list, best_pair:tuple):
-        merged = []
-        for word in words:
-            i = 0
-            n = len(word)
+    def merge(word:list, best_pair):
+        i = 0
+        n = len(word)
+        found = False
+
+        while i < n - 1:
+            pair = word[i], word[i + 1]
+            if pair == best_pair:
+                found = True
+                break
+            found = False
+            i += 1
+
+        i = 0
+        if found == True:
             new_word = []
             while i < n - 1:
                 pair = word[i], word[i + 1]
@@ -37,12 +59,20 @@ class Tokenizer:
                     i+=1
             if i == n - 1:
                 new_word.append(word[n-1])
-            merged.append(new_word)
+            return (new_word)
+        else:
+            return(word)
+
+
+    @staticmethod
+    def merge_pair(words:list, best_pair:tuple):
+        merged = []
+        for word in words:
+            merged.append(Tokenizer.merge(word, best_pair))
         return merged
 
     def fit(self, corpus:str):
         words = [list(word) +  ["</w>"]  for word in corpus.split()]
-        
         for word in words:
             for i in word:
                 if i not in self.vocab:
@@ -50,19 +80,26 @@ class Tokenizer:
                     self.vocab[i] = next_id
                     self.id_to_token[next_id] = i
 
+        word_counts = self.get_word_counts(words)
         while len(self.vocab) < self.target_vocab_size:
-            counts = self.get_pair_counts(words)
+            counts = self.get_pair_counts(word_counts)
             if not counts:
                 break
             
             best_pair = counts.most_common(1)[0][0]
             merged_best = best_pair[0] + best_pair[1]
-
-            words = self.merge_pair(words, best_pair)
             
+            new_word_count = {}
+            for tword, freq in word_counts.items():
+                lword = list(tword)
+                merged = tuple(self.merge(lword, best_pair))
+                new_word_count[merged] = new_word_count.get(merged, 0) + freq
+            word_counts = new_word_count
+
+            len_vocab = len(self.vocab)
             self.merge_rank[best_pair] = (len(self.merge_rank), merged_best)
-            self.vocab[merged_best] = len(self.vocab)
-            self.id_to_token[len(self.vocab)-1] = merged_best
+            self.vocab[merged_best] = len_vocab
+            self.id_to_token[len_vocab] = merged_best
         
     def encode(self, text: str):
         words = [list(word) +  ["</w>"]  for word in text.split()]
