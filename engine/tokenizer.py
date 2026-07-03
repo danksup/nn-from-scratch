@@ -58,10 +58,12 @@ class Tokenizer:
         for pair in word_pairs:
             pair_counts[pair] -= freq
 
+        set_pairs = set(word_pairs)
+        for pair in set_pairs:
             if pair_counts[pair] <= 0:
                 del pair_counts[pair]
 
-        for pair in set(word_pairs):
+        for pair in set_pairs:
             pair_to_words[pair].remove(word)
 
             if not pair_to_words[pair]:
