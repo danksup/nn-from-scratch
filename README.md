@@ -34,7 +34,6 @@ logs:
 - optimizing
   
 ## TODO (not in order):
-- incremental BPE
 - checkpoint
 - lr scheduling
 - frequency penalty
@@ -62,7 +61,7 @@ dataset: 5 files | using: MLX | block_size: 1 | corpus char len: 3417355
 - Date: 2026-06-29 | 504964 function calls in 211.726 seconds | ram peaked at ~ 800MB | compiled optimizers
 #### slightly different configs, the rest is the same unless otherwise stated
 - Date 2026-06-30 | 623763 function calls in 204.493 seconds | ram peaked at ~ 800MB | grouped-query attention (8Q/4KV)
-- Date 2026-07-4 | 131387 function calls in 153.710 seconds | ram peaked at ~ 800MB | logsumexp cross entropy, compiled cross entropy; BPE Tokenizer, corpus char len: 1106747 param: 323712 (larger vocabulary because of BPE)
+- Date 2026-07-04 | 131387 function calls in 153.710 seconds | ram peaked at ~ 800MB | logsumexp cross entropy, compiled cross entropy; BPE Tokenizer, corpus char len: 1106747 param: 323712 (larger vocabulary because of BPE)
 
 ### Tokenizer
 - 11296590 corpus len | 2048 | fitting finished in 1614.249 py 
