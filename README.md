@@ -28,9 +28,11 @@ logs:
 - revert back to pythonic BPE (jul 2 2026)
 - optimizing BPE in jul 3 2026
 - incremental BPE in jul 4 2026
-
+- logsumexp crossentropy in jul 4 2026
+  
 ## Ongoing:
-
+- optimizing
+  
 ## TODO (not in order):
 - incremental BPE
 - checkpoint
@@ -58,9 +60,11 @@ dataset: 5 files | using: MLX | block_size: 1 | corpus char len: 3417355
 - Date: 2026-06-28 | 1092171 function calls in 239.626 seconds | ram peaked at ~ 800MB | compiled each layer backward an forward locally
 - Date: 2026-06-29 | 865328 function calls in 214.715 seconds | ram peaked at ~ 900MB | block level compilation
 - Date: 2026-06-29 | 504964 function calls in 211.726 seconds | ram peaked at ~ 800MB | compiled optimizers
+#### slightly different configs, the rest is the same unless otherwise stated
 - Date 2026-06-30 | 623763 function calls in 204.493 seconds | ram peaked at ~ 800MB | grouped-query attention (8Q/4KV)
+- Date 2026-07-4 | 131387 function calls in 153.710 seconds | ram peaked at ~ 800MB | logsumexp cross entropy, compiled cross entropy; BPE Tokenizer, corpus char len: 1106747 param: 323712 (larger vocabulary because of BPE)
 
-Tokenizer
+### Tokenizer
 - 11296590 corpus len | 2048 | fitting finished in 1614.249 py 
 - 11296590 corpus len | 2048 | fitting finished in 579.541 C
 - 11296590 corpus len | 2048 | fitting finished in 629.932 post optimized py (3 jul 2026)

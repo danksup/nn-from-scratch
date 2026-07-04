@@ -75,6 +75,10 @@ class Session:
     def validation(self, dataloader:DataLoader) -> Any:
         return self.transformer.validate(self.embedding, dataloader, self.configs["batch_size"], train_split=self.configs["train_split"])
     
+    def benchmark(self, dataloader:DataLoader, _pass=1):
+        bench = self.transformer.benchmark(dataloader, self.embedding, batch_size=self.configs["batch_size"], pass_=_pass)
+        return bench
+
     def train(self,dataloader:DataLoader,patience:int=10, display_message:bool=True):
         """
         Args:

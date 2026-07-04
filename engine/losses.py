@@ -1,37 +1,30 @@
 import engine.backend as nx
 from typing import Any
+from engine.activations import softmax
 
-def cross_entropy(probs:Any, target_idx):
+@nx.compile
+def cross_entropy(logits:Any, target_idx):
     '''
     |  |I
 
     ||   |_
     '''
-    if probs.ndim == 2:
-        row_coords = nx.arange(probs.shape[0])
-        p = nx.clip(probs[row_coords, target_idx], nx.float_32(1e-7), nx.float_32(1.0), dtype=nx.float32)
-        return -nx.log(p, dtype=nx.float32)
-    elif probs.ndim == 3:
-        B, T, V = probs.shape
-        row_b, row_t = nx.indices((B, T))
-        p = probs[row_b, row_t, target_idx]
-        p = nx.clip(p, 1e-12, 1.0)
-        return -nx.log(p)
-    else:
-        return -nx.log(probs[target_idx], dtype=nx.float32)
+    flat_logits = logits.reshape(-1, logits.shape[-1])
+    rows = nx.arange(flat_logits.shape[0], dtype=nx.int32)
+    flat_target = target_idx.reshape(-1)#.astype(nx.int32)
+    correct_logits = flat_logits[rows, flat_target]
+    loss = nx.logsumexp(flat_logits, axis=-1)  - correct_logits
+    return loss.reshape(target_idx.shape)
 
-def cross_entropy_gradient(probs:Any , target_idx) -> Any:
+@nx.compile
+def cross_entropy_gradient(logits:Any , target_idx) -> Any:
     '''
     derivative of cross entropy and softmax
     '''
+    probs = softmax(logits)
     probs_copy = nx.copy(probs)
-    if probs.ndim == 2:
-        row_coords = nx.arange(probs.shape[0])
-        probs_copy[row_coords, target_idx] -= nx.float_32(1.0)
-    elif probs.ndim == 3:
-        B, T, _ = probs.shape
-        row_b, row_t = nx.indices((B, T))
-        probs_copy[row_b, row_t, target_idx] -= 1.0
-    else:
-        probs_copy[target_idx] = probs_copy[target_idx]  - nx.float_32(1)
-    return probs_copy
+    flat_prob = probs_copy.reshape(-1, probs.shape[-1])
+    flat_target = target_idx.reshape(-1)#.astype(nx.int32)
+    rows = nx.arange(flat_prob.shape[0], dtype=nx.int32)
+    flat_prob[rows, flat_target] -= 1.0
+    return flat_prob.reshape(probs.shape)

@@ -298,3 +298,6 @@ def clear_cache():
 
 def repeat(a, repeats:int, axis:int=None):
     return _nx.repeat(a,repeats, axis=axis)
+
+def logsumexp(a:ArrayLike,*,axis=None,keepdims=False) -> ArrayLike:
+    return _nx.logsumexp(a, axis=axis, keepdims=keepdims)

@@ -1,20 +1,16 @@
 import os
 backend = os.environ["BACKEND"] = "mlx"
 import random
-# import mlx.core as mx
+import mlx.core as mx
 EPOCHS = 1
 LR = 1e-3
-EMBED_DIM = 64
-CONTEXT_SIZE = 64
+EMBED_DIM = 32
+CONTEXT_SIZE = 32
 BATCH_SIZE = 256
 BASE_WIDTH = 4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS//2
 VAL = .9
-#not hooked yet to session
-PATIENCE = 20
-TRESHOLD = 1e-2
-VOCAB_SIZE = 4096
 
 from pathlib import Path
 import time
@@ -28,6 +24,7 @@ from engine.tokenizer import Tokenizer
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.sessions import Session
+import engine.backend as nx
 
 configs = {
             "epochs": EPOCHS,
@@ -50,6 +47,7 @@ configs = {
         }
 
 corpus = ""
+tokenizer1 = Tokenizer.load("artifacts/tokenizer/session_4096_1783114959.tokenizer")
 files = []
 folder = Path("data")
 for file in folder.iterdir():
@@ -61,67 +59,34 @@ for file in files:
         data = f.read()
         corpus += data + "\n\n\n"
 
-
-
-# tokenizer1 = Tokenizer(VOCAB_SIZE)
-# t = int(time.time())
-# profiler = cProfile.Profile()
-# profiler.enable()
-# print(len(corpus))
-# start = time.perf_counter()
-# a =tokenizer1.fit(corpus)
-
-# profiler.disable()
-# stats = pstats.Stats(profiler)
-# stats.sort_stats("cumtime")
-# stats.print_stats(100)
-
-# end = time.perf_counter()
-# # # print(tokenizer1.vocab)
-# tokenizer_save_name = f"{VOCAB_SIZE}_{t}"
-# tokenizer1.save(tokenizer_save_name)
-# print(f"{tokenizer_save_name} saved. fitting finished in {end-start:.3f}")
-
-
-tokenizer1 = Tokenizer.load("artifacts/tokenizer/session_4096_1783114959.tokenizer")
 configs["dataset"] = f"{len(files)} files"
 weight_n = CONTEXT_SIZE * EMBED_DIM
 real_vocab_size = len(tokenizer1.vocab)
 
 embedding1 = Embedding(real_vocab_size, EMBED_DIM)
-
 tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
-# transformer.add_block(tblock2)
-# transformer.add_block(tblock3)
-# transformer.add_block(tblock4)
 start = time.perf_counter()
 configs["block_size"] = len(transformer.blocks)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
-end = time.perf_counter()
-print(f"something is happening here {end-start:.3f}")
 configs["corpus char len"] = dataloader.tokens.size
 session1 = Session(transformer,tokenizer1,embedding1, configs)
 
-a = random.randint(1,9999999999999)
-a = str(a)
 profiler = cProfile.Profile()
 profiler.enable()
-start = time.perf_counter()
-session1.train(dataloader, display_message=True)
+# start = time.perf_counter()
+# mx.metal.start_capture("transformer.gputrace")
+session1.benchmark(dataloader, 50)
 end = time.perf_counter()
-print(f"training finished. time: {end - start:.3f}s")
+# mx.metal.stop_capture()
+# print(f"training finished. time: {end - start:.3f}s")
 
 profiler.disable()
 stats = pstats.Stats(profiler)
 stats.sort_stats("cumtime")
 stats.print_stats(100)
 
-session1.save(f"val_test_{a}")
 
 
 

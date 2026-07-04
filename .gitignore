@@ -15,3 +15,5 @@ artifacts/sessions/*
 *.DS_Store
 
 *.gputrace
+
+tokenizer-demo/*

@@ -22,8 +22,8 @@ def softmax(x:Any, axis:Any=-1) -> Any:
     f(x) = exp(x - max(x)) / sum(exp(x - max(x)))
     """
     max_x = nx.max(x, axis=axis, keepdims=True)
-    exp_x = nx.exp(x - max_x, dtype=nx.float32)
-    return exp_x / nx.sum(exp_x, axis=axis, keepdims=True, dtype=nx.float32)
+    exp_x = nx.exp(x - max_x)
+    return exp_x / nx.sum(exp_x, axis=axis, keepdims=True)
 
 def softmax_derivative(s:Any, grad:Any) -> Any:
     """
@@ -36,7 +36,7 @@ def sigmoid(x:Any) -> Any:
     turns x into value between 0 and 1 \n
     f(x) = 1 / (1 + e**(-x))
     """
-    one = nx.float_32(1.0)
+    one = 1.0
     return one / (one + nx.exp(-x))
 
 def sigmoid_derivative(x:Any):

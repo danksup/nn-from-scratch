@@ -32,16 +32,13 @@ class AttentionLayer:
         scale = nx.float_32(1/self.scale)
         self.n_rep = self.n_heads // self.n_kv_heads 
 
-        # self.Wq = nx.uniform(-scale, scale, (embed_dim,embed_dim), dtype=nx.float16)
-        # self.Wk = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) 
-        # self.Wv = nx.uniform(-scale, scale, (embed_dim,embed_dim),dtype=nx.float16) 
         self.Wqkv = nx.uniform(-scale, scale, (embed_dim + 2 * n_kv_heads * self.head_dim, embed_dim), dtype=nx.float16) 
         self.Wo = nx.uniform(-scale,scale, (embed_dim,embed_dim), dtype=nx.float16) #projection
         self.dWqkv = None
         self.dWo = None
     
     @staticmethod
-    def _forward(fp16_x, causal_mask, embed_dim, n_kv_heads, n_heads, n_rep, head_dim, freqs, Wqkv, Wo):
+    def _forward(fp16_x:nx.ArrayLike, causal_mask:nx.ArrayLike, embed_dim:int, n_kv_heads:int, n_heads:int, n_rep:int, head_dim:int, freqs:int, Wqkv:nx.ArrayLike, Wo:nx.ArrayLike) -> tuple[nx.ArrayLike, tuple[nx.ArrayLike,...]]:
         """
         f(x) = softmax((Q @ K.T) / scale) * V \n
         rope(x): inject position
@@ -52,17 +49,21 @@ class AttentionLayer:
         \n
         return output projection Wo: all information from multiple heads back into one embedding size of embed_dim
         """
-        combined = fp16_x @ Wqkv.T
+        #fp_16_x shape = (B,T,D)
+        #Wqkv shape = (D + 2 * n_kv_heads * H, D), .T -> (D, D + 2 * n_kv_heads * H)
+        #combined shape = (B, T, D + 2 * n_kv_heads * H)
+        combined = fp16_x @ Wqkv.T 
         scale = nx.float_32(nx.sqrt(head_dim))
 
-        Q = combined[..., :embed_dim]
-        K = combined[..., embed_dim: embed_dim + (n_kv_heads * head_dim)]
-        V = combined[..., embed_dim + (n_kv_heads * head_dim):]
+        Q = combined[..., :embed_dim] #shape: (B, T, D)
+        K = combined[..., embed_dim: embed_dim + (n_kv_heads * head_dim)]  #shape: (B, T, n_kv_heads * H)
+        V = combined[..., embed_dim + (n_kv_heads * head_dim):] #shape: (B, T, n_kv_heads * H)
 
         B, T, _ = fp16_x.shape
         Q = Q.reshape(B, T, n_heads, head_dim).transpose(0,2,1,3)
         K = K.reshape(B, T, n_kv_heads, head_dim).transpose(0,2,1,3)
         V = V.reshape(B, T, n_kv_heads, head_dim).transpose(0,2,1,3)
+        #each QKV shape = (B, n_heads, T, H)
 
         Q = rope_forward(Q, freqs)
         K = rope_forward(K, freqs)
@@ -74,7 +75,6 @@ class AttentionLayer:
         repeats_V = nx.repeat(V,n_rep, axis=1 )
 
         scores = (Q @ repeats_K.transpose(0,1,3,2)) / scale
-
         #causal mask makes it decoder only. cant look into future contexts.
         scores = nx.where(causal_mask, -1e9, scores)
         weights = softmax(scores)
@@ -85,7 +85,7 @@ class AttentionLayer:
         return output_projected, cache
     
     @staticmethod
-    def _backward(gradient, caches, attn_params):
+    def _backward(gradient:nx.ArrayLike, caches:tuple[Any,...], attn_params: tuple[Any,...]) -> tuple[nx.ArrayLike,...]:
         fp16_x, Q,repeats_K, repeats_V, weights, output_concat = caches
         n_heads, head_dim, embed_dim, n_kv_heads, n_rep, Wo, freqs, Wqkv = attn_params
 

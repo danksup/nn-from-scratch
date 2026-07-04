@@ -6,6 +6,7 @@ from engine.optimizer import  AdamW
 from engine.transformer_block import TransformerBlock
 import engine.backend as nx
 from typing import Any
+import time
 # FLUSH_EVERY = 32
 
 class Transformer:
@@ -115,9 +116,9 @@ class Transformer:
         for contexts, next_tokens in dataloader.get_pairs(batch_size):              
             embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
             batch_scores, last_output, all_masks, all_caches = self.forward(embedded, embedding)
-            softmax_batch_scores = softmax(batch_scores)
-            loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
-            batch_gradient = cross_entropy_gradient(softmax_batch_scores, next_tokens)
+            loss = cross_entropy(batch_scores, next_tokens)
+            loss = nx.mean(loss)
+            batch_gradient = cross_entropy_gradient(batch_scores, next_tokens)
             batch_gradient /= (batch_gradient.shape[0] * batch_gradient.shape[1])
 
             block_gradient = batch_gradient @ embedding.lookup_table
@@ -151,11 +152,90 @@ class Transformer:
                 block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
                 block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
 
-            total_loss += loss.item() 
+            total_loss += loss.item() * next_tokens.size
             count += next_tokens.size
 
             del embedded, batch_scores, all_caches,all_masks, last_output, current_grad, d_table, all_network_params, optimized
             
+        final_loss = total_loss / count
+        return nx.float_32(final_loss)
+    
+    def benchmark(self, dataloader:DataLoader, embedding:Embedding, batch_size:int=32, pass_ =1):
+        total_loss = nx.float_32(0.0)
+        count = 0
+        batch_idx = 0
+        for contexts, next_tokens in dataloader.get_pairs(batch_size):  
+            if batch_idx == pass_:
+                break            
+            embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
+            batch_scores, last_output, all_masks, all_caches = self.forward(embedded, embedding)
+            loss = cross_entropy(batch_scores, next_tokens)
+            loss = nx.mean(loss)
+            # start = time.perf_counter()
+            nx.eval(loss)
+            # end = time.perf_counter()
+            # print(f"eval loss {end-start:.3f}")
+            batch_gradient = cross_entropy_gradient(batch_scores, next_tokens)
+            batch_gradient /= (batch_gradient.shape[0] * batch_gradient.shape[1])
+
+            block_gradient = batch_gradient @ embedding.lookup_table
+            d_table = batch_gradient.reshape(-1, self.vocab_size).T @ last_output.reshape(-1, self.embed_dim) 
+            
+            current_grad = self.backward(block_gradient, embedding.lookup_table, last_output, all_masks, all_caches)
+            # start = time.perf_counter()
+            nx.eval(current_grad)
+            # end = time.perf_counter()
+            # print(f"eval current_grad {end-start:.3f}")
+            embedding_gradient = nx.zeros_like(embedding.lookup_table, dtype=nx.float32)
+            embedding_gradient = nx.add_at(embedding_gradient, contexts, current_grad)
+
+            total_embedding_gradient = embedding_gradient + d_table
+            optimized = self.optimizer.step_many([("embedding",embedding.lookup_table, total_embedding_gradient)])  
+            embedding.lookup_table = optimized["embedding"]
+            # start = time.perf_counter()
+            nx.eval(embedding.lookup_table)
+            # end = time.perf_counter()
+            # print(f"eval embedding {end-start:.3f}")
+
+            all_network_params = []
+            for i,block in enumerate(self.blocks):
+                all_network_params.extend(
+                    [(f"Wqkv_{i}", block.attention.Wqkv, block.attention.dWqkv),
+                    (f"Wo_{i}", block.attention.Wo, block.attention.dWo),
+                    (f"ff_wcombined_{i}", block.ff.Wcombined, block.ff.dWcombined),
+                    (f"ff_wout_{i}", block.ff.Wout, block.ff.dWout),
+                    (f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma),
+                    (f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)])
+            
+            optimized = self.optimizer.step_many(all_network_params)
+            for i,block in enumerate(self.blocks):
+                block.attention.Wqkv = optimized[f"Wqkv_{i}"]
+                block.attention.Wo = optimized[f"Wo_{i}"]
+                block.ff.Wcombined = optimized[f"ff_wcombined_{i}"]
+                block.ff.Wout = optimized[f"ff_wout_{i}"]
+                block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
+                block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
+            
+            to_eval = []
+            for block in self.blocks:
+                to_eval.append(block.attention.Wqkv)
+                to_eval.append( block.attention.Wo)
+                to_eval.append(block.ff.Wcombined)
+                to_eval.append(block.ff.Wout)
+                to_eval.append(block.rmsnorm1.gamma )
+                to_eval.append(block.rmsnorm2.gamma )
+
+            # start = time.perf_counter()
+            nx.eval(*to_eval)
+            # end = time.perf_counter()
+            # print(f"eval network {end-start:.3f}")
+
+            total_loss += loss.item() * next_tokens.size
+            count += next_tokens.size
+
+            del embedded, batch_scores, all_caches,all_masks, last_output, current_grad, d_table, all_network_params, optimized
+            
+            batch_idx += 1
         final_loss = total_loss / count
         return nx.float_32(final_loss)
     
@@ -167,11 +247,10 @@ class Transformer:
         for contexts, next_tokens in dataloader.get_validation_pairs(batch_size):
             embedded = embedding.forward(contexts) 
             batch_validation_scores = self.forward(embedded, embedding, False, False)
-            softmax_batch_scores = softmax(batch_validation_scores)
             
-            val_loss = nx.sum(cross_entropy(softmax_batch_scores, next_tokens), dtype=nx.float32)
-
-            total_loss += val_loss.item()
+            val_loss = cross_entropy(batch_validation_scores, next_tokens)
+            val_loss = nx.mean(val_loss)
+            total_loss += val_loss.item() * next_tokens.size
             count += next_tokens.size
             
         final_loss = total_loss / count
