@@ -68,3 +68,4 @@ dataset: 5 files | using: MLX | block_size: 1 | corpus char len: 3417355
 - 11296590 corpus len | 2048 | fitting finished in 579.541 C
 - 11296590 corpus len | 2048 | fitting finished in 629.932 post optimized py (3 jul 2026)
 - 11296590 corpus len | 2048 | fitting finished in 17.050 incremental BPE py (4 jul 2026)
+- 195_605_563 corpus len | 8192 |fitting finished in 124.606 (4 jul 2026)

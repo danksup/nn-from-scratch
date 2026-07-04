@@ -2,7 +2,7 @@ import os
 backend = os.environ["BACKEND"] = "mlx"
 import random
 # import mlx.core as mx
-EPOCHS = 1
+EPOCHS = 20
 LR = 1e-3
 EMBED_DIM = 64
 CONTEXT_SIZE = 64
@@ -14,7 +14,9 @@ VAL = .9
 #not hooked yet to session
 PATIENCE = 20
 TRESHOLD = 1e-2
-VOCAB_SIZE = 4096
+VOCAB_SIZE = 8192
+
+TOKENIZER_PATH = "artifacts/tokenizer/tokenizer16384_195605563len.tokenizer"
 
 from pathlib import Path
 import time
@@ -61,29 +63,7 @@ for file in files:
         data = f.read()
         corpus += data + "\n\n\n"
 
-
-
-# tokenizer1 = Tokenizer(VOCAB_SIZE)
-# t = int(time.time())
-# profiler = cProfile.Profile()
-# profiler.enable()
-# print(len(corpus))
-# start = time.perf_counter()
-# a =tokenizer1.fit(corpus)
-
-# profiler.disable()
-# stats = pstats.Stats(profiler)
-# stats.sort_stats("cumtime")
-# stats.print_stats(100)
-
-# end = time.perf_counter()
-# # # print(tokenizer1.vocab)
-# tokenizer_save_name = f"{VOCAB_SIZE}_{t}"
-# tokenizer1.save(tokenizer_save_name)
-# print(f"{tokenizer_save_name} saved. fitting finished in {end-start:.3f}")
-
-
-tokenizer1 = Tokenizer.load("artifacts/tokenizer/session_4096_1783114959.tokenizer")
+tokenizer1 = Tokenizer.load(TOKENIZER_PATH)
 configs["dataset"] = f"{len(files)} files"
 weight_n = CONTEXT_SIZE * EMBED_DIM
 real_vocab_size = len(tokenizer1.vocab)
@@ -91,14 +71,14 @@ real_vocab_size = len(tokenizer1.vocab)
 embedding1 = Embedding(real_vocab_size, EMBED_DIM)
 
 tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
+tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
+tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
+tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
-# transformer.add_block(tblock2)
-# transformer.add_block(tblock3)
-# transformer.add_block(tblock4)
+transformer.add_block(tblock2)
+transformer.add_block(tblock3)
+transformer.add_block(tblock4)
 start = time.perf_counter()
 configs["block_size"] = len(transformer.blocks)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])

@@ -301,3 +301,6 @@ def repeat(a, repeats:int, axis:int=None):
 
 def logsumexp(a:ArrayLike,*,axis=None,keepdims=False) -> ArrayLike:
     return _nx.logsumexp(a, axis=axis, keepdims=keepdims)
+
+def norm(a:ArrayLike, ord:Any=None, axis=None, keepdims:bool=False):
+    return _nx.linalg.norm(a, ord, axis=axis, keepdims=keepdims)

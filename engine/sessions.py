@@ -150,16 +150,23 @@ class Session:
 
         raw_token = nx.array(self._sample(logits,  temperature, top_k, top_p))
         token = raw_token.item()
-        print(self.tokenizer.decode([token]),end="",flush=True)
+        decoded = self.tokenizer.decode([token])
+        print(decoded,end="",flush=True)
+        if "<EOT>" in decoded:
+            return
+
         next_token = nx.array([[token]], dtype=nx.int32)
 
         for i in range(n-1):
-            position += 1
             logits, all_caches = self.transformer.inference(next_token,self.configs["context_size"], self.embedding ,all_caches, position)
             raw_token = self._sample(logits, temperature, top_k, top_p)
             token = raw_token.item()
-            print(self.tokenizer.decode([token]),end="",flush=True)
+            decoded = self.tokenizer.decode([token])
+            print(decoded,end="",flush=True)
+            if "<EOT>" in decoded:
+                break
             next_token = nx.array([[token]], dtype=nx.int32)
+            position += 1
 
     def _sample(self, logits, temperature=0.8, top_k=3, top_p=0.9):
         if temperature == 0.0:

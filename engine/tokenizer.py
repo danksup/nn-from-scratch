@@ -211,7 +211,7 @@ class Tokenizer:
     
     def save(self, filename):
         tokenizer = self.to_dict()
-        filename = f"session_{filename}.tokenizer"
+        filename = f"tokenizer{filename}.tokenizer"
         with open(f"artifacts/tokenizer/{filename}", "wb") as f:
             f.write(b"tokenizer")
             f.write((1).to_bytes(4, "little"))
