@@ -14,8 +14,7 @@ def n_closest(word:str, tokenizer:Tokenizer ,embedding:Embedding, n:int=10):
     distance = (whole_embedding @ lookuptable.T) / (query_norm * table_norms) #type:ignore
     ids = nx.argsort(distance)[::-1]
     top_ids = ids[:n]
-
-    decoded = []
-    for i in top_ids:
-        print(tokenizer.decode([i.item()]))
+ 
+    for id in top_ids:
+        print(tokenizer.decode([id.item()]), distance[id].item())
     

@@ -1,10 +1,10 @@
 import engine.backend as nx
 from engine.sessions import Session
 
-session = Session.load("artifacts/sessions/session_val_test_8705484269019.ram2n")
+session = Session.load("artifacts/sessions/session_val_test_8256817151568.ram2n")
 tokenizer = session.tokenizer
 context_size = session.configs["context_size"]
-context = "Question: what was the first nfl domed stadium?"
+context = "Question: where "
 print(f"input: {context}")
 context = tokenizer.encode(context)
 context = context.reshape(-1, context.shape[0])
