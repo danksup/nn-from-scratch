@@ -2,7 +2,7 @@ import os
 backend = os.environ["BACKEND"] = "mlx"
 import random
 # import mlx.core as mx
-EPOCHS = 10
+EPOCHS = 50
 LR = 1e-3
 EMBED_DIM = 64
 CONTEXT_SIZE = 64
@@ -72,12 +72,12 @@ embedding1 = Embedding(real_vocab_size, EMBED_DIM)
 tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
+tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
 transformer.add_block(tblock2)
 transformer.add_block(tblock3)
-# transformer.add_block(tblock4)
+transformer.add_block(tblock4)
 configs["block_size"] = len(transformer.blocks)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 configs["corpus char len"] = dataloader.tokens.size

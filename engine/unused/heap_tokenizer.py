@@ -37,12 +37,9 @@ class Tokenizer:
         return counter
     
     @staticmethod
-    def get_pairs(word:list[str]|tuple[str,...]) -> list[tuple[str,...]]:
-        pairs = []
+    def get_pairs(word):
         for i in range(len(word) - 1):
-            pair = (word[i], word[i+1])
-            pairs.append(pair)
-        return pairs
+            yield (word[i], word[i + 1])
     
     @staticmethod
     def get_pair_counts( word_counts:dict) -> Counter:
@@ -78,76 +75,56 @@ class Tokenizer:
 
     @staticmethod
     def remove_word(word:tuple[str,...], freq:int, pair_counts:Counter[tuple[str,...]], pair_to_words:dict[tuple[str,...],set[tuple[str,...]]], pair_heap):
-        word_pairs = Counter(Tokenizer.get_pairs(word))
+        word_pairs = list( Tokenizer.get_pairs(word))
+        set_pairs = set(word_pairs)
 
-        for pair, times in word_pairs.items():
-            pair_counts[pair] -= freq * times
+        for pair in word_pairs:
+            pair_counts[pair] -= freq
+            
+        for pair in set_pairs:
             if pair_counts[pair] > 0:
                 heap.heappush(pair_heap, (-pair_counts[pair], pair))
-
-        set_pairs = set(word_pairs)
-        for pair in set_pairs:
-            if pair_counts[pair] <= 0:
-                del pair_counts[pair]
+            else:
+                if pair in pair_counts:
+                    del pair_counts[pair]
 
         for pair in set_pairs:
             pair_to_words[pair].remove(word)
-
             if not pair_to_words[pair]:
                 pair_to_words.pop(pair)
     
     @staticmethod
     def add_word(word:tuple[str,...], freq:int, pair_counts:Counter[tuple[str,...]], pair_to_words:dict[tuple[str,...],set[tuple[str,...]]], pair_heap):
-        word_pairs = Counter(Tokenizer.get_pairs(word))
+        word_pairs = list( Tokenizer.get_pairs(word))
         
-        for pair, times in word_pairs.items():
-            pair_counts[pair] += freq * times
+        for pair in word_pairs:
+            pair_counts[pair] += freq 
+           
+        for pair in set(word_pairs):
             if pair_counts[pair] > 0:
                 heap.heappush(pair_heap, (-pair_counts[pair], pair))
+                if pair not in pair_to_words:
+                    pair_to_words[pair] = set()
 
-        for pair in set(word_pairs):
-            if pair not in pair_to_words:
-                pair_to_words[pair] = set()
-
-            pair_to_words[pair].add(word)
+                pair_to_words[pair].add(word)
 
     @staticmethod
-    def merge(word:tuple, best_pair, new_id):
+    def merge(word:list, best_pair, new_id):
         i = 0
         n = len(word)
-        found = False
-
+        new_word = []
         while i < n - 1:
             pair = word[i], word[i + 1]
             if pair == best_pair:
-                found = True
-                break
-            i += 1
+                new_word.append(new_id)
+                i += 2
+            else:
+                new_word.append(word[i])
+                i+=1
+        if i == n - 1:
+            new_word.append(word[n-1])
 
-        i = 0
-        if found == True:
-            new_word = []
-            while i < n - 1:
-                pair = word[i], word[i + 1]
-                if pair == best_pair:
-                    new_word.append(new_id)
-                    i += 2
-                else:
-                    new_word.append(word[i])
-                    i+=1
-            if i == n - 1:
-                new_word.append(word[n-1])
-            return new_word
-        else:
-            return word
-
-
-    @staticmethod
-    def merge_pair(words:list, best_pair:tuple, new_id):
-        merged = []
-        for word in words:
-            merged.append(Tokenizer.merge(word, best_pair, new_id))
-        return merged
+        return new_word
 
     def fit(self, corpus:str):
         self.init_vocab(corpus)
@@ -207,7 +184,7 @@ class Tokenizer:
                 if best_pair is None:
                     break
 
-                word = self.merge_pair([word], best_pair, best_new_id)[0]
+                word = self.merge(word, best_pair, best_new_id)
                 words[idx] = word
 
         tokens = [token for word in words for token in word]

@@ -29,6 +29,7 @@ logs:
 - optimizing BPE in jul 3 2026
 - incremental BPE in jul 4 2026
 - logsumexp crossentropy in jul 4 2026
+- misc stuff jul 5 2026
   
 ## Ongoing:
 - updating old type hints

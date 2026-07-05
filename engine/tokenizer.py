@@ -90,8 +90,7 @@ class Tokenizer:
                 pair_to_words[pair] = set()
 
             pair_to_words[pair].add(word)
-
-
+    
     @staticmethod
     def merge(word:list, best_pair, new_id):
         i = 0
