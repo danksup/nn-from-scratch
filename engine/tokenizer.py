@@ -21,7 +21,11 @@ class Tokenizer:
                 self.id_to_token[next_id] = char
 
     def word_to_ids(self, word: str):
-        return [self.vocab[ch] for ch in word] + [self.vocab["</w>"]]
+        tokenized = []
+        for ch in word:
+            tokenized.append(self.vocab.get(ch, self.vocab["<UNK>"]))
+        tokenized.append(self.vocab["</w>"])
+        return tokenized
 
     @staticmethod 
     def get_word_counts(words:list) -> dict:

@@ -35,4 +35,4 @@ def save_txt(filename, txt):
         f.write(txt)
     print(f"saved {filename}.txt")
 
-save_txt("qa_short",extract_json_to_txt("data/json/qa_dataset.json", "question", "answer"))
+save_txt("qa_short",extract_json_to_txt("data/json/something.json", "question", "answer"))
