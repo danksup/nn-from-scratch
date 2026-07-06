@@ -8,6 +8,7 @@ import engine.backend as nx
 from typing import Any
 import time
 # FLUSH_EVERY = 32
+PI = 3.141592653589793
 
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
@@ -129,8 +130,12 @@ class Transformer:
             embedding_gradient = nx.add_at(embedding_gradient, contexts, current_grad)
 
             total_embedding_gradient = embedding_gradient + d_table
-            optimized = self.optimizer.step_many([("embedding",embedding.lookup_table, total_embedding_gradient)])  
-            embedding.lookup_table = optimized["embedding"]
+
+             #cosine decay: lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + cos(pi * current_step / total_steps))
+            current_step = self.optimizer.state["t"]
+            total_step = ((len(dataloader.train_contexts)) // batch_size) * total_epoch
+            progress = min(1, current_step / total_step) 
+            self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(PI * progress))
 
             all_network_params = []
             for i,block in enumerate(self.blocks):
@@ -141,6 +146,7 @@ class Transformer:
                     (f"ff_wout_{i}", block.ff.Wout, block.ff.dWout),
                     (f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma),
                     (f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)])
+            all_network_params.extend([("embedding",embedding.lookup_table, total_embedding_gradient)])
             
             optimized = self.optimizer.step_many(all_network_params)
             for i,block in enumerate(self.blocks):
@@ -150,16 +156,10 @@ class Transformer:
                 block.ff.Wout = optimized[f"ff_wout_{i}"]
                 block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
                 block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
+            embedding.lookup_table = optimized["embedding"]
 
             total_loss += loss.item() * next_tokens.size
             count += next_tokens.size
-            
-
-            #cosine decay: lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + cos(pi * current_step / total_steps))
-            current_step = self.optimizer.state["t"]
-            total_step = ((len(dataloader.train_contexts)) // batch_size) * total_epoch
-            progress = min(1, current_step / total_step) 
-            self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(22/7 * progress))
             
         final_loss = total_loss / count
         return nx.float_32(final_loss)

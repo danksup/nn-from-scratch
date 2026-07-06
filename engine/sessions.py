@@ -90,6 +90,7 @@ class Session:
             t_mess = f"[TRAINING]param: {self.count_params()} "
             for key,val in self.configs.items():
                 t_mess += f"{key}: {val}\n"
+            # t_mess += f"current_lr = {self.transformer.optimizer.lr}"
             print(t_mess)        
         epoch = 0
         try:
