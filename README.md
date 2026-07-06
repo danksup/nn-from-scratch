@@ -49,10 +49,14 @@ logs:
 
 ## Bugs:
 ### Fixed
-- inference degradation after a certain number of tokens (fixed jul 1 2026) -> fix: sliding kv position
+- inference degraded after a certain number of tokens 
+  - cause: position
+  - fix: sliding kv position (fixed jul 1 2026) 
+- AGX: exceeded compiled variants footprint limit (MLX); time increases per epoch; ram usage shoots up (jul 7 2026)
+  - cause: not sure, likely type mismatch
+  - fix: removed @nx.compile decorator from AdamW._step (jul 7 2026)
 ### Open
 - inference breaks when token length is too large -> generate freqs on demand when needed (jun 29 2026)
-- AGX: exceeded compiled variants footprint limit (MLX) -> unknown (jul 7 2026)
   
 # Performance Logs
 Apple M1 Pro \

@@ -198,8 +198,6 @@ class Transformer:
             embedding_gradient = nx.add_at(embedding_gradient, contexts, current_grad)
 
             total_embedding_gradient = embedding_gradient + d_table
-            optimized = self.optimizer.step_many([("embedding",embedding.lookup_table, total_embedding_gradient)])  
-            embedding.lookup_table = optimized["embedding"]
             # start = time.perf_counter()
             nx.eval(embedding.lookup_table)
             # end = time.perf_counter()

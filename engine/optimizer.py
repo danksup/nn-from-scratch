@@ -42,9 +42,9 @@ class AdamW:
                 optimized[name] = new_params[idx]
         return optimized
     
-    @nx.compile
+    # @nx.compile
     @staticmethod
-    def __step(m_v_t, params:Any, grads:Any, lr:float, epsilon:float, beta1:float, beta2:float, weight_decay:float) -> Any: 
+    def __step(m_v_t, params:Any, grads:Any, lr:Any, epsilon:float, beta1:float, beta2:float, weight_decay:float) -> Any: 
         m,v,t = m_v_t       
         norm = nx.sqrt(nx.sum(grads**2, axis=tuple(range(1, grads.ndim)), keepdims=True))
         grads = nx.where(norm > 1.0, grads * (1.0 / (norm + epsilon)), grads)
