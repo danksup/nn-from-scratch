@@ -53,8 +53,9 @@ logs:
   - cause: position
   - fix: sliding kv position (fixed jul 1 2026) 
 - AGX: exceeded compiled variants footprint limit (MLX); time increases per epoch; ram usage shoots up (jul 7 2026)
-  - cause: not sure, likely type mismatch
-  - fix: removed @nx.compile decorator from AdamW._step (jul 7 2026)
+  - cause: it likely doesnt like non mlx object changing, in this case the value `t` inside optimizer being python int that increments. 
+  - ~~fix: removed @nx.compile decorator from AdamW._step (jul 7 2026)~~
+  - fix: initializing `t` as an mlx array.
 ### Open
 - inference breaks when token length is too large -> generate freqs on demand when needed (jun 29 2026)
   

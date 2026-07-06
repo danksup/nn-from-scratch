@@ -31,7 +31,7 @@ int64 = _nx.int64
 int32 = _nx.int32
 bool_ = _nx.bool_
 
-def array(x:list | ArrayLike, dtype=None) -> ArrayLike:
+def array(x:Any, dtype=None) -> ArrayLike:
     if dtype is None:
         dtype = float32
     return _nx.array(x, dtype=dtype)

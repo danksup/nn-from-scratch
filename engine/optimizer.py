@@ -5,7 +5,7 @@ class AdamW:
     def __init__(self, lr=0.01, beta:float=0.9, beta2:float=0.999, epsilon:float=1e-8, weight_decay=0.01) -> None:
         # self.memory = {}
         self.state = {}
-        self.state["t"] = 0
+        self.state["t"] = nx.array(0, dtype=nx.int32)
         self.lr = nx.float_32(lr)
         self.beta1 = nx.float_32(beta)
         self.beta2 = nx.float_32(beta2)
@@ -36,13 +36,12 @@ class AdamW:
             state_shape = self.state[shape]    
             m_v_t = (state_shape["m"], state_shape["v"], self.state["t"])
             new_params, m,v,t = self.__step(m_v_t,params,gradients,self.lr,  self.epsilon, self.beta1, self.beta2, self.weight_decay)
-            # self.state[shape] = {"m":m, "v":v, "t":t}
             self.state[shape] = {"m":m, "v":v}
             for idx, name in enumerate(names):
                 optimized[name] = new_params[idx]
         return optimized
     
-    # @nx.compile
+    @nx.compile
     @staticmethod
     def __step(m_v_t, params:Any, grads:Any, lr:Any, epsilon:float, beta1:float, beta2:float, weight_decay:float) -> Any: 
         m,v,t = m_v_t       
