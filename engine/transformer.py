@@ -137,6 +137,7 @@ class Transformer:
             progress = min(1, current_step / total_step) 
             self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(PI * progress))
 
+
             all_network_params = []
             for i,block in enumerate(self.blocks):
                 all_network_params.extend(
@@ -168,6 +169,9 @@ class Transformer:
         total_loss = nx.float_32(0.0)
         count = 0
         batch_idx = 0
+        min_lr = 1e-4
+        max_lr = 1e-3
+        total_epoch = 1
         for contexts, next_tokens in dataloader.get_pairs(batch_size):  
             if batch_idx == pass_:
                 break            
@@ -201,6 +205,11 @@ class Transformer:
             # end = time.perf_counter()
             # print(f"eval embedding {end-start:.3f}")
 
+            current_step = self.optimizer.state["t"]
+            total_step = ((len(dataloader.train_contexts)) // batch_size) * total_epoch
+            progress = min(1, current_step / total_step) 
+            self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(PI * progress))
+
             all_network_params = []
             for i,block in enumerate(self.blocks):
                 all_network_params.extend(
@@ -210,6 +219,7 @@ class Transformer:
                     (f"ff_wout_{i}", block.ff.Wout, block.ff.dWout),
                     (f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma),
                     (f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)])
+            all_network_params.extend([("embedding",embedding.lookup_table, total_embedding_gradient)])
             
             optimized = self.optimizer.step_many(all_network_params)
             for i,block in enumerate(self.blocks):
@@ -219,18 +229,10 @@ class Transformer:
                 block.ff.Wout = optimized[f"ff_wout_{i}"]
                 block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
                 block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
-            
-            to_eval = []
-            for block in self.blocks:
-                to_eval.append(block.attention.Wqkv)
-                to_eval.append( block.attention.Wo)
-                to_eval.append(block.ff.Wcombined)
-                to_eval.append(block.ff.Wout)
-                to_eval.append(block.rmsnorm1.gamma )
-                to_eval.append(block.rmsnorm2.gamma )
+            embedding.lookup_table = optimized["embedding"]
 
             # start = time.perf_counter()
-            nx.eval(*to_eval)
+            # nx.eval(*to_eval)
             # end = time.perf_counter()
             # print(f"eval network {end-start:.3f}")
 

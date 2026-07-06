@@ -33,6 +33,7 @@ logs:
 - lr scheduling (cosine decay) in jul 6 2026
   
 ## Ongoing:
+- bug fix
 - updating old type hints
 - adding more comments/descriptions/docstrings/whatever
 - optimizing
@@ -51,6 +52,7 @@ logs:
 - inference degradation after a certain number of tokens (fixed jul 1 2026) -> fix: sliding kv position
 ### Open
 - inference breaks when token length is too large -> generate freqs on demand when needed (jun 29 2026)
+- AGX: exceeded compiled variants footprint limit -> unknown (jul 7 2026)
   
 # Performance Logs
 Apple M1 Pro \
