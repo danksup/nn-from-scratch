@@ -34,14 +34,14 @@ class TransformerBlock:
         rmsnorm1_out, caches_rmsnorm1 = RMSNorm._forward(x, gamma1,epsilon)
 
         attn_out, caches_attn = AttentionLayer._forward(rmsnorm1_out,causal_mask, embed_dim, n_kv_heads,n_heads, n_rep, head_dim, freqs, Wqkv, Wo,)
-        attn_out, mask1 = Dropout._forward(attn_out, p,is_training)
-        attn_out = attn_out + fp16_x
+        drop_attn_out, mask1 = Dropout._forward(attn_out, p,is_training)
+        attn_out = drop_attn_out + fp16_x
 
         rmsnorm2_out, caches_rmsnorm2 = RMSNorm._forward(attn_out, gamma2,epsilon)
 
         ff_out,caches_ff = SwiGLU._forward(rmsnorm2_out, hidden_width, Wcombined, Wout)
-        ff_out, mask2 =  Dropout._forward(ff_out, p,is_training)
-        ff_out = ff_out + attn_out
+        drop_ff_out, mask2 =  Dropout._forward(ff_out, p,is_training)
+        ff_out = drop_ff_out + attn_out
         
         
         masks = (mask1, mask2)
@@ -51,15 +51,15 @@ class TransformerBlock:
     @nx.compile
     @staticmethod
     def _backward(gradient:Any, mask1:Any, mask2:Any, caches_attn:tuple[Any,...], caches_ff:tuple[Any,...], caches_rmsnorm1:tuple[Any,...], caches_rmsnorm2:tuple[Any,...], d_attn_params:tuple[Any,...], gamma1:Any, gamma2:Any, ff_params:tuple) -> tuple[Any, Any, Any, Any, Any, Any, Any]:
-        d_ff = Dropout._backward(gradient, mask2, 0.1)
-        dx_ff, dWout, dWcombined = SwiGLU._backward(d_ff, caches_ff, ff_params)
+        d_ff_drop = Dropout._backward(gradient, mask2, 0.1)
+        dx_ff, dWout, dWcombined = SwiGLU._backward(d_ff_drop, caches_ff, ff_params)
 
         d_rmsn2,d_gamma2 = RMSNorm._backward(dx_ff, caches_rmsnorm2 ,gamma2)
 
         d_attn_out = gradient + d_rmsn2
 
-        d_attn = Dropout._backward(d_attn_out, mask1, 0.1)
-        d_attn, dWqkv, dWo = AttentionLayer._backward(d_attn, caches_attn, d_attn_params)
+        d_attn_drop = Dropout._backward(d_attn_out, mask1, 0.1)
+        d_attn, dWqkv, dWo = AttentionLayer._backward(d_attn_drop, caches_attn, d_attn_params)
 
         d_rmsn1, d_gamma1 = RMSNorm._backward(d_attn,caches_rmsnorm1,gamma1)
 

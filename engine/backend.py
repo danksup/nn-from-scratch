@@ -7,7 +7,6 @@ from typing import Any, Union
 import os
 import mlx.core as mx
 import numpy as np
-import functools
 ArrayLike = Union[mx.array, np.ndarray]
 backend = os.environ.get("BACKEND", "auto").lower()
 

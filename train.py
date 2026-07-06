@@ -2,12 +2,12 @@ import os
 backend = os.environ["BACKEND"] = "auto"
 import random
 # import mlx.core as mx
-EPOCHS = 1
+EPOCHS = 3
 LR = 1e-3
-EMBED_DIM = 64
-CONTEXT_SIZE = 64
-BATCH_SIZE = 256
-BASE_WIDTH = 4 * EMBED_DIM 
+EMBED_DIM = 128
+CONTEXT_SIZE = 32
+BATCH_SIZE = 128
+BASE_WIDTH = 768#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS//2
 VAL = .9
@@ -15,7 +15,7 @@ VAL = .9
 PATIENCE = 20
 TRESHOLD = 1e-2
 
-TOKENIZER_PATH = "artifacts/tokenizer/tokenizer32768_189968863len.tokenizer"
+TOKENIZER_PATH = "artifacts/tokenizer/tokenizer8192_198358489len.tokenizer"
 
 from pathlib import Path
 import time
@@ -63,6 +63,7 @@ for file in files:
         corpus += data + "\n\n\n"
 
 tokenizer1 = Tokenizer.load(TOKENIZER_PATH)
+# print(tokenizer1.vocab)
 configs["dataset"] = f"{len(files)} files"
 weight_n = CONTEXT_SIZE * EMBED_DIM
 real_vocab_size = len(tokenizer1.vocab)
@@ -70,9 +71,9 @@ real_vocab_size = len(tokenizer1.vocab)
 embedding1 = Embedding(real_vocab_size, EMBED_DIM)
 
 tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-# tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
+tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
+tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
+tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
 # transformer.add_block(tblock2)
@@ -80,7 +81,12 @@ transformer.add_block(tblock)
 # transformer.add_block(tblock4)
 configs["block_size"] = len(transformer.blocks)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
-configs["corpus char len"] = dataloader.tokens.size
+
+corpus_len = len(corpus)
+token_size = dataloader.tokens.size
+ratio = ((corpus_len - token_size )/corpus_len) * 100
+configs["corpus char len"] = f"{corpus_len} -> BPE compression ({len(tokenizer1.vocab)} vocab size): {token_size}. ratio = {ratio:.3f}% "
+
 session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
@@ -97,7 +103,7 @@ stats = pstats.Stats(profiler)
 stats.sort_stats("cumtime")
 stats.print_stats(100)
 
-# session1.save(f"val_test_{a}")
+session1.save(f"val_test_{a}")
 
 
 

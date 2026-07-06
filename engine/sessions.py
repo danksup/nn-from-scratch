@@ -99,10 +99,10 @@ class Session:
             for i in range(self.configs["epochs"]):
                 epoch = i
                 start = time.perf_counter()
-                error = self.transformer.train(dataloader, self.embedding, batch_size=self.configs["batch_size"])
+                error = self.transformer.train(dataloader, self.embedding, self.configs["epochs"], batch_size=self.configs["batch_size"])
                 val_loss = self.validation(dataloader)
             
-                gc.collect()
+                # gc.collect()
                 end = time.perf_counter()
 
                 time_ = end-start
@@ -130,7 +130,7 @@ class Session:
                         break
                 display_every = max(1, self.configs["epochs"] // 10)
                 if display_message and( i % display_every == 0 or i == self.configs["epochs"] - 1):
-                    print(f"epoch {epoch} | avg loss: {error} | val: {val_loss} | time: {time_}")
+                    print(f"epoch {epoch} | avg loss: {error} | val: {val_loss} | lr: {self.transformer.optimizer.lr} | time: {time_}")
                     
                 prev_error = error
         except ValueError as e:

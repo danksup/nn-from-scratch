@@ -30,6 +30,7 @@ logs:
 - incremental BPE in jul 4 2026
 - logsumexp crossentropy in jul 4 2026
 - misc stuff jul 5 2026
+- lr scheduling (cosine decay) in jul 6 2026
   
 ## Ongoing:
 - updating old type hints
@@ -38,7 +39,6 @@ logs:
   
 ## TODO (not in order):
 - checkpoint
-- lr scheduling
 - frequency penalty
 - more optimization
   

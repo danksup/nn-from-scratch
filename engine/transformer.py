@@ -52,7 +52,6 @@ class Transformer:
         all_caches = []
 
         for block in self.blocks:
-            # ff_out,masks, caches = block.forward(output, is_training)
             B,T,_ = output.shape
             Wqkv = block.attention.Wqkv
             Wo = block.attention.Wo
@@ -104,7 +103,7 @@ class Transformer:
         
         return current_grad
     
-    def train(self, dataloader:DataLoader, embedding:Embedding, batch_size:int=32):
+    def train(self, dataloader:DataLoader, embedding:Embedding, total_epoch:int, batch_size:int=32, min_lr = 1e-4, max_lr= 1e-3):
         '''
         Args:
             dataloader: Dataloader object
@@ -154,8 +153,13 @@ class Transformer:
 
             total_loss += loss.item() * next_tokens.size
             count += next_tokens.size
+            
 
-            del embedded, batch_scores, all_caches,all_masks, last_output, current_grad, d_table, all_network_params, optimized
+            #cosine decay: lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + cos(pi * current_step / total_steps))
+            current_step = self.optimizer.state["t"]
+            total_step = ((len(dataloader.train_contexts)) // batch_size) * total_epoch
+            progress = min(1, current_step / total_step) 
+            self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(22/7 * progress))
             
         final_loss = total_loss / count
         return nx.float_32(final_loss)
