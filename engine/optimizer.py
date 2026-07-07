@@ -56,11 +56,25 @@ class AdamW:
         return params, m, v, t
     
     def to_dict(self) -> dict:
-        return self.state
+        state_copy = {}
+        state_copy["t"] = self.state["t"].item()
+        for key, value in self.state.items():
+            shape_copy = {}
+            if key != "t":
+                shape_copy["m"] = value["m"].tolist()
+                shape_copy["v"] = value["v"].tolist()
+                state_copy[key] = shape_copy
+        return state_copy
 
     @classmethod
     def from_dict(cls, thing):
         adam = cls()
-        adam.state = thing
+        adam.state["t"] = nx.array(thing["t"], dtype=nx.int32)
+        for key, value in thing.items():
+            shape_copy = {}
+            if key != "t":
+                shape_copy["m"] = nx.array(value["m"], dtype=nx.float32)
+                shape_copy["v"] = nx.array(value["v"], dtype=nx.float32)
+                adam.state[key] = shape_copy
         return adam
 

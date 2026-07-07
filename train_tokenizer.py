@@ -3,7 +3,7 @@ import time
 from engine.tokenizer import Tokenizer
 import cProfile
 import pstats
-VOCAB_SIZE = 4096
+VOCAB_SIZE = [1024, 2048, 4096, 8192, 16384, 32768]
 
 corpus = ""
 files = []
@@ -17,19 +17,22 @@ for file in files:
         data = f.read()
         corpus += data + "\n\n\n"
 
-print(len(corpus))
-tokenizer1 = Tokenizer(VOCAB_SIZE)
-t = int(time.time())
-print()
-start = time.perf_counter()
-# profiler = cProfile.Profile()
-# profiler.enable()
-a =tokenizer1.fit(corpus)
-# profiler.disable()
-# stats = pstats.Stats(profiler)
-# stats.sort_stats("cumtime")
-# stats.print_stats(100)
-end = time.perf_counter()
-tokenizer_save_name = f"{VOCAB_SIZE}_{len(corpus)}len"
-tokenizer1.save(tokenizer_save_name)
-print(f"{tokenizer_save_name} saved. fitting finished in {end-start:.3f}")
+corpus_len = len(corpus)
+
+for i in VOCAB_SIZE:
+    print(f"fitting corpus of length {corpus_len} with vocab size of {i}")
+    tokenizer1 = Tokenizer(i)
+    t = int(time.time())
+    print()
+    start = time.perf_counter()
+    # profiler = cProfile.Profile()
+    # profiler.enable()
+    a =tokenizer1.fit(corpus)
+    # profiler.disable()
+    # stats = pstats.Stats(profiler)
+    # stats.sort_stats("cumtime")
+    # stats.print_stats(100)
+    end = time.perf_counter()
+    tokenizer_save_name = f"{i}_{len(corpus)}len"
+    tokenizer1.save(tokenizer_save_name)
+    print(f"{tokenizer_save_name} saved. fitting finished in {end-start:.3f}")

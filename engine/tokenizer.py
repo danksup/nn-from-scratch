@@ -185,9 +185,9 @@ class Tokenizer:
     
     def to_dict(self) -> dict:
         vocab = {
-            "merge_rank":self.merge_rank,
-            "vocab":self.vocab,
-            "id_to_token":self.id_to_token
+            "merge_rank":self.merge_rank.copy(),
+            "vocab":self.vocab.copy(),
+            "id_to_token":self.id_to_token.copy()
         }
         return vocab
     

@@ -8,7 +8,7 @@ import engine.backend as nx
 from typing import Any
 import time
 import pickle
-import gc
+import numpy as np
 
 DEFAULT_CONFIGS = {
             "epochs": 100,
@@ -76,8 +76,16 @@ class Session:
         return self.transformer.validate(self.embedding, dataloader, self.configs["batch_size"], train_split=self.configs["train_split"])
     
     def benchmark(self, dataloader:DataLoader, _pass=1):
-        bench = self.transformer.benchmark(dataloader, self.embedding, batch_size=self.configs["batch_size"], pass_=_pass)
-        return bench
+        t_mess = f"[BENCHMARKING]param: {self.count_params()} "
+        t_mess += f"passes: {_pass}\n"
+        for key,val in self.configs.items():
+            if key != "epochs":
+                t_mess += f"{key}: {val}\n"
+        print(t_mess)     
+        bench_loss, loss_times, backward_times, network_optimizer_times = self.transformer.benchmark(dataloader, self.embedding, batch_size=self.configs["batch_size"], pass_=_pass)
+        print(f"loss time mean: {np.mean(loss_times)} | max times: {np.max(loss_times)} | min times: {np.min(loss_times)}")
+        print(f"backward time mean: {np.mean(backward_times)} | max times: {np.max(backward_times)} | min times: {np.min(backward_times)}")
+        print(f"netowk optimizer time mean: {np.mean(network_optimizer_times)} | max times: {np.max(network_optimizer_times)} | min times: {np.min(network_optimizer_times)}")
 
     def train(self,dataloader:DataLoader,patience:int=10, display_message:bool=True):
         """
@@ -90,58 +98,66 @@ class Session:
             t_mess = f"[TRAINING]param: {self.count_params()} "
             for key,val in self.configs.items():
                 t_mess += f"{key}: {val}\n"
-            # t_mess += f"current_lr = {self.transformer.optimizer.lr}"
             print(t_mess)        
         epoch = 0
+        checkpoint = None
         try:
-            prev_error = None
+            # prev_error = None
             bad_epoch = 0
             THRESHOLD = 1e-4
+            best_val_loss = float('inf')
             for i in range(self.configs["epochs"]):
                 epoch = i
                 start = time.perf_counter()
                 error = self.transformer.train(dataloader, self.embedding, self.configs["epochs"], batch_size=self.configs["batch_size"])
                 val_loss = self.validation(dataloader)
-            
-                # gc.collect()
-                end = time.perf_counter()
-
+                end = time.perf_counter()   
                 time_ = end-start
 
-                if prev_error is not None:
-                    improvement = prev_error - error
-                    too_small = improvement > 0 and improvement < THRESHOLD
-                    getting_worse = improvement < 0
+                improvement = best_val_loss - val_loss
+                small_improvement = improvement > 0 and improvement < THRESHOLD
+                regression = improvement < 0
 
-                    if too_small or getting_worse:
-                        bad_epoch += 1
-                        if display_message:
-                            bad_epoch_reason = "improvement too small" if too_small else "getting worse"
-                            print(f"epoch {i}: bad epoch: {bad_epoch_reason} | delta: {error-prev_error:.5f} | ({bad_epoch}/{patience}) | time: {time_}")
-                    else:
-                        if bad_epoch > 0:
-                            if display_message:
-                                print(f"epoch: {i}: bad epoch count reset")
-                        bad_epoch = 0
+                if val_loss < best_val_loss:
+                    checkpoint = self.create_checkpoint(self)  
+                    best_val_loss = val_loss
 
-                    if bad_epoch >= patience:
+                if small_improvement or regression:
+                    bad_epoch += 1
+                    if display_message:
+                        bad_epoch_reason = "improvement too small" if small_improvement else "getting worse"
+                        print(f"epoch {i}: bad epoch: {bad_epoch_reason} | improvement: {improvement:.5f} | best val loss: {best_val_loss} | ({bad_epoch}/{patience}) | time: {time_}")
+                else:
+                    if bad_epoch > 0:
                         if display_message:
-                            print(f"[STOPPED] epoch {i} | not getting better | avg loss: {error}")
-                            # self.save("save_stopped")
-                        break
+                            print(f"epoch: {i}: bad epoch count reset")
+                    bad_epoch = 0
+
+                if bad_epoch >= patience:
+                    if display_message:
+                        print(f"[STOPPED] epoch {i} | not getting better | avg val loss: {val_loss} | best val loss: {best_val_loss}")
+                    break
                 display_every = max(1, self.configs["epochs"] // 10)
+
                 if display_message and( i % display_every == 0 or i == self.configs["epochs"] - 1):
-                    print(f"epoch {epoch} | avg loss: {error} | val: {val_loss} | lr: {self.transformer.optimizer.lr} | time: {time_}")
-                    
-                prev_error = error
+                    print(f"epoch {epoch} | avg loss: {error} | val: {val_loss} | best val loss: {best_val_loss} | lr: {self.transformer.optimizer.lr} | time: {time_}")
+
+            if checkpoint is not None:
+                checkpoint.save("checkpoint_save")
         except ValueError as e:
             print(f"epoch {epoch}: {e}")
-            # self.save("valueerror_save")
+            if checkpoint is not None:
+                checkpoint.save("valueerror_save")
             raise
         except OverflowError as e:
             print(f"epoch {epoch}: {e}")
-            # self.save("overflow_save")
+            if checkpoint is not None:
+                checkpoint.save("overflow_save")
             raise
+        except KeyboardInterrupt as e:
+            print(f"epoch {epoch}: {e}")
+            if checkpoint is not None:
+                checkpoint.save("keyboardinterrupt_save")
     
     def inference(self, context:Any, temperature=0.8, top_k=3, top_p=0.9, n=100) -> Any:
         all_caches = None
@@ -244,3 +260,12 @@ class Session:
         transformer.optimizer = optimizer_class.from_dict(session["optimizer_states"])
         
         return  cls(transformer,tokenizer,embedding, configs=configs, init_optimizer=False)
+    
+    @classmethod
+    def create_checkpoint(cls, to_checkpoint:"Session") -> "Session":
+        transformer_checkpoint = Transformer.from_dict(to_checkpoint.transformer.to_dict())
+        tokenizer_checkpoint = Tokenizer.from_dict(to_checkpoint.tokenizer.to_dict())
+        embedding_checkpoint = Embedding.from_dict(to_checkpoint.embedding.to_dict())
+        checkpoint = cls(transformer_checkpoint, tokenizer_checkpoint, embedding_checkpoint)
+
+        return checkpoint

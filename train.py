@@ -2,7 +2,7 @@ import os
 backend = os.environ["BACKEND"] = "auto"
 import random
 # import mlx.core as mx
-EPOCHS = 5
+EPOCHS = 10
 LR = 1e-3
 EMBED_DIM = 128
 CONTEXT_SIZE = 32
@@ -15,7 +15,7 @@ VAL = .9
 PATIENCE = 20
 TRESHOLD = 1e-2
 
-TOKENIZER_PATH = "artifacts/tokenizer/tokenizer8192_198358489len.tokenizer"
+TOKENIZER_PATH = "artifacts/tokenizer/tokenizer8192_210477353len.tokenizer"
 
 from pathlib import Path
 import time
@@ -76,9 +76,9 @@ tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
 transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
-# transformer.add_block(tblock2)
-# transformer.add_block(tblock3)
-# transformer.add_block(tblock4)
+transformer.add_block(tblock2)
+transformer.add_block(tblock3)
+transformer.add_block(tblock4)
 configs["block_size"] = len(transformer.blocks)
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 
