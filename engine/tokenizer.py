@@ -11,7 +11,15 @@ class Tokenizer:
         self.id_to_token = {0:"<PAD>", 1:"<UNK>", 2: "<EOT>", 3:"</w>"}
         self.vocab = {"<PAD>":0,"<UNK>":1, "<EOT>":2, "</w>":3}
 
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, Tokenizer):
+            return NotImplemented
+        return (self.vocab == value.vocab) and (self.id_to_token == value.id_to_token)
+
     def init_vocab(self, corpus:str) -> None:
+        '''
+        initializing vocab with character level tokens
+        '''
         for char in corpus:
             if char.isspace():
                 continue
@@ -20,7 +28,18 @@ class Tokenizer:
                 self.vocab[char] = next_id
                 self.id_to_token[next_id] = char
 
-    def word_to_ids(self, word: str):
+    def word_to_ids(self, word:str) -> list[int]:
+        """
+        turn each character in a word into id and add `</w>` last\n
+
+        assume in vocab the id for
+            h is 3
+            e is 4
+            l is 8
+            o is 7
+            `</w>` is 5
+        then "hello" -> [3,4,8,8,7,5]\n
+        """
         tokenized = []
         for ch in word:
             tokenized.append(self.vocab.get(ch, self.vocab["<UNK>"]))
@@ -28,24 +47,38 @@ class Tokenizer:
         return tokenized
 
     @staticmethod 
-    def get_word_counts(words:list) -> dict:
+    def get_word_counts(tokenized_words:list[list[int]]) -> dict[tuple[int,...],int]:
+        """
+        count the frequency of each tokenized word in a list
+        """
         counter = {}
-        for word in words:
-            tword = tuple(word)
-            if tword in counter:
-                counter[tword] += 1
-            else:
-                counter[tword] = 1
-        
+        for tokenized_word in tokenized_words:
+            tword = tuple(tokenized_word)
+            counter[tword] = counter.get(tword, 0) + 1
         return counter
     
     @staticmethod
-    def get_pairs(word):
-        for i in range(len(word) - 1):
-            yield (word[i], word[i + 1])
+    def get_pairs(tokenized_word:tuple[int, ...] | list[int]):
+        '''
+        yield adjacent pairs of a tokenized word. idk why lazily. maybe because of old implementation, then i didnt bother or forgot to change this. 
+        '''
+        for i in range(len(tokenized_word) - 1):
+            yield (tokenized_word[i], tokenized_word[i + 1])
     
     @staticmethod
-    def get_pair_counts( word_counts:dict) -> Counter:
+    def get_pair_counts( word_counts:dict[tuple[int,...],int]) -> Counter[tuple[int,int]]:
+        """
+        for each key of tokenized word, count the frequency of djacent token pairss.\n
+        ex: "hello hero" then word_counts could be-> {(3,4,8,8,7,5):1,(3,4,9,7,5):1}\n
+        therefore, the adjacent token pairs are (3,4),(4,8),(8,8),(8,7),(7,5),(4,9),(9,7) combined, including `</w>`\n
+        += count because instead of scanning the entire corpus, we calculate the word's frequency, which is the `word_counts`, then add pair frequency based on the frequency of the word\n
+        then, count the frequency of the pairs:
+            Counter[(3,4)] = 2,
+            Counter[(4,8)] = 1,
+            Counter[(8,8)] = 1,
+            ...
+            Counter[(7,5)] = 2,
+        """
         counts = Counter()
         for word, count in word_counts.items():
             for pair in Tokenizer.get_pairs(word):
@@ -53,7 +86,27 @@ class Tokenizer:
         return counts
 
     @staticmethod
-    def build_pair_index(word_counts:dict) -> tuple[Counter, dict]:
+    def build_pair_index(word_counts:dict[tuple[int,...],int]) -> tuple[Counter[tuple[int,int]], dict[tuple[int,int],set[tuple[int,...]]]]:
+        '''
+        for each key of tokenized word in word_count, get the adjacent pairs.\n
+        for each adjacent pairs, 
+            count the frequency of the pair using Counter()
+            get all words that has the pair
+        
+        ex:
+            word_counts = {(3,4,8,8,7,5):1,(3,4,9,7,5):1}
+            then get_pairs will be (3,4),(4,8),(8,8),(8,7),(7,5),(3,4),(4,9),(9,7) combined
+            then counts will be:
+                Counter[(3,4)] = 2,
+                Counter[(4,8)] = 1,
+                Counter[(8,8)] = 1,
+                ...
+                Counter[(7,5)] = 2,
+            and pair_to_words will be:
+                {(3,4): set((3,4,8,8,7,5),(3,4,9,7,5)), (4,8): set((3,4,8,8,7,5)),... }
+        
+        returns both counts:Counter and pair_to_words:dict
+        '''
         counts = Counter()
         pair_to_words = {}
         for word, count in word_counts.items():
@@ -66,7 +119,11 @@ class Tokenizer:
         return counts, pair_to_words
 
     @staticmethod
-    def remove_word(word:tuple[str,...], freq:int, pair_counts:Counter[tuple[str,...]], pair_to_words:dict[tuple[str,...],set[tuple[str,...]]]):
+    def remove_word(word:tuple[int,...], freq:int, pair_counts:Counter[tuple[int,int]], pair_to_words:dict[tuple[int,int],set[tuple[int,...]]]):
+        '''
+        remove a fucking word from the fucking pair to word dict (mutate the fucking dict). 
+        because we fucking remove it, we have to fucking reduce the fucking pair occurences based on the fucking frequency of the fucking word. therefore mutating the fucking pair_count.
+        '''
         word_pairs = list( Tokenizer.get_pairs(word))
         for pair in word_pairs:
             pair_counts[pair] -= freq
@@ -77,13 +134,17 @@ class Tokenizer:
                 del pair_counts[pair]
 
         for pair in set_pairs:
-            pair_to_words[pair].remove(word)
+            pair_to_words[pair].discard(word)
 
             if not pair_to_words[pair]:
                 pair_to_words.pop(pair)
     
     @staticmethod
-    def add_word(word:tuple[str,...], freq:int, pair_counts:Counter[tuple[str,...]], pair_to_words:dict[tuple[str,...],set[tuple[str,...]]]):
+    def add_word(word:tuple[int,...], freq:int, pair_counts:Counter[tuple[int,...]], pair_to_words:dict[tuple[int,...],set[tuple[int,...]]]):
+        """
+        add a tokenized word into `pair_to_word` dictionary. mutates the `pair_to_words` dict.\n
+        because we add a word, we need to update the pair frequencies based on the frequency of the tokenized word. this mutates the `pair_counts` dict.
+        """
         word_pairs = list(Tokenizer.get_pairs(word))
         
         for pair in word_pairs:
@@ -96,7 +157,19 @@ class Tokenizer:
             pair_to_words[pair].add(word)
     
     @staticmethod
-    def merge(word:list, best_pair, new_id):
+    def merge(word:list[int] | tuple[int,...], best_pair, new_id) -> list[int]:
+        '''
+        replace all occurences of `best_pair` in a tokenized word with `new_id`
+
+        Example:
+            word = [3, 4, 8, 8, 7, 5]      # "hello", including `</w`\n
+            best_pair = (3,4)\n
+            new_id = 12\n
+            therefore new_word = [12,8,8,7,5]\n
+
+        Returns:
+            new_word: list[int]
+        '''
         i = 0
         n = len(word)
         new_word = []
@@ -125,7 +198,7 @@ class Tokenizer:
             if not pair_counts:
                 break
             best_pair = pair_counts.most_common(1)[0][0]
-            affected_words = pair_to_words[best_pair].copy()
+            affected_words:set[tuple[int,...]] = pair_to_words[best_pair].copy()
 
             new_id = len(self.vocab)
             for affected_word in affected_words:
@@ -183,7 +256,7 @@ class Tokenizer:
         decoded = decoded.replace("</w>", " ")
         return decoded
     
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str,dict[Any,Any]]:
         vocab = {
             "merge_rank":self.merge_rank.copy(),
             "vocab":self.vocab.copy(),
@@ -192,7 +265,7 @@ class Tokenizer:
         return vocab
     
     @classmethod
-    def from_dict(cls,thing) -> "Tokenizer":
+    def from_dict(cls,thing:dict[str,Any]) -> "Tokenizer":
         tokenizer = cls()
 
         tokenizer.vocab = thing["vocab"]
@@ -201,7 +274,7 @@ class Tokenizer:
 
         return tokenizer
     
-    def save(self, filename):
+    def save(self, filename:str):
         tokenizer = self.to_dict()
         filename = f"tokenizer{filename}.tokenizer"
         with open(f"artifacts/tokenizer/{filename}", "wb") as f:
@@ -210,7 +283,7 @@ class Tokenizer:
             pickle.dump(tokenizer, f)
     
     @classmethod
-    def load(cls, filepath) -> "Tokenizer":
+    def load(cls, filepath:str) -> "Tokenizer":
         with open(filepath, "rb") as f:
             magic = f.read(9)
             if magic != b"tokenizer":

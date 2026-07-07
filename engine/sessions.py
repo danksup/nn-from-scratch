@@ -50,6 +50,11 @@ class Session:
             optimizer_class = OPTIMIZERS[self.configs["optimizer"]]
             transformer.optimizer = optimizer_class(**self.configs["optimizer_args"])
 
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, Session):
+            return NotImplemented
+        return self.tokenizer == value.tokenizer and self.embedding == value.embedding
+
     @classmethod
     def build_from_files(cls):
         '''

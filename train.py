@@ -1,7 +1,7 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-EPOCHS = 10
+EPOCHS = 1
 LR = 1e-3
 EMBED_DIM = 128
 CONTEXT_SIZE = 32
@@ -30,6 +30,8 @@ from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.sessions import Session
 
+from helper.singleton import init_corpus
+
 configs = {
             "epochs": EPOCHS,
             "context_size": CONTEXT_SIZE,
@@ -50,17 +52,7 @@ configs = {
             "using":backend
         }
 
-corpus = ""
-files = []
-folder = Path("data")
-for file in folder.iterdir():
-    if file.name != ".gitkeep" and file.name[-1:-5:-1] == "txt." :
-        files.append(file)
-
-for file in files:
-    with open(file) as f:
-        data = f.read()
-        corpus += data + "\n\n\n"
+corpus, files = init_corpus("data")
 
 tokenizer1 = Tokenizer.load(TOKENIZER_PATH)
 # print(tokenizer1.vocab)

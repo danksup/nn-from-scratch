@@ -8,8 +8,13 @@ class RMSNorm:
         self.epsilon = nx.float_32(epsilon)
 
     @staticmethod
-    def _forward(x, gamma, epsilon):
-        x32 = x.astype(nx.float32)
+    def _forward(x:nx.ArrayLike, gamma:nx.ArrayLike, epsilon:Any) -> tuple[nx.ArrayLike, tuple[Any,...]]:
+        '''
+        rmsnorm = gamma * (x / sqrt(mean(x^2) + epsilon)) \n
+        gamma = trainable weight. shape (D,)\n
+        epsilon = very small value to prevent division by 0
+        '''
+        x32 = x.astype(nx.float32) #type:ignore
         rms = nx.sqrt(nx.mean(x32 * x32, axis=-1, keepdims=True) + epsilon)
         rms = rms
         normalized = x32 / rms
@@ -18,7 +23,7 @@ class RMSNorm:
         return rmsnorm, caches
     
     @staticmethod
-    def _backward(gradient, caches, gamma):
+    def _backward(gradient:nx.ArrayLike, caches:tuple[Any,...], gamma:nx.ArrayLike) -> tuple[nx.ArrayLike,...]:
         normalized, rms, x32  = caches
         d_gamma = nx.sum(gradient * normalized, axis=(0, 1), dtype=nx.float32)
         dx_norm = gradient * gamma
@@ -28,13 +33,13 @@ class RMSNorm:
 
         return dx, d_gamma
     
-    def to_dict(self)-> dict:
+    def to_dict(self)-> dict[str, Any]:
         return {
             "gamma":self.gamma.tolist(),
         }
     
     @classmethod
-    def from_dict(cls, thing:dict) -> "RMSNorm": 
+    def from_dict(cls, thing:dict[str, Any]) -> "RMSNorm": 
         rmsnorm = cls(len(thing["gamma"]))
         rmsnorm.gamma = nx.array(thing["gamma"],dtype=nx.float32)
 

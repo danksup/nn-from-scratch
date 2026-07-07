@@ -186,7 +186,6 @@ class AttentionLayer:
             "Wo":self.Wo.tolist(),
         }
     
-
     @classmethod
     def from_dict(cls,thing) -> "AttentionLayer":
         """deserialize"""

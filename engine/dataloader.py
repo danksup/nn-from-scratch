@@ -12,11 +12,9 @@ class DataLoader:
         '''
         self.train_split = train_split
         self.tokens = tokenizer.encode(data)
-        # nx.eval(self.tokens)
         self.context_size = context_size
 
         windows = nx.sliding_window_view(self.tokens, self.context_size + 1)
-
 
         self.contexts = windows[:,:-1]
         self.targets = windows[:,1:]

@@ -3,6 +3,17 @@ from typing import Any
 
 class AdamW:
     def __init__(self, lr=0.01, beta:float=0.9, beta2:float=0.999, epsilon:float=1e-8, weight_decay=0.01) -> None:
+        """
+        m: first moment 
+            m = β_{1} * m + (1 - β_{1}) * gradient    \n
+        v: second moment 
+            v = β_{2} * v + (1 - β_{2}) * gradient^2  \n
+        bias correction:
+            m̂ = m / (1 - β_{1}ᵗ)   \n
+            v̂ = m / (1 - β_{2}ᵗ)   \n
+        parameter update:
+            w = w - lr * m̂ / (sqrt(v̂) + ε)
+        """
         # self.memory = {}
         self.state = {}
         self.state["t"] = nx.array(0, dtype=nx.int32)
@@ -12,7 +23,7 @@ class AdamW:
         self.epsilon = nx.float_32(epsilon)
         self.weight_decay = nx.float_32(weight_decay)
     
-    def step_many(self, name_param_gradient:list) -> dict:
+    def step_many(self, name_param_gradient:list[Any]) -> dict[Any,Any]:
         self.state["t"] += 1
         group = {}
         for name,param,gradient in name_param_gradient:
@@ -43,7 +54,7 @@ class AdamW:
     
     @nx.compile
     @staticmethod
-    def __step(m_v_t, params:Any, grads:Any, lr:Any, epsilon:float, beta1:float, beta2:float, weight_decay:float) -> Any: 
+    def __step(m_v_t, params:Any, grads:Any, lr:Any, epsilon:float, beta1:float, beta2:float, weight_decay:float) -> tuple[Any,...]: 
         m,v,t = m_v_t       
         norm = nx.sqrt(nx.sum(grads**2, axis=tuple(range(1, grads.ndim)), keepdims=True))
         grads = nx.where(norm > 1.0, grads * (1.0 / (norm + epsilon)), grads)
@@ -55,7 +66,7 @@ class AdamW:
         params = params - lr * m_hat / (nx.sqrt(v_hat) + epsilon)
         return params, m, v, t
     
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[Any, Any]:
         state_copy = {}
         state_copy["t"] = self.state["t"].item()
         for key, value in self.state.items():
@@ -67,7 +78,7 @@ class AdamW:
         return state_copy
 
     @classmethod
-    def from_dict(cls, thing):
+    def from_dict(cls, thing:dict[Any, Any]) -> "AdamW":
         adam = cls()
         adam.state["t"] = nx.array(thing["t"], dtype=nx.int32)
         for key, value in thing.items():

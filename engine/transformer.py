@@ -18,13 +18,6 @@ class Transformer:
         if optimizer is None:
             optimizer = AdamW()
         self.optimizer = optimizer
-        
-    def __repr__(self) -> str:
-        # str_layers = ""
-        # for idx,i in enumerate(self.layers):
-        #     str_layers += f"layer{idx}:{str(len(i))} neurons"  + "\n"
-        # str_layers += f"total layer: {len(self.layers)}, params: {self.count_params_model()}" 
-        return "no"
 
     def add_block(self, block:TransformerBlock):
         """add a transformer block"""

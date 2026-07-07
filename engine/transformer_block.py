@@ -25,10 +25,16 @@ class TransformerBlock:
         self.rmsnorm1 = RMSNorm(embed_dim)
         self.rmsnorm2 = RMSNorm(embed_dim)
 
-    
     @nx.compile
     @staticmethod
     def _forward(x, causal_mask:Any, embed_dim:int, n_heads:int,n_kv_heads,n_rep, head_dim:int,freqs:Any, Wqkv:Any, Wo:Any, Wcombined:Any, hidden_width:int, Wout:Any, epsilon:float, gamma1:Any, gamma2:Any, p:float, is_training:bool) -> tuple[Any, Any, Any]:
+        '''
+        flow:
+            input = x shape(B,T,D) -> rmsnorm(x) = rmsnorm_out -> attention(rmsnorm_out) + residual = attn_out
+            \n
+            -> rmsnorm(attn_out) = rmsnorm_out -> swiglu(rmsnorm_out)  -> ff_out + resudial = ff_out shape(B,T,D)
+        '''
+        
         fp16_x = x.astype(nx.float16)
 
         rmsnorm1_out, caches_rmsnorm1 = RMSNorm._forward(x, gamma1,epsilon)
@@ -81,8 +87,6 @@ class TransformerBlock:
         ff_out = ff_out + attn_out
         
         return ff_out, cached_k, cached_v
-        
-
 
     def to_dict(self) -> dict:
         return {

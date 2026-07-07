@@ -8,18 +8,23 @@ class Embedding:
     def __init__(self, n:int, embed_dim:int) -> None:
         self.embed_dim = embed_dim
         self.lookup_table = nx.uniform(low=-0.1, high=0.1, size=(n, self.embed_dim), dtype=nx.float32)
+    
+    def __eq__(self, value: object) -> bool:
+        if not isinstance(value, Embedding):
+            return NotImplemented
+        return (self.embed_dim == value.embed_dim) and (self.lookup_table == value.lookup_table)
 
     def forward(self, token_list:Any):
         ''' loopup and convert to the vector for each token id'''
         
         return self.lookup_table[token_list]
     
-    def to_dict(self) -> dict:
+    def to_dict(self) -> dict[str, list]:
         lookup = {"lookuptable": self.lookup_table.tolist()}
         return lookup
 
     @classmethod
-    def from_dict(cls, thing:dict) -> "Embedding":
+    def from_dict(cls, thing:dict[str, list]) -> "Embedding":
         lookuptable = nx.array(thing["lookuptable"], dtype=nx.float32)
         embedding = cls(lookuptable.shape[0],lookuptable.shape[1])
         embedding.lookup_table = lookuptable
