@@ -40,7 +40,6 @@ logs:
 - optimizing
   
 ## TODO (not in order):
-- checkpoint
 - frequency penalty
 - more optimization
   
