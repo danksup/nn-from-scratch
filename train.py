@@ -1,7 +1,6 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-# import mlx.core as mx
 EPOCHS = 10
 LR = 1e-3
 EMBED_DIM = 128
@@ -11,6 +10,7 @@ BASE_WIDTH = 768#4 * EMBED_DIM
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS//2
 VAL = .9
+
 #not hooked yet to session
 PATIENCE = 20
 TRESHOLD = 1e-2
@@ -80,6 +80,8 @@ transformer.add_block(tblock2)
 transformer.add_block(tblock3)
 transformer.add_block(tblock4)
 configs["block_size"] = len(transformer.blocks)
+
+print("loading dataloader", end="\r")
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 
 corpus_len = len(corpus)
@@ -91,17 +93,17 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)
-profiler = cProfile.Profile()
-profiler.enable()
+# profiler = cProfile.Profile()
+# profiler.enable()
 start = time.perf_counter()
 session1.train(dataloader, display_message=True)
 end = time.perf_counter()
 print(f"training finished. time: {end - start:.3f}s")
 
-profiler.disable()
-stats = pstats.Stats(profiler)
-stats.sort_stats("cumtime")
-stats.print_stats(100)
+# profiler.disable()
+# stats = pstats.Stats(profiler)
+# stats.sort_stats("cumtime")
+# stats.print_stats(100)
 
 session1.save(f"val_test_{a}")
 

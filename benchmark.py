@@ -1,8 +1,7 @@
 import os
-backend = os.environ["BACKEND"] = "mlx"
+backend = os.environ["BACKEND"] = "numpy"
 import random
-import mlx.core as mx
-EPOCHS = 1
+# import mlx.core as mx
 LR = 1e-3
 EMBED_DIM = 128
 CONTEXT_SIZE = 32
@@ -27,7 +26,6 @@ from engine.sessions import Session
 import engine.backend as nx
 
 configs = {
-            "epochs": EPOCHS,
             "context_size": CONTEXT_SIZE,
             "batch_size": BATCH_SIZE,
             "embed_dim":EMBED_DIM,
@@ -75,6 +73,8 @@ transformer.add_block(tblock3)
 transformer.add_block(tblock4)
 start = time.perf_counter()
 configs["block_size"] = len(transformer.blocks)
+
+print("loading dataloader", end="\r")
 dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 
 corpus_len = len(corpus)
@@ -87,7 +87,7 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 # profiler.enable()
 start = time.perf_counter()
 # mx.metal.start_capture("transformer.gputrace")
-session1.benchmark(dataloader, 50)
+session1.benchmark(dataloader, 10)
 end = time.perf_counter()
 # mx.metal.stop_capture()
 print(f"benchmarking finished. time: {end - start:.3f}s")

@@ -299,6 +299,9 @@ def repeat(a, repeats:int, axis:int=None):
     return _nx.repeat(a,repeats, axis=axis)
 
 def logsumexp(a:ArrayLike,*,axis=None,keepdims=False) -> ArrayLike:
+    if backend == "NumPy":
+        m = _nx.max(a, axis=axis, keepdims=keepdims)
+        return m + _nx.log(_nx.sum(_nx.exp(a - m), axis=axis, keepdims=keepdims))
     return _nx.logsumexp(a, axis=axis, keepdims=keepdims)
 
 def norm(a:ArrayLike, ord:Any=None, axis=None, keepdims:bool=False):

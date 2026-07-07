@@ -1,13 +1,5 @@
-import mlx.core as mx
+import numpy as np
 
-a = mx.array(0, dtype=mx.int32)
-a+=1
-a+=1
-a+=1
-a+=1
-a+=1
-a+=1
-a+=1
-a+=1
-a+=1
-print(type(a), a)
+a = [1,2,3,4,5,6,7]
+b = np.lib.stride_tricks.sliding_window_view(a, 2)
+print(b)
