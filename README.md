@@ -1,5 +1,5 @@
 # nn-from-scratch
-just a fun little project i do on my days off. a small llm project built for (my) learning purposes.
+just a fun little project i do on my days off. a small llm project built for (my) learning purposes. you can read  [here](engine/README.md) to see the flow or [here](docs/) to see the explanation of individual pieces.
 
 logs:
 - older stuff (did not track)
