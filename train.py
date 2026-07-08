@@ -8,7 +8,7 @@ CONTEXT_SIZE = 32
 BATCH_SIZE = 128
 BASE_WIDTH = 768#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
-N_KV_HEADS = N_HEADS//2
+N_KV_HEADS = N_HEADS // 4
 VAL = .9
 
 #not hooked yet to session

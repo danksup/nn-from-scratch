@@ -1,10 +1,10 @@
 import os
-backend = os.environ["BACKEND"] = "numpy"
+backend = os.environ["BACKEND"] = "auto"
 import random
 # import mlx.core as mx
 LR = 1e-3
 EMBED_DIM = 128
-CONTEXT_SIZE = 32
+CONTEXT_SIZE = 64
 BATCH_SIZE = 256
 BASE_WIDTH =768 #4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8

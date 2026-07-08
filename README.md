@@ -34,12 +34,10 @@ logs:
 - checkpointing and validation-loss based logging in jul 7 2026
   
 ## Ongoing:
-- bug fix
-- updating old type hints
-- adding more comments/descriptions/docstrings/whatever
-- optimizing
+- sliding windows attention
   
 ## TODO (not in order):
+- MoE
 - frequency penalty
 - more optimization
   
