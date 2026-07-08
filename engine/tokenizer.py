@@ -71,7 +71,7 @@ class Tokenizer:
         for each key of tokenized word, count the frequency of djacent token pairss.\n
         ex: "hello hero" then word_counts could be-> {(3,4,8,8,7,5):1,(3,4,9,7,5):1}\n
         therefore, the adjacent token pairs are (3,4),(4,8),(8,8),(8,7),(7,5),(4,9),(9,7) combined, including `</w>`\n
-        += count because instead of scanning the entire corpus, we calculate the word's frequency, which is the `word_counts`, then add pair frequency based on the frequency of the word\n
+        `+= count` because instead of scanning the entire corpus, we calculate the word's frequency, which is the `word_counts`, then add pair frequency based on the frequency of the word\n
         then, count the frequency of the pairs:
             Counter[(3,4)] = 2,
             Counter[(4,8)] = 1,
@@ -88,24 +88,24 @@ class Tokenizer:
     @staticmethod
     def build_pair_index(word_counts:dict[tuple[int,...],int]) -> tuple[Counter[tuple[int,int]], dict[tuple[int,int],set[tuple[int,...]]]]:
         '''
-        for each key of tokenized word in word_count, get the adjacent pairs.\n
+        for each key of tokenized word in `word_count`, get the adjacent pairs.\n
         for each adjacent pairs, 
-            count the frequency of the pair using Counter()
-            get all words that has the pair
+            count the frequency of the pair using `Counter()`
+            get all words that have the pair
         
         ex:
             word_counts = {(3,4,8,8,7,5):1,(3,4,9,7,5):1}
-            then get_pairs will be (3,4),(4,8),(8,8),(8,7),(7,5),(3,4),(4,9),(9,7) combined
-            then counts will be:
+            then `get_pairs` will be (3,4),(4,8),(8,8),(8,7),(7,5),(3,4),(4,9),(9,7) combined
+            then `counts` will be:
                 Counter[(3,4)] = 2,
                 Counter[(4,8)] = 1,
                 Counter[(8,8)] = 1,
                 ...
                 Counter[(7,5)] = 2,
-            and pair_to_words will be:
+            and `pair_to_words` will be:
                 {(3,4): set((3,4,8,8,7,5),(3,4,9,7,5)), (4,8): set((3,4,8,8,7,5)),... }
         
-        returns both counts:Counter and pair_to_words:dict
+        returns both `counts:Counter` and `pair_to_words:dict`
         '''
         counts = Counter()
         pair_to_words = {}
@@ -187,9 +187,11 @@ class Tokenizer:
         return new_word
 
     def fit(self, corpus:str):
+        '''
+        fill vocabs until specified amount (from `self.target_vocab_size`)
+        '''
         self.init_vocab(corpus)
         words = [self.word_to_ids(word) for word in corpus.split()]
-
 
         word_counts = self.get_word_counts(words)
         pair_counts, pair_to_words = self.build_pair_index(word_counts)

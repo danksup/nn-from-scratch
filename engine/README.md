@@ -1,0 +1,22 @@
+# Big Picture of the Flow
+1. first, we encode the corpus. then we make a sliding windows of it. for training we split into two:
+    * context this is what is fed into the network sequence, 
+    * targets, this is what the model should predict with high confidence. 
+  
+    instead of loading the entire dataset into memory at once, the `DataLoader` yields batches lazily during training.
+
+2. Each batch has the shape `(B, T)`, where `B` is the batch size and `T` is the context size. we forward this to the embedding.
+   -  the embedding is initialized with random number between a range of very small, uniform value based on the number of vocab `V` and the embedding size `D`. so embedding has the shape of `(V, D)`.
+   - when we forward the batch with shape `(B,T)` into the embedding, because each context(token) is an integer ID, we use this ID as an index. therefore, the shape becomes `(B,T,D)`. then we forward this `(B,T,D)` shaped matrix into the transformer block.
+   
+3. in a transformer block, there are several layers that the `(B,T,D)` matrix has to go through. There are normalization layers, attention layers, feedforward networks, and in some cases dropout layers.
+   - before the matrix goes through the attention and feedforward layer, it is normalized first. this architecture of normalizing the matrix first is called `prenorm`. in this case we use RMSnorm. we calculate $\text{RMSnorm}(x) =  \gamma * \frac{x}{\sqrt{\frac{\sum x^2}{D}  + \epsilon}}$ where x is the  `(B,T,D)` shaped matrix, gamma is a trainable weight parameter with the shape of `(D, )`, and epsilon is a very small float. (learn more at docs/rmsnorm.md)
+   - after the first normalization, the matrix is then forwarded into the attention layer. attention lets each token look at other tokens and combine information from them. this is computed as $\text{softmax}(\frac{QK^T}{\sqrt{D}})V$. in this implementation, the query, key, and value projections are fused into a single weight matrix, and Grouped Query Attention (GQA) is used to reduce the number of key and value heads. the output is then added again with the input. this is called residual connection.(learn more at docs/attention.md)
+   - after the second normalization, the matrix is forwarded into the feedforward netowrk. while attention layer combines information accross all tokens, because each token can look into another token to gather information, the feedforward layer refines each token individually. because we use swiglu for the implementation, it acts as a gate that emphasizes/surpresses out information.it is computed as $\text{swish}(xW) \odot (xV)$. like attention, the output is added with the input again. (learn more at docs/feedforward.md)
+
+4. after the `(B,T,D)` input goes through all the transformer blocks, we get the final hidden representation. this representation is then projected back with the embedding lookuptable, producing logits with the shape of `(B,T,V)`. each logit represent the score of each vocabulary. then, the logits are compared againts the next token, a.k.a the target. since the target is just IDs, we look up the probability assigned to that token. but first, we convert the scores into probability distribution using `logsumexp` version of `softmax`. If the model assigns a high probability to the target token, the loss is low. If it assigns a low probability, the loss is high. 
+
+5. since the final projection layer is tied to the embedding, which is why we projected it using the embedding `lookuptable` in the forward pass via `last_output @ embedding.lookup_table.T`, we have to split the gradient into 2 paths, one for the embedding lookup table which is $\frac{\partial L}{\partial \text{Embedding}}$, which is `dtable` and one for the `last_output`, which is the $\frac{\partial L}{\partial \text{last\_output}}$, which is the `block_gradient`. the `block_gradient` is what flows through the transformer block backprop. backprop basically goes from the last to the first. it computes the gradient of the loss with respect to every trainable parameter. or in other words, it computes how much each trainable parameter contributed to the final loss.
+   * first we backprop into the feedforward network bla bla bla
+   * ieieniifn
+   * iwounie
