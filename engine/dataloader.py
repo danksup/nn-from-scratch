@@ -15,23 +15,26 @@ class DataLoader:
         self.context_size = context_size
 
         windows = nx.sliding_window_view(self.tokens, self.context_size + 1)
-
         self.contexts = windows[:,:-1]
         self.targets = windows[:,1:]
-
+        indices = nx.permutation(len(self.contexts))
+        shuffled_contexts = self.contexts[indices] #type:ignore
+        shuffled_targets = self.targets[indices]#type:ignore
         split = int(len(self.contexts) * self.train_split)
-        self.train_contexts = self.contexts[:split]
-        self.train_targets = self.targets[:split]
-        self.validate_contexts = self.contexts[split:]
-        self.validate_targets = self.targets[split:]
-
+        self.train_contexts =shuffled_contexts[:split]
+        self.train_targets = shuffled_targets[:split]
+        self.validate_contexts = shuffled_contexts[split:]
+        self.validate_targets = shuffled_targets[split:]
 
     def get_pairs(self, batch_size:int=32):
         """ 
         slice token per size as inputs
         """
-        for i in range(0, len(self.train_targets), batch_size):
-            yield(self.train_contexts[i:i+batch_size], self.train_targets[i:i+batch_size])
+        train_indices = nx.permutation(len(self.train_contexts))
+        shuffled_contexts = self.train_contexts[train_indices]
+        shuffled_targets = self.train_targets[train_indices]
+        for i in range(0, len(shuffled_contexts), batch_size):
+            yield(shuffled_contexts[i:i+batch_size], shuffled_targets[i:i+batch_size])
     
     def get_validation_pairs(self, batch_size:int=32):
         """ 

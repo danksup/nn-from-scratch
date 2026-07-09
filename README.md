@@ -32,6 +32,7 @@ logs:
 - misc stuff jul 5 2026
 - lr scheduling (cosine decay) in jul 6 2026
 - checkpointing and validation-loss based logging in jul 7 2026
+- shuffled dataloader contexts jul 9 2026
   
 ## Ongoing:
 - sliding windows attention

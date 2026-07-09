@@ -279,7 +279,6 @@ class Transformer:
         }
         for block in self.blocks:
             transformer["blocks"].append(block.to_dict())
-        # transformer["classifier"] = self.classifier.to_dict()
         return transformer
     
     @classmethod

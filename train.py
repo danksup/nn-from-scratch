@@ -1,11 +1,11 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-EPOCHS = 1
+EPOCHS = 20
 LR = 1e-3
-EMBED_DIM = 128
+EMBED_DIM = 64
 CONTEXT_SIZE = 32
-BATCH_SIZE = 128
+BATCH_SIZE = 64
 BASE_WIDTH = 768#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS // 4
@@ -15,7 +15,7 @@ VAL = .9
 PATIENCE = 20
 TRESHOLD = 1e-2
 
-TOKENIZER_PATH = "artifacts/tokenizer/tokenizer8192_210477353len.tokenizer"
+TOKENIZER_PATH = "artifacts/tokenizer/tokenizer8192_33414037len.tokenizer"
 
 from pathlib import Path
 import time

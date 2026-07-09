@@ -9,6 +9,7 @@ import mlx.core as mx
 import numpy as np
 ArrayLike = Union[mx.array, np.ndarray]
 backend = os.environ.get("BACKEND", "auto").lower()
+rng = np.random.default_rng()
 
 if backend == "auto":
     try:
@@ -130,7 +131,7 @@ def log( a:Any, dtype:Any=None) -> ArrayLike:
         return _nx.log(a)
     return _nx.log(a, dtype=dtype)
 
-def arange( x:Any, y:Any=None, z:Any=None, dtype=None) -> ArrayLike:
+def arange(x:Any, y:Any=None, z:Any=None, dtype=None) -> ArrayLike:
     if dtype is None:
         dtype = _nx.float32
     if backend == "MLX":
@@ -165,13 +166,23 @@ def uniform( low:float=0, high:float=1, size=None,*,dtype=None) -> Any:
         dtype = _nx.float32
     if backend == "NumPy":
         if size is None:
-            return dtype(_nx.random.default_rng().uniform(low,high))
+            return dtype(rng.uniform(low,high))
         else:
-            return _nx.random.default_rng().uniform(low,high, size=size).astype(dtype)
+            return rng.uniform(low,high, size=size).astype(dtype)
 
     if size is None:
         size = ()
     return _nx.random.uniform(low, high, shape=size, dtype=dtype)
+
+def permutation(x:Any, axis=0) -> ArrayLike:
+    if isinstance(x,int):
+        if backend == "NumPy":
+            return rng.permutation(x)
+        return _nx.random.permutation(x)
+    else:
+        if backend == "NumPy":
+            return rng.permutation(x, axis=axis)
+    return _nx.random.permutation(x, axis=axis)
 
 def sliding_window_view( x:Any, window_shape:int, axis=None) -> ArrayLike:
     if backend == "NumPy":

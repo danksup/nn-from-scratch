@@ -4,11 +4,11 @@ import random
 # import mlx.core as mx
 LR = 1e-3
 EMBED_DIM = 128
-CONTEXT_SIZE = 64
-BATCH_SIZE = 256
+CONTEXT_SIZE = 32
+BATCH_SIZE = 32
 BASE_WIDTH =768 #4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
-N_KV_HEADS = N_HEADS//2
+N_KV_HEADS = N_HEADS// 2
 VAL = .9
 
 from pathlib import Path
@@ -45,7 +45,8 @@ configs = {
         }
 
 corpus = ""
-tokenizer1 = Tokenizer.load("artifacts/tokenizer/tokenizer8192_210477353len.tokenizer")
+tokenizer1 = Tokenizer.load("artifacts/tokenizer/tokenizer8192_33414037len.tokenizer")
+# print(tokenizer1.vocab)
 files = []
 folder = Path("data")
 for file in folder.iterdir():
@@ -87,7 +88,7 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 # profiler.enable()
 start = time.perf_counter()
 # mx.metal.start_capture("transformer.gputrace")
-session1.benchmark(dataloader, 10)
+session1.benchmark(dataloader, 100)
 end = time.perf_counter()
 # mx.metal.stop_capture()
 print(f"benchmarking finished. time: {end - start:.3f}s")
