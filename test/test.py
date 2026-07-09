@@ -1,7 +1,8 @@
-import mlx.core as mx
-import numpy as np
+class Tensor:
+    def __init__(self) -> None:
+        self.parent = None
+        self.creator = None
+        self.gradient = 0.0
 
-a = mx.random.permutation(10)
-print(a)
-
-
+class Something:
+    def multiply

@@ -1,10 +1,10 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-EPOCHS = 20
+EPOCHS = 5
 LR = 1e-3
-EMBED_DIM = 64
-CONTEXT_SIZE = 32
+EMBED_DIM = 128
+CONTEXT_SIZE = 64
 BATCH_SIZE = 64
 BASE_WIDTH = 768#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8

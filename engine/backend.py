@@ -3,7 +3,7 @@
 # pyright: reportAttributeAccessIssue=false
 # pyright: reportFunctionMemberAccess=false
 
-from typing import Any, Union
+from typing import Any, Union,Literal
 import os
 import mlx.core as mx
 import numpy as np
@@ -193,6 +193,22 @@ def sliding_window_view( x:Any, window_shape:int, axis=None) -> ArrayLike:
     strides = (1,1)
     return _nx.as_strided(x,shape, strides)
 
+def sliding_time_windows(x, window_size):
+    # x: (B, H, T, D)
+    B, H, T, D = x.shape
+
+    pad_width = [(0, 0), (0, 0), (window_size - 1, 0), (0, 0)]
+    x_padded = _nx.pad(x, pad_width, mode="constant")
+
+    starts = _nx.arange(T)[:, None]              # (T, 1)
+    offsets = _nx.arange(window_size)[None, :]   # (1, W)
+    indices = starts + offsets                 # (T, W)
+
+    return x_padded[:, :, indices, :]           # (B, H, T, W, D)
+
+def undo_sliding_time_windows(x):
+    pass
+
 def mean(x:ArrayLike, *,axis=None, keepdims:bool=False,dtype=None) -> ArrayLike:
     if dtype is None:
         dtype = _nx.float32
@@ -315,5 +331,8 @@ def logsumexp(a:ArrayLike,*,axis=None,keepdims=False) -> ArrayLike:
         return m + _nx.log(_nx.sum(_nx.exp(a - m), axis=axis, keepdims=keepdims))
     return _nx.logsumexp(a, axis=axis, keepdims=keepdims)
 
-def norm(a:ArrayLike, ord:Any=None, axis=None, keepdims:bool=False):
+def norm(a:ArrayLike, ord:Any=None, axis=None, keepdims:bool=False) -> Any:
     return _nx.linalg.norm(a, ord, axis=axis, keepdims=keepdims)
+
+def pad(a:ArrayLike, pad_width:int|tuple[int]|tuple[int,int]|list[tuple[int,int]],mode:Literal['constant', 'edge']='constant', constant_value:Any=0) -> ArrayLike:
+    return _nx.pad(a, pad_width=pad_width, mode=mode, constant_values=constant_value)

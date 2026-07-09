@@ -35,14 +35,16 @@ logs:
 - shuffled dataloader contexts jul 9 2026
   
 ## Ongoing:
-- sliding windows attention
+- choosing
   
 ## TODO (not in order):
 - MoE
+- sliding windows attention
 - frequency penalty
 - more optimization
   
 #### Maybe:
+- autograd
 - other gpus acceleration (maybe not)
 - better batching
 
