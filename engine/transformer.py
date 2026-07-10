@@ -1,5 +1,4 @@
 from engine.losses import cross_entropy_gradient, cross_entropy
-from engine.activations import softmax
 from engine.embedding import Embedding
 from engine.dataloader import DataLoader
 from engine.optimizer import  AdamW

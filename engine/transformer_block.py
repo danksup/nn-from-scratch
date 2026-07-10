@@ -16,6 +16,7 @@ class TransformerBlock:
         self.n_rep = self.n_heads // self.n_kv_heads 
         assert embed_dim % n_heads == 0
         self.head_dim = embed_dim // n_heads
+        self.n_experts = n_experts
 
         assert self.head_dim % 2 == 0, "head dim !% 2"
         self.freqs = precompute_freqs(self.head_dim, 16384)
@@ -24,12 +25,6 @@ class TransformerBlock:
         self.ff = SwiGLU(ff_dim, embed_dim)
         self.rmsnorm1 = RMSNorm(embed_dim)
         self.rmsnorm2 = RMSNorm(embed_dim)
-
-        #TODO
-        self.n_experts = n_experts
-        init = nx.sqrt(6/embed_dim + n_experts)
-        self.experts = [SwiGLU(ff_dim, embed_dim) for _ in range(n_experts)]
-        self.router = nx.uniform(-init,init,(self.embed_dim, self.n_experts))
 
     @nx.compile
     @staticmethod
