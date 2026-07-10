@@ -164,13 +164,15 @@ class Session:
             if checkpoint is not None:
                 checkpoint.save("keyboardinterrupt_save")
     
-    def inference(self, context:Any, temperature=0.8, top_k=3, top_p=0.9, n=100) -> Any:
+    def inference(self, context:Any, temperature=0.8, top_k=3, top_p=0.9, n=100, mem_size=10) -> Any:
         all_caches = None
         position = 0
+        memory = []
         logits, all_caches = self.transformer.inference(context,self.configs["context_size"], self.embedding, all_caches, position)
         position = context.shape[1]
 
-        raw_token = nx.array(self._sample(logits,  temperature, top_k, top_p))
+        raw_token = self._sample(logits, memory,  temperature, top_k, top_p)
+        memory.append(raw_token)
         token = raw_token.item()
         decoded = self.tokenizer.decode([token])
         print(decoded,end="",flush=True)
@@ -181,7 +183,8 @@ class Session:
 
         for i in range(n-1):
             logits, all_caches = self.transformer.inference(next_token,self.configs["context_size"], self.embedding ,all_caches, position)
-            raw_token = self._sample(logits, temperature, top_k, top_p)
+            raw_token = self._sample(logits,memory, temperature, top_k, top_p)
+            memory.append(raw_token)
             token = raw_token.item()
             decoded = self.tokenizer.decode([token])
             print(decoded,end="",flush=True)
@@ -190,11 +193,23 @@ class Session:
             next_token = nx.array([[token]], dtype=nx.int32)
             position += 1
 
-    def _sample(self, logits, temperature=0.8, top_k=3, top_p=0.9):
-        if temperature == 0.0:
-            return nx.argmax(logits[0,-1])
+            if len(memory) >= mem_size:
+                memory = memory[1:]
         
+        # print(memory)
+
+    def _sample(self, logits, memory, temperature=0.8, top_k=3, top_p=0.9, penalty=0.05):
+        if memory:
+            memory = nx.array(memory, dtype=nx.int32)
+            mem_array = nx.unique(memory, return_counts=True)
+            mem_unique = mem_array[0]
+            mem_count = mem_array[1]
+            # print(memory)
+            logits = logits.at[..., mem_unique].subtract(mem_count * penalty)
+            # logits[...,mem_unique] -= mem_count * penalty
+
         probs = softmax(logits[0, -1]/temperature) 
+        # print(logits.shape)
 
         #top k
         top_k = min(top_k, len(probs))

@@ -58,6 +58,12 @@ def add_at(a:Any, idx:Any, values:Any) -> Any:
     _nx.add.at(a, idx, values)
     return a
 
+def unique(a:ArrayLike,*,return_inverse:bool=False, return_counts:bool=False ) -> Any:
+    unique_array =  np.unique(a, return_inverse=return_inverse, return_counts=return_counts)
+    # if backend == "MLX":
+    #     return mx.array(unique_array)
+    return unique_array
+
 def zeros_like( a:ArrayLike, dtype=None) -> ArrayLike:
     if dtype is None:
         dtype = _nx.float32
@@ -65,7 +71,7 @@ def zeros_like( a:ArrayLike, dtype=None) -> ArrayLike:
         a = _nx.array(a, dtype=dtype)
     return _nx.zeros_like(a)
 
-def zeros( size:Any, dtype=None) -> ArrayLike:
+def zeros(size:Any, dtype=None) -> ArrayLike:
     if dtype is None:
         dtype = float32
     return _nx.zeros(size, dtype=dtype)
@@ -193,22 +199,6 @@ def sliding_window_view( x:Any, window_shape:int, axis=None) -> ArrayLike:
     strides = (1,1)
     return _nx.as_strided(x,shape, strides)
 
-def sliding_time_windows(x, window_size):
-    # x: (B, H, T, D)
-    B, H, T, D = x.shape
-
-    pad_width = [(0, 0), (0, 0), (window_size - 1, 0), (0, 0)]
-    x_padded = _nx.pad(x, pad_width, mode="constant")
-
-    starts = _nx.arange(T)[:, None]              # (T, 1)
-    offsets = _nx.arange(window_size)[None, :]   # (1, W)
-    indices = starts + offsets                 # (T, W)
-
-    return x_padded[:, :, indices, :]           # (B, H, T, W, D)
-
-def undo_sliding_time_windows(x):
-    pass
-
 def mean(x:ArrayLike, *,axis=None, keepdims:bool=False,dtype=None) -> ArrayLike:
     if dtype is None:
         dtype = _nx.float32
@@ -284,18 +274,18 @@ def cumsum(a:ArrayLike, *,axis=None, dtype=None) -> ArrayLike:
     return _nx.cumsum(a, axis=axis, dtype=dtype)
 
 def argsort( a:ArrayLike, axis=None) -> Any:
-    if backend == "MLX":
-        a = _nx.array(a)
+    # if backend == "MLX":
+    #     a = _nx.array(a)
     return _nx.argsort(a, axis=axis)
 
 def all( a:ArrayLike, *,axis=None, keepdims:bool=False) -> ArrayLike:
-    if backend == "MLX":
-        a = _nx.array(a)
+    # if backend == "MLX":
+    #     a = _nx.array(a)
     return _nx.all(a, axis=axis, keepdims=keepdims)
 
 def argmax( a:ArrayLike, axis=None, keepdims:bool=False) -> Any:
-    if backend == "MLX":
-        a = _nx.array(a)
+    # if backend == "MLX":
+    #     a = _nx.array(a)
     return _nx.argmax(a, axis=axis, keepdims=keepdims)
 
 def abs( a:Any) -> Any:

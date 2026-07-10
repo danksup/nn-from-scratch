@@ -1,10 +1,10 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-EPOCHS = 5
+EPOCHS = 3
 LR = 1e-3
 EMBED_DIM = 128
-CONTEXT_SIZE = 64
+CONTEXT_SIZE = 48
 BATCH_SIZE = 64
 BASE_WIDTH = 768#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
@@ -97,7 +97,7 @@ print(f"training finished. time: {end - start:.3f}s")
 # stats.sort_stats("cumtime")
 # stats.print_stats(100)
 
-session1.save(f"val_test_{a}")
+session1.save(f"{session1.count_params()}_params")
 
 
 

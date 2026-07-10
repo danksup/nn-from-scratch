@@ -2,45 +2,53 @@
 just a fun little project i do on my days off. a small llm project built for (my) learning purposes. you can read  [here](engine/README.md) to see the flow or [here](docs/) to see the explanation of each individual piece.
 
 logs:
-- older stuff (did not track)
-- save/load (did not track)
-- layernorm (did not track) (replaced by rmsnorm)
-- attention (did not track)
-- transformer (did not track)
+- did not track
+  - older stuff
+  - save/load 
+  - layernorm (replaced by rmsnorm)
+  - attention 
+  - transformer 
 - apple silicon acceleration (MLX) (jun 23 2026)
-- rmsnorm (jun 24 2026)
-- multi head attention (jun 24 2026)
-- top p (jun 24 2026)
-- weight tying (jun 24 2026)
-- dropout (jun 25 2026)
-- rope (jun 25 2026)
-- train/valid split (jun 25 2026)
-- mixed precision(jun 25 2026)
+- jun 24 2026
+  - rmsnorm
+  - multi head attention 
+  - top p 
+  - weight tying 
+- jun 25 2026
+  - dropout (jun 25 2026)
+  - rope (jun 25 2026)
+  - train/valid split (jun 25 2026)
+  - mixed precision(jun 25 2026)
 - swiglu(jun 26 2026)
 - purely optimizing in june 27 2026
 - purely optimizing in june 28 2026
 - purely optimizing in june 29 2026
-- KV caching (jun 30 2026)
-- grouped query attention (jun 30 2026)
+- jun 30 2026
+  - KV caching 
+  - grouped query attention 
 - BPE tokenizer (jul 1 2026)
-- rewrote some BPE functions in C (jul 2 2026)
-- use hashing for counting on C BPE (jul 2 2026)
-- revert back to pythonic BPE (jul 2 2026)
+- jul 2 2026
+  - rewrote some BPE functions in C 
+  - use hashing for counting on C BPE 
+  - revert back to pythonic BPE 
 - optimizing BPE in jul 3 2026
-- incremental BPE in jul 4 2026
-- logsumexp crossentropy in jul 4 2026
+- jul 4 2026
+  - incremental BPE 
+  - logsumexp crossentropy 
 - misc stuff jul 5 2026
 - lr scheduling (cosine decay) in jul 6 2026
-- checkpointing and validation-loss based logging in jul 7 2026
+- jul 7 2026
+  - checkpointing
+  - validation-loss based logging
 - shuffled dataloader contexts jul 9 2026
-  
+- sliding frequency penalty jul 10 2026
+
 ## Ongoing:
 - choosing
   
 ## TODO (not in order):
 - MoE
 - sliding windows attention
-- frequency penalty
 - more optimization
   
 #### Maybe:
