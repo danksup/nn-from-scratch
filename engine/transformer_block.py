@@ -7,7 +7,7 @@ import engine.backend as nx
 from typing import Any
 
 class TransformerBlock:
-    def __init__(self,embed_dim,ff_dim, n_heads, n_kv_heads) -> None:
+    def __init__(self,embed_dim,ff_dim, n_heads, n_kv_heads, n_experts=1) -> None:
         self.causal_mask = None
         self.embed_dim = embed_dim
         self.hidden_width = ff_dim
@@ -24,6 +24,8 @@ class TransformerBlock:
         self.ff = SwiGLU(ff_dim, embed_dim)
         self.rmsnorm1 = RMSNorm(embed_dim)
         self.rmsnorm2 = RMSNorm(embed_dim)
+
+        self.experts = []
 
     @nx.compile
     @staticmethod

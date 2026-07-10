@@ -44,12 +44,12 @@ logs:
 - sliding frequency penalty jul 10 2026
 
 ## Ongoing:
-- choosing
+- MoE
   
 ## TODO (not in order):
-- MoE
 - sliding windows attention
 - inference optimization
+- conversation memory
 - more optimization
   
 #### Maybe:
