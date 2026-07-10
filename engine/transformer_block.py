@@ -25,7 +25,11 @@ class TransformerBlock:
         self.rmsnorm1 = RMSNorm(embed_dim)
         self.rmsnorm2 = RMSNorm(embed_dim)
 
-        self.experts = []
+        #TODO
+        self.n_experts = n_experts
+        init = nx.sqrt(6/embed_dim + n_experts)
+        self.experts = [SwiGLU(ff_dim, embed_dim) for _ in range(n_experts)]
+        self.router = nx.uniform(-init,init,(self.embed_dim, self.n_experts))
 
     @nx.compile
     @staticmethod

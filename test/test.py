@@ -21,14 +21,5 @@ b = mx.array([2,3,4])
 b = np.unique(a, return_counts=True)
 # print(type(b[0]))
 
-m =mx.array( [
-                [
-                    [1,2,3,4], 
-                    [4,5,6,7], 
-                    [7,8,9,10] 
-                    
-                ] 
-            ])
-c = np.unique(m, return_counts=True)
-print(c)
-mx.array(c)
+
+print(type(np.pi))

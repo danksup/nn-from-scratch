@@ -26,6 +26,7 @@ else:
     backend = "NumPy"
 
 e = _nx.e
+pi = _nx.pi
 float16 = _nx.float16
 float32 = _nx.float32
 int64 = _nx.int64

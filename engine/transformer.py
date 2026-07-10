@@ -7,8 +7,6 @@ from engine.transformer_block import TransformerBlock
 import engine.backend as nx
 from typing import Any
 import time
-# FLUSH_EVERY = 32
-PI = 3.141592653589793
 
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
@@ -128,7 +126,7 @@ class Transformer:
             current_step = self.optimizer.state["t"]
             total_step = ((len(dataloader.train_contexts)) // batch_size) * total_epoch
             progress = min(1, current_step / total_step) 
-            self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(PI * progress))
+            self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(nx.pi * progress))
 
 
             all_network_params = []
@@ -204,7 +202,7 @@ class Transformer:
             current_step = self.optimizer.state["t"]
             total_step = ((len(dataloader.train_contexts)) // batch_size) * total_epoch
             progress = min(1, current_step / total_step) 
-            self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(PI * progress))
+            self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(nx.pi * progress))
 
             all_network_params = []
             for i,block in enumerate(self.blocks):
