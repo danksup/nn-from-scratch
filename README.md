@@ -49,6 +49,7 @@ logs:
 ## TODO (not in order):
 - MoE
 - sliding windows attention
+- inference optimization
 - more optimization
   
 #### Maybe:

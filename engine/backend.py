@@ -62,7 +62,7 @@ def unique(a:ArrayLike, return_counts:bool=False ) -> Any:
     unique_array =  np.unique(a, return_counts=return_counts)
     if backend == "MLX":
         if return_counts:
-            return(_nx.array(unique_array[0]), _nx.array(unique_array[1].tolist(), dtype=int32))
+            return(_nx.array(unique_array[0]), _nx.array(unique_array[1]))
         return mx.array(unique_array)
     return unique_array
 

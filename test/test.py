@@ -30,8 +30,5 @@ m =mx.array( [
                 ] 
             ])
 c = np.unique(m, return_counts=True)
-ctype = getattr(c[0], 'dtype')
-print(ctype)
-
-d = mx.array(c[0])
-print(d)
+print(c)
+mx.array(c)
