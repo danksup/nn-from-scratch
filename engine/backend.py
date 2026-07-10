@@ -58,10 +58,12 @@ def add_at(a:Any, idx:Any, values:Any) -> Any:
     _nx.add.at(a, idx, values)
     return a
 
-def unique(a:ArrayLike,*,return_inverse:bool=False, return_counts:bool=False ) -> Any:
-    unique_array =  np.unique(a, return_inverse=return_inverse, return_counts=return_counts)
-    # if backend == "MLX":
-    #     return mx.array(unique_array)
+def unique(a:ArrayLike, return_counts:bool=False ) -> Any:
+    unique_array =  np.unique(a, return_counts=return_counts)
+    if backend == "MLX":
+        if return_counts:
+            return(_nx.array(unique_array[0]), _nx.array(unique_array[1].tolist(), dtype=int32))
+        return mx.array(unique_array)
     return unique_array
 
 def zeros_like( a:ArrayLike, dtype=None) -> ArrayLike:

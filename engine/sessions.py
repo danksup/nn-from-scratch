@@ -164,7 +164,7 @@ class Session:
             if checkpoint is not None:
                 checkpoint.save("keyboardinterrupt_save")
     
-    def inference(self, context:Any, temperature=0.8, top_k=3, top_p=0.9, n=100, mem_size=10) -> Any:
+    def inference(self, context:Any, temperature=0.8, top_k=3, top_p=0.9, n=100, mem_size=16, penalty:float=.05) -> Any:
         all_caches = None
         position = 0
         memory = []
@@ -183,8 +183,12 @@ class Session:
 
         for i in range(n-1):
             logits, all_caches = self.transformer.inference(next_token,self.configs["context_size"], self.embedding ,all_caches, position)
-            raw_token = self._sample(logits,memory, temperature, top_k, top_p)
+            raw_token = self._sample(logits, memory, temperature, top_k, top_p, penalty)
+
+            if len(memory) >= mem_size:
+                memory = memory[1:]
             memory.append(raw_token)
+
             token = raw_token.item()
             decoded = self.tokenizer.decode([token])
             print(decoded,end="",flush=True)
@@ -193,9 +197,6 @@ class Session:
             next_token = nx.array([[token]], dtype=nx.int32)
             position += 1
 
-            if len(memory) >= mem_size:
-                memory = memory[1:]
-        
         # print(memory)
 
     def _sample(self, logits, memory, temperature=0.8, top_k=3, top_p=0.9, penalty=0.05):

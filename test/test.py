@@ -29,8 +29,9 @@ m =mx.array( [
                     
                 ] 
             ])
-ax0 = mx.zeros(m.shape[1],dtype=mx.int32)
-ax1 = mx.arange(m.shape[1])
-idx = mx.array([0,], dtype=mx.int32)
-m = m.at[..., idx].add(1)
-print(m)
+c = np.unique(m, return_counts=True)
+ctype = getattr(c[0], 'dtype')
+print(ctype)
+
+d = mx.array(c[0])
+print(d)
