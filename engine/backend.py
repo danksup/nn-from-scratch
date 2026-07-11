@@ -329,3 +329,6 @@ def norm(a:ArrayLike, ord:Any=None, axis=None, keepdims:bool=False) -> Any:
 
 def pad(a:ArrayLike, pad_width:int|tuple[int]|tuple[int,int]|list[tuple[int,int]],mode:Literal['constant', 'edge']='constant', constant_value:Any=0) -> ArrayLike:
     return _nx.pad(a, pad_width=pad_width, mode=mode, constant_values=constant_value)
+
+def split(a:ArrayLike,indices_or_sections, axis=None)-> list[ArrayLike]:
+    return _nx.split(a, indices_or_sections, axis=0) #type:ignore

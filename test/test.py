@@ -1,25 +1,19 @@
 import numpy as np
 import mlx.core as mx
 
-# a = [[1,2,3], [4,5,6], [7,8,9]]
-# index = [2,3,4]
-# b = np.triu(a)
-# c = np.where(b,)
-# print(b)
+E = 3
+T = 4
 
-a =mx.array( [[[1,2,3], [4,5,6], [7,8,9]],[[1,2,3], [4,5,6], [7,8,9]]] )
-# idxs = mx.array([[2],[0],[1]])
-
-# b = a.at[0,1,1].add(-1)
-# a[:,:,:2] -= 1
+a = mx.array([1,1,2,2,3,3,3], mx.int32)
+b = np.pad(a, (1,0), 'constant')
+c = mx.pad(a, (1,0), 'constant')
+print(b)
+print(c)
+# a[0] = 19
 # print(a)
-c = mx.zeros(a.shape[-1])
-# print(c)
-b = mx.array([2,3,4])
-# print(a.shape)
+# # count = mx.zeros(4, mx.int32)
+# # count = count.at[a].add(1)
 
-b = np.unique(a, return_counts=True)
-# print(type(b[0]))
-
-
-print(type(np.pi))
+# # cum = mx.cumsum(count)
+# # rows = mx.arange(cum.shape[0])
+# # print(cum)
