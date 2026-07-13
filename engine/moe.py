@@ -33,6 +33,12 @@ class MoE:
         #tip-1
         chosen_expert_idx = nx.argmax(router_prob, -1) #(N,)
 
+        histogram = nx.zeros(n_expert, dtype=nx.int32)
+        histogram = nx.add_at(histogram,chosen_expert_idx,1) 
+        avg_prob = nx.mean(router_prob, axis=0) #P
+        normalized_histogram = histogram / N #f
+        router_loss = n_expert * nx.sum(normalized_histogram * avg_prob) #L
+
         #dispatch
         routing_mask = nx.zeros((N,n_expert), nx.int32)
         row = nx.arange(N, dtype=nx.int32)
@@ -64,12 +70,12 @@ class MoE:
         final_output = gated_output[chosen_expert_idx, safe_slot]
         final_output = final_output * num_valid[..., None]
         final_output = final_output.reshape(B,T,D)
-        cache = (flatten_x, router_prob, chosen_expert_idx, chosen_gate, slot_idx, valid, safe_slot, expert_input, expert_gate, projected, hidden, raw_output)
-        return final_output, cache
+        cache = (flatten_x, router_prob, chosen_expert_idx, valid, safe_slot, expert_input, expert_gate, projected, hidden, raw_output, normalized_histogram)
+        return final_output, cache, router_loss
 
     @staticmethod
     def backward(gradient , caches, moe_configs, ff_params):
-        flatten_x, router_prob, chosen_expert_idx, chosen_gate, slot_idx, valid, safe_slot, expert_input, expert_gate, projected, hidden, raw_output = caches
+        flatten_x, router_prob, chosen_expert_idx, valid, safe_slot, expert_input, expert_gate, projected, hidden, raw_output, normalized_histogram = caches
         Wout, Wcombined = ff_params
         capacity_factor, n_experts, hidden_width, router = moe_configs
         B,T,D = gradient.shape
@@ -108,12 +114,13 @@ class MoE:
         d_router_prob = nx.zeros((N,n_experts))
         d_router_prob[row_idx, chosen_expert_idx] = d_chosen_gate
 
+        d_avg_prob = n_experts * normalized_histogram
+        d_router_prob += 0.01 * (d_avg_prob / N)
+
         d_scores = softmax_derivative(router_prob, d_router_prob) #(N,E)
 
         d_router = flatten_x.T @ d_scores
-
         d_x_router = d_scores @ router.T #(N, D)
-
         dx_flat = d_x_expert + d_x_router
 
         dx = dx_flat.reshape(B,T,D)
@@ -133,5 +140,5 @@ class MoE:
         moe = cls(capacity_factor, n_experts, embed_dim, hidden_width)
         moe.Wcombined = nx.array(thing["Wcombine"], dtype=nx.float16)
         moe.Wout = nx.array(thing["Wout"], dtype=nx.float16)
-        moe.router = nx.array(thing["router"], dtype=nx.float16)
+        moe.router = nx.array(thing["router"], dtype=nx.float32)
         return moe

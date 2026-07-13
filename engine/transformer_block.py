@@ -27,9 +27,9 @@ class TransformerBlock:
         self.rmsnorm1 = RMSNorm(embed_dim)
         self.rmsnorm2 = RMSNorm(embed_dim)
 
-    @nx.compile
+    # @nx.compile
     @staticmethod
-    def _forward(x, causal_mask:Any, embed_dim:int, n_heads:int, n_kv_heads, n_rep, head_dim:int, n_experts, cf,freqs:Any, Wqkv:Any, Wo:Any, Wcombined:Any,router, hidden_width:int, Wout:Any, epsilon:float, gamma1:Any, gamma2:Any, p:float, is_training:bool) -> tuple[Any, Any, Any]:
+    def _forward(x, causal_mask:Any, embed_dim:int, n_heads:int, n_kv_heads, n_rep, head_dim:int, n_experts, cf,freqs:Any, Wqkv:Any, Wo:Any, Wcombined:Any,router, hidden_width:int, Wout:Any, epsilon:float, gamma1:Any, gamma2:Any, p:float, is_training:bool) -> tuple[Any, Any, Any, Any]:
         '''
         flow:
             input = x shape(B,T,D) -> rmsnorm(x) = rmsnorm_out -> attention(rmsnorm_out) + residual = attn_out
@@ -47,13 +47,13 @@ class TransformerBlock:
 
         rmsnorm2_out, caches_rmsnorm2 = RMSNorm._forward(attn_out, gamma2,epsilon)
 
-        ff_out, caches_ff = MoE.forward(rmsnorm2_out, cf,router,n_experts,hidden_width,Wcombined, Wout)
+        ff_out, caches_ff, router_loss = MoE.forward(rmsnorm2_out, cf,router,n_experts,hidden_width,Wcombined, Wout)
         drop_ff_out, mask2 =  Dropout._forward(ff_out, p,is_training)
         ff_out = drop_ff_out + attn_out
         
         masks = (mask1, mask2)
         caches = (caches_attn, caches_ff, caches_rmsnorm1, caches_rmsnorm2)
-        return ff_out, masks, caches
+        return ff_out, masks, caches, router_loss
 
     @nx.compile
     @staticmethod
@@ -84,7 +84,7 @@ class TransformerBlock:
 
         rmsnorm2_out, _ = RMSNorm._forward(attn_out, self.rmsnorm2.gamma, self.rmsnorm2.epsilon)
 
-        ff_out,_ = MoE.forward(rmsnorm2_out, self.ff.cf, self.ff.router, self.ff.n_experts, self.ff.hidden_width, self.ff.Wcombined, self.ff.Wout)
+        ff_out,_,_ = MoE.forward(rmsnorm2_out, self.ff.cf, self.ff.router, self.ff.n_experts, self.ff.hidden_width, self.ff.Wcombined, self.ff.Wout)
         ff_out = ff_out + attn_out
         
         return ff_out, cached_k, cached_v

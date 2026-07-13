@@ -42,11 +42,12 @@ logs:
   - validation-loss based logging
 - shuffled dataloader contexts jul 9 2026
 - sliding frequency penalty jul 10 2026
-- MoE jul 13 2026
+- jul 13 2026
+  - MoE (top-1)
+  - MoE load balancing
 
 ## Ongoing:
 - optimizing/cleanup/docs
-- moe load balancing
 - moe top k
 
 ## TODO (not in order):

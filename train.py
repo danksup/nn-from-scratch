@@ -1,7 +1,7 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-EPOCHS = 5
+EPOCHS = 10
 EMBED_DIM = 128
 CONTEXT_SIZE = 32
 BATCH_SIZE = 128
