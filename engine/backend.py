@@ -332,3 +332,12 @@ def pad(a:ArrayLike, pad_width:int|tuple[int]|tuple[int,int]|list[tuple[int,int]
 
 def split(a:ArrayLike,indices_or_sections, axis=None)-> list[ArrayLike]:
     return _nx.split(a, indices_or_sections, axis=0) #type:ignore
+
+def slice(a, start_indices, axes, slice_size):
+    return _nx.slice(a, start_indices, axes, slice_size)
+
+def ceil(a):
+    return _nx.ceil(a)
+
+def floor(a):
+    return _nx.floor(a)

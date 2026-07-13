@@ -2,7 +2,7 @@ import engine.backend as nx
 from typing import Any
 
 class AdamW:
-    def __init__(self, lr=0.01, beta:float=0.9, beta2:float=0.999, epsilon:float=1e-8, weight_decay=0.01) -> None:
+    def __init__(self,min_lr=1e-4, max_lr=1e-3, beta:float=0.9, beta2:float=0.999, epsilon:float=1e-8, weight_decay=0.01) -> None:
         """
         m: first moment 
             m = β_{1} * m + (1 - β_{1}) * gradient    \n
@@ -17,14 +17,23 @@ class AdamW:
         # self.memory = {}
         self.state = {}
         self.state["t"] = nx.array(0, dtype=nx.int32)
-        self.lr = nx.float_32(lr)
+        self.lr = nx.float_32(min_lr)
+        self.min_lr = min_lr
+        self.max_lr = max_lr
         self.beta1 = nx.float_32(beta)
         self.beta2 = nx.float_32(beta2)
         self.epsilon = nx.float_32(epsilon)
         self.weight_decay = nx.float_32(weight_decay)
     
-    def step_many(self, name_param_gradient:list[Any]) -> dict[Any,Any]:
+    def step_many(self, name_param_gradient:list[Any], train_contexts, batch_size, total_epoch) -> dict[Any,Any]:
+        #cosine decay: lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + cos(pi * current_step / total_steps))
+        current_step = self.state["t"]
+        total_step = ((len(train_contexts)) // batch_size) * total_epoch
+        progress = min(1, current_step / total_step) 
+        self.lr = self.min_lr + 0.5 * (self.max_lr - self.min_lr) * (1 + nx.cos(nx.pi * progress))
+
         self.state["t"] += 1
+    
         group = {}
         for name,param,gradient in name_param_gradient:
             shape = param.shape

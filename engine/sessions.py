@@ -15,12 +15,17 @@ DEFAULT_CONFIGS = {
             "context_size": 64,
             "batch_size": 32,
             "embed_dim":8,
-            "ff_width": 512,
+            "MoE":{
+                "cf":1.25,
+                "n_experts":4,
+                "ff_width":768
+            },
             "optimizer":"adamw",
             "train_split":.9,
             "n_heads": 4,
             "optimizer_args":{
-                "lr":0.05,
+                "min_lr":0.05,
+                "max_lr":0.05,
                 "beta":0.9,
                 "beta2":0.999,
                 "epsilon":1e-8,
@@ -70,6 +75,7 @@ class Session:
         for i in self.transformer.blocks:
             total += i.ff.Wcombined.size
             total += i.ff.Wout.size
+            total += i.ff.router.size
             total += i.attention.Wqkv.size
             total += i.attention.Wo.size
             total += i.rmsnorm1.gamma.size

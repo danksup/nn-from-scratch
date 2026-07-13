@@ -42,11 +42,16 @@ logs:
   - validation-loss based logging
 - shuffled dataloader contexts jul 9 2026
 - sliding frequency penalty jul 10 2026
+- MoE jul 13 2026
 
 ## Ongoing:
-- MoE
-  
+- moe load balancing
+
 ## TODO (not in order):
+- centralizing source of truth
+- moe noise
+- moe router z loss
+- moe top k
 - sliding windows attention
 - inference optimization
 - conversation memory

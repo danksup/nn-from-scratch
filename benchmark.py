@@ -9,6 +9,8 @@ BATCH_SIZE = 48
 BASE_WIDTH = 768 #4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS// 2
+N_EXPERTS = 16
+CF = 1.25
 VAL = .9
 
 from pathlib import Path
@@ -26,22 +28,26 @@ from engine.sessions import Session
 import engine.backend as nx
 
 configs = {
-            "context_size": CONTEXT_SIZE,
-            "batch_size": BATCH_SIZE,
-            "embed_dim":EMBED_DIM,
-            "ff_width": BASE_WIDTH,
-            "train_split":VAL,
-            "n_heads": N_HEADS,
-            "n_kv_heads": N_KV_HEADS,
+            "epochs": 100,
+            "context_size": 64,
+            "batch_size": 32,
+            "embed_dim":8,
+            "MoE":{
+                "cf":CF,
+                "n_experts":N_EXPERTS,
+                "ff_width":BASE_WIDTH
+            },
             "optimizer":"adamw",
-            "dataset":0,
+            "train_split":.9,
+            "n_heads": 4,
             "optimizer_args":{
-                "lr":LR,
+                "min_lr":1e-4,
+                "max_lr":1e-3,
                 "beta":0.9,
                 "beta2":0.999,
-                "weight_decay":1e-2
-            },
-            "using":backend
+                "epsilon":1e-8,
+                "weight_decay":0.01
+            }
         }
 
 corpus = ""
@@ -63,10 +69,10 @@ weight_n = CONTEXT_SIZE * EMBED_DIM
 real_vocab_size = len(tokenizer1.vocab)
 
 embedding1 = Embedding(real_vocab_size, EMBED_DIM)
-tblock = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
-tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS)
+tblock = TransformerBlock(EMBED_DIM ,BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
+tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
+tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
+tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
 transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
 transformer.add_block(tblock2)

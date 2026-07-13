@@ -48,13 +48,14 @@ class Transformer:
             Wo = block.attention.Wo
             Wcombined = block.ff.Wcombined
             Wout = block.ff.Wout
+            router = block.ff.router
             epsilon = block.rmsnorm1.epsilon
             gamma1 = block.rmsnorm1.gamma
             gamma2 = block.rmsnorm2.gamma
             if block.causal_mask is None or block.causal_mask.shape[0] != T:
                 block.causal_mask = nx.triu(nx.ones((T, T), dtype=nx.bool_), k=1)
-            ff_out ,masks, caches = block._forward(output, block.causal_mask, self.embed_dim, block.n_heads,block.n_kv_heads, block.n_rep ,block.head_dim, 
-                                                   block.freqs, Wqkv, Wo, Wcombined, block.hidden_width, Wout, epsilon, gamma1, gamma2, 0.1, is_training)
+            ff_out ,masks, caches = block._forward(output, block.causal_mask, self.embed_dim, block.n_heads, block.n_kv_heads, block.n_rep ,block.head_dim, block.n_experts, block.cf,
+                                                   block.freqs, Wqkv, Wo, Wcombined, router, block.hidden_width, Wout, epsilon, gamma1, gamma2, 0.1, is_training)
 
             output = ff_out
             all_masks.append(masks)
@@ -76,14 +77,16 @@ class Transformer:
         for block, masks,caches in zip(self.blocks[::-1], all_masks[::-1],all_caches[::-1]):
             caches_attn, caches_ff, caches_rmsnorm1, caches_rmsnorm2 = caches
             mask1, mask2 = masks
+            moe_configs = block.ff.cf, block.ff.n_experts, block.ff.hidden_width, block.ff.router
             d_attn_params = (block.n_heads, block.head_dim, block.embed_dim, block.n_kv_heads, block.n_rep,block.attention.Wo, block.freqs, block.attention.Wqkv)
             ff_params = (block.ff.Wout, block.ff.Wcombined)
-            dx, dWout, dWcombined,dWqkv,dWo, d_gamma1, d_gamma2 = block._backward(current_grad, mask1=mask1, mask2=mask2, 
+            dx, dWout, dWcombined, d_router, dWqkv,dWo, d_gamma1, d_gamma2 = block._backward(current_grad, mask1=mask1, mask2=mask2, 
                                                                 caches_attn=caches_attn, caches_ff=caches_ff, caches_rmsnorm1=caches_rmsnorm1, caches_rmsnorm2=caches_rmsnorm2, 
-                                                                d_attn_params=d_attn_params, gamma1=block.rmsnorm1.gamma, gamma2=block.rmsnorm2.gamma, ff_params=ff_params)
+                                                                d_attn_params=d_attn_params, gamma1=block.rmsnorm1.gamma, gamma2=block.rmsnorm2.gamma, ff_params=ff_params, moe_configs=moe_configs)
             
             block.ff.dWout = dWout
             block.ff.dWcombined = dWcombined
+            block.ff.d_router = d_router
             
             block.attention.dWqkv=dWqkv
             block.attention.dWo = dWo
@@ -121,13 +124,6 @@ class Transformer:
 
             total_embedding_gradient = embedding_gradient + d_table
 
-             #cosine decay: lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + cos(pi * current_step / total_steps))
-            current_step = self.optimizer.state["t"]
-            total_step = ((len(dataloader.train_contexts)) // batch_size) * total_epoch
-            progress = min(1, current_step / total_step) 
-            self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(nx.pi * progress))
-
-
             all_network_params = []
             for i,block in enumerate(self.blocks):
                 all_network_params.extend(
@@ -135,16 +131,18 @@ class Transformer:
                     (f"Wo_{i}", block.attention.Wo, block.attention.dWo),
                     (f"ff_wcombined_{i}", block.ff.Wcombined, block.ff.dWcombined),
                     (f"ff_wout_{i}", block.ff.Wout, block.ff.dWout),
+                    (f"ff_router_{i}", block.ff.router, block.ff.d_router),
                     (f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma),
                     (f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)])
             all_network_params.extend([("embedding",embedding.lookup_table, total_embedding_gradient)])
             
-            optimized = self.optimizer.step_many(all_network_params)
+            optimized = self.optimizer.step_many(all_network_params, dataloader.train_contexts, batch_size, total_epoch)
             for i,block in enumerate(self.blocks):
                 block.attention.Wqkv = optimized[f"Wqkv_{i}"]
                 block.attention.Wo = optimized[f"Wo_{i}"]
                 block.ff.Wcombined = optimized[f"ff_wcombined_{i}"]
                 block.ff.Wout = optimized[f"ff_wout_{i}"]
+                block.ff.router = optimized[f"ff_router_{i}"]
                 block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
                 block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
             embedding.lookup_table = optimized["embedding"]
@@ -159,8 +157,6 @@ class Transformer:
         total_loss = nx.float_32(0.0)
         count = 0
         batch_idx = 0
-        min_lr = 1e-4
-        max_lr = 1e-3
         total_epoch = 1
 
         loss_times = []
@@ -174,6 +170,9 @@ class Transformer:
             batch_scores, last_output, all_masks, all_caches = self.forward(embedded, embedding)
             loss = cross_entropy(batch_scores, next_tokens)
             loss = nx.mean(loss)
+            # print("router",self.blocks[0].ff.router)
+            # print("lr",self.optimizer.lr)
+            
 
             start = time.perf_counter()
             nx.eval(loss)
@@ -198,11 +197,6 @@ class Transformer:
 
             total_embedding_gradient = embedding_gradient + d_table
 
-            current_step = self.optimizer.state["t"]
-            total_step = ((len(dataloader.train_contexts)) // batch_size) * total_epoch
-            progress = min(1, current_step / total_step) 
-            self.optimizer.lr = min_lr + 0.5 * (max_lr - min_lr) * (1 + nx.cos(nx.pi * progress))
-
             all_network_params = []
             for i,block in enumerate(self.blocks):
                 all_network_params.extend(
@@ -210,16 +204,18 @@ class Transformer:
                     (f"Wo_{i}", block.attention.Wo, block.attention.dWo),
                     (f"ff_wcombined_{i}", block.ff.Wcombined, block.ff.dWcombined),
                     (f"ff_wout_{i}", block.ff.Wout, block.ff.dWout),
+                    (f"ff_router_{i}", block.ff.router, block.ff.d_router),
                     (f"rmsnorm1_gamma_{i}", block.rmsnorm1.gamma, block.rmsnorm1.d_gamma),
                     (f"rmsnorm2_gamma_{i}", block.rmsnorm2.gamma, block.rmsnorm2.d_gamma)])
             all_network_params.extend([("embedding",embedding.lookup_table, total_embedding_gradient)])
             
-            optimized = self.optimizer.step_many(all_network_params)
+            optimized = self.optimizer.step_many(all_network_params,dataloader.train_contexts, batch_size, total_epoch)
             for i,block in enumerate(self.blocks):
                 block.attention.Wqkv = optimized[f"Wqkv_{i}"]
                 block.attention.Wo = optimized[f"Wo_{i}"]
                 block.ff.Wcombined = optimized[f"ff_wcombined_{i}"]
                 block.ff.Wout = optimized[f"ff_wout_{i}"]
+                block.ff.router = optimized[f"ff_router_{i}"]
                 block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
                 block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
             embedding.lookup_table = optimized["embedding"]
@@ -230,6 +226,7 @@ class Transformer:
                 to_eval.append( block.attention.Wo)
                 to_eval.append(block.ff.Wcombined)
                 to_eval.append(block.ff.Wout)
+                to_eval.append(block.ff.router)
                 to_eval.append(block.rmsnorm1.gamma)
                 to_eval.append(block.rmsnorm2.gamma)
             to_eval.append(embedding.lookup_table)
