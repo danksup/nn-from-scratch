@@ -1,7 +1,7 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-EPOCHS = 3
+EPOCHS = 1
 LR = 1e-3
 EMBED_DIM = 128
 CONTEXT_SIZE = 32
@@ -35,10 +35,10 @@ from engine.sessions import Session
 from helper.singleton import init_corpus
 
 configs = {
-            "epochs": 100,
-            "context_size": 16,
-            "batch_size": 64,
-            "embed_dim":8,
+            "epochs": EPOCHS,
+            "context_size": CONTEXT_SIZE,
+            "batch_size": BATCH_SIZE,
+            "embed_dim":EMBED_DIM,
             "MoE":{
                 "cf":CF,
                 "n_experts":N_EXPERTS,
@@ -46,7 +46,9 @@ configs = {
             },
             "optimizer":"adamw",
             "train_split":.9,
-            "n_heads": 4,
+            "n_heads": N_HEADS,
+            "n_kv_heads":N_KV_HEADS,
+            "train_split":VAL,
             "optimizer_args":{
                 "min_lr":1e-4,
                 "max_lr":1e-2,

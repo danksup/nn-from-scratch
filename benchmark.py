@@ -28,10 +28,9 @@ from engine.sessions import Session
 import engine.backend as nx
 
 configs = {
-            "epochs": 100,
-            "context_size": 64,
-            "batch_size": 32,
-            "embed_dim":8,
+            "context_size": CONTEXT_SIZE,
+            "batch_size": BATCH_SIZE,
+            "embed_dim":EMBED_DIM,
             "MoE":{
                 "cf":CF,
                 "n_experts":N_EXPERTS,
@@ -39,10 +38,12 @@ configs = {
             },
             "optimizer":"adamw",
             "train_split":.9,
-            "n_heads": 4,
+            "n_heads": N_HEADS,
+            "n_kv_heads":N_KV_HEADS,
+            "train_split":VAL,
             "optimizer_args":{
                 "min_lr":1e-4,
-                "max_lr":1e-3,
+                "max_lr":1e-2,
                 "beta":0.9,
                 "beta2":0.999,
                 "epsilon":1e-8,
