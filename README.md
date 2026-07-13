@@ -47,12 +47,12 @@ logs:
 ## Ongoing:
 - optimizing/cleanup/docs
 - moe load balancing
+- moe top k
 
 ## TODO (not in order):
 - centralizing source of truth
 - moe noise
 - moe router z loss
-- moe top k
 - sliding windows attention
 - inference optimization
 - conversation memory
@@ -88,7 +88,7 @@ dataset: 5 files | using: MLX | block_size: 1 | corpus char len: 3417355
 #### slightly different configs, the rest is the same unless otherwise stated
 - Date 2026-06-30 | 623763 function calls in 204.493 seconds | ram peaked at ~ 800MB | grouped-query attention (8Q/4KV)
 - Date 2026-07-04 | 131387 function calls in 153.710 seconds | ram peaked at ~ 1200MB | logsumexp cross entropy, compiled cross entropy; BPE Tokenizer, corpus char len: 1106747 param: 323712 (larger vocabulary because of BPE)
-- Date 2026-07-13  | 122553 function calls in 383.403 seconds | ram peaked at ~5.1GB (stable) | MoE; param: 5254784, MoE: {'cf': 1.25, 'n_experts': 24, 'ff_width': 1024}; 8Q/2KV; cosine decay LR;
+- Date 2026-07-13  | 122553 function calls in 297.455 seconds | ram peaked at ~4.6GB (stable) | MoE; param: 5256832, MoE: {'cf': 1.25, 'n_experts': 24, 'ff_width': 1024}; cosine decay LR;
 
 ### Tokenizer
 - 11296590 corpus len | 2048 | fitting finished in 1614.249 py 
