@@ -121,8 +121,7 @@ class Tokenizer:
     @staticmethod
     def remove_word(word:tuple[int,...], freq:int, pair_counts:Counter[tuple[int,int]], pair_to_words:dict[tuple[int,int],set[tuple[int,...]]]):
         '''
-        remove a fucking word from the fucking pair to word dict (mutate the fucking dict). 
-        because we fucking remove it, we have to fucking reduce the fucking pair occurences based on the fucking frequency of the fucking word. therefore mutating the fucking pair_count.
+        re
         '''
         word_pairs = list( Tokenizer.get_pairs(word))
         for pair in word_pairs:
