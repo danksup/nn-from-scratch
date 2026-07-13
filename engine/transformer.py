@@ -6,6 +6,7 @@ from engine.transformer_block import TransformerBlock
 import engine.backend as nx
 from typing import Any
 import time
+LAMBDA = 1e-2
 
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
@@ -68,7 +69,7 @@ class Transformer:
 
         if return_cache:
             return scores, last_output, all_masks, all_caches, total_router_loss
-        return scores
+        return scores, total_router_loss
     
     def backward(self, err_signal:Any, lookup_table, last_output, all_masks,all_caches) -> Any:
         '''
@@ -79,7 +80,7 @@ class Transformer:
         for block, masks,caches in zip(self.blocks[::-1], all_masks[::-1],all_caches[::-1]):
             caches_attn, caches_ff, caches_rmsnorm1, caches_rmsnorm2 = caches
             mask1, mask2 = masks
-            moe_configs = block.ff.cf, block.ff.n_experts, block.ff.hidden_width, block.ff.router
+            moe_configs = block.ff.cf, block.ff.n_experts, block.ff.hidden_width, block.ff.router, LAMBDA
             d_attn_params = (block.n_heads, block.head_dim, block.embed_dim, block.n_kv_heads, block.n_rep,block.attention.Wo, block.freqs, block.attention.Wqkv)
             ff_params = (block.ff.Wout, block.ff.Wcombined)
             dx, dWout, dWcombined, d_router, dWqkv,dWo, d_gamma1, d_gamma2 = block._backward(current_grad, mask1=mask1, mask2=mask2, 
@@ -112,7 +113,7 @@ class Transformer:
             embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
             batch_scores, last_output, all_masks, all_caches, total_router_loss = self.forward(embedded, embedding)
             loss = cross_entropy(batch_scores, next_tokens)
-            loss = nx.mean(loss) + 0.01 * total_router_loss
+            loss = nx.mean(loss) + LAMBDA * total_router_loss
             batch_gradient = cross_entropy_gradient(batch_scores, next_tokens)
             batch_gradient /= (batch_gradient.shape[0] * batch_gradient.shape[1])
 
@@ -171,7 +172,7 @@ class Transformer:
             embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
             batch_scores, last_output, all_masks, all_caches, total_router_loss = self.forward(embedded, embedding)
             loss = cross_entropy(batch_scores, next_tokens) 
-            loss = nx.mean(loss) + 0.01 * total_router_loss
+            loss = nx.mean(loss) + LAMBDA * total_router_loss
             # print("router",self.blocks[0].ff.router)
             # print("lr",self.optimizer.lr)
 
@@ -253,10 +254,10 @@ class Transformer:
     
         for contexts, next_tokens in dataloader.get_validation_pairs(batch_size):
             embedded = embedding.forward(contexts) 
-            batch_validation_scores = self.forward(embedded, embedding, False, False)
+            batch_validation_scores, total_router_loss = self.forward(embedded, embedding, False, False)
             
             val_loss = cross_entropy(batch_validation_scores, next_tokens)
-            val_loss = nx.mean(val_loss)
+            val_loss = nx.mean(val_loss) + LAMBDA * total_router_loss
             total_loss += val_loss.item() * next_tokens.size
             count += next_tokens.size
             

@@ -77,7 +77,7 @@ class MoE:
     def backward(gradient , caches, moe_configs, ff_params):
         flatten_x, router_prob, chosen_expert_idx, valid, safe_slot, expert_input, expert_gate, projected, hidden, raw_output, normalized_histogram = caches
         Wout, Wcombined = ff_params
-        capacity_factor, n_experts, hidden_width, router = moe_configs
+        capacity_factor, n_experts, hidden_width, router, LAMBDA = moe_configs
         B,T,D = gradient.shape
         N = B*T
         flatten_gradient = gradient.reshape(-1, D)
@@ -115,7 +115,7 @@ class MoE:
         d_router_prob[row_idx, chosen_expert_idx] = d_chosen_gate
 
         d_avg_prob = n_experts * normalized_histogram
-        d_router_prob += 0.01 * (d_avg_prob / N)
+        d_router_prob += LAMBDA * (d_avg_prob / N)
 
         d_scores = softmax_derivative(router_prob, d_router_prob) #(N,E)
 

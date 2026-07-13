@@ -1,13 +1,13 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-EPOCHS = 10
+EPOCHS = 5
 EMBED_DIM = 128
 CONTEXT_SIZE = 32
 BATCH_SIZE = 128
 BASE_WIDTH = 1024#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
-N_KV_HEADS = N_HEADS // 2
+N_KV_HEADS = N_HEADS // 4
 N_EXPERTS = 24
 CF = 1.25
 VAL = .9
