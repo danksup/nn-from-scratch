@@ -45,6 +45,7 @@ logs:
 - MoE jul 13 2026
 
 ## Ongoing:
+- optimizing/cleanup/docs
 - moe load balancing
 
 ## TODO (not in order):
