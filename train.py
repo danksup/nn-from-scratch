@@ -5,11 +5,11 @@ EPOCHS = 1
 LR = 1e-3
 EMBED_DIM = 128
 CONTEXT_SIZE = 32
-BATCH_SIZE = 64
-BASE_WIDTH = 768#4 * EMBED_DIM 
+BATCH_SIZE = 128
+BASE_WIDTH = 1024#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS // 4
-N_EXPERTS = 16
+N_EXPERTS = 24
 CF = 1.25
 VAL = .9
 
@@ -92,17 +92,17 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)
-# profiler = cProfile.Profile()
-# profiler.enable()
-start = time.perf_counter()
+profiler = cProfile.Profile()
+profiler.enable()
+# start = time.perf_counter()
 session1.train(dataloader, display_message=True)
-end = time.perf_counter()
-print(f"training finished. time: {end - start:.3f}s")
+# end = time.perf_counter()
+# print(f"training finished. time: {end - start:.3f}s")
 
-# profiler.disable()
-# stats = pstats.Stats(profiler)
-# stats.sort_stats("cumtime")
-# stats.print_stats(100)
+profiler.disable()
+stats = pstats.Stats(profiler)
+stats.sort_stats("cumtime")
+stats.print_stats(100)
 
 session1.save(f"{session1.count_params()}_params")
 
