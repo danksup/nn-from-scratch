@@ -82,21 +82,23 @@ class MoE:
         cache = (flatten_x, router_prob, top_expert_indices, top_gates, flatten_top_expert_indices, assignement_tokens, valid, safe_slot, expert_input, expert_gate, projected, hidden, raw_output, normalized_histogram)
         return final_output, cache, router_loss
 
-    #TODO: fix backward for top-k
     @staticmethod
     def backward(gradient , caches, moe_configs, ff_params):
         flatten_x, router_prob, top_expert_indices, top_gates, flatten_top_expert_indices, assignement_tokens, valid, safe_slot, expert_input, expert_gate, projected, hidden, raw_output, normalized_histogram = caches
         Wout, Wcombined = ff_params
-        capacity_factor, top_k, n_experts, hidden_width, router, LAMBDA = moe_configs
+        capacity_factor, n_experts, hidden_width, router, LAMBDA = moe_configs
+        top_k = top_expert_indices.shape[1]
         B,T,D = gradient.shape
         N = B*T
+        M = N *top_k
         flatten_gradient = gradient.reshape(-1, D)
+        assignment_gradient = flatten_gradient[assignement_tokens] #(M,D)
         capacity = math.ceil(capacity_factor * N * top_k / n_experts)
         num_valid = nx.array(valid, dtype=nx.int32)
-        d_masked_output = flatten_gradient * num_valid[...,None]
+        d_masked_output = assignment_gradient * num_valid[...,None]
 
         d_gated_output = nx.zeros((n_experts, capacity, D))
-        d_gated_output = nx.add_at(d_gated_output, (chosen_expert_idx, safe_slot), d_masked_output)
+        d_gated_output = nx.add_at(d_gated_output, (flatten_top_expert_indices, safe_slot), d_masked_output)
         d_raw_output = d_gated_output * expert_gate[..., None] #(E, capacity, D)
         d_expert_gate = nx.sum(d_gated_output * raw_output, axis=-1) #(E, capacity)
        
@@ -112,28 +114,37 @@ class MoE:
         dWcombined = d_projected.transpose(0, 2, 1) @ expert_input #(E, 2H, D)
         d_expert_input = d_projected @ Wcombined #(E, C, D)
 
-        row_idx = nx.arange(safe_slot.shape[0], dtype=nx.int32)
-        d_x_expert = nx.zeros((N,D))
-        d_x_expert[row_idx] = d_expert_input[chosen_expert_idx[row_idx], safe_slot[row_idx]]
+        row_idx = nx.arange(M, dtype=nx.int32) #(M,)
+        d_x_expert = nx.zeros((M,D))
+        d_x_expert[row_idx] = d_expert_input[flatten_top_expert_indices[row_idx], safe_slot[row_idx]]
         d_x_expert *= num_valid[...,None]
 
-        d_chosen_gate = nx.zeros((N,))
-        d_chosen_gate[row_idx] = d_expert_gate[chosen_expert_idx[row_idx], safe_slot[row_idx]]
+        d_chosen_gate = nx.zeros((M,))
+        d_chosen_gate[row_idx] = d_expert_gate[flatten_top_expert_indices[row_idx], safe_slot[row_idx]]
         d_chosen_gate *= num_valid
+        d_chosen_gate = d_chosen_gate.reshape(N,top_k)
+        token_rows = nx.arange(N, dtype=nx.int32)[:,None]
+        selected_prob = router_prob[token_rows, top_expert_indices] #N,K
+        gate_sum = nx.sum(selected_prob, -1, keepdims=True) #(N,1)
+        coupling = nx.sum(d_chosen_gate * top_gates, -1, keepdims=True) #(N,1)
+        d_selected_prob = (d_chosen_gate - coupling)/gate_sum #(N,K)
+        d_selected_prob = d_selected_prob.reshape(-1,)
 
         d_router_prob = nx.zeros((N,n_experts))
-        d_router_prob[row_idx, chosen_expert_idx] = d_chosen_gate
+        d_router_prob[assignement_tokens, flatten_top_expert_indices] = d_selected_prob
 
         d_avg_prob = n_experts * normalized_histogram
         d_router_prob += LAMBDA * (d_avg_prob / N)
 
         d_scores = softmax_derivative(router_prob, d_router_prob) #(N,E)
 
-        d_router = flatten_x.T @ d_scores
+        d_router = flatten_x.T @ d_scores #(D,E)
         d_x_router = d_scores @ router.T #(N, D)
-        dx_flat = d_x_expert + d_x_router
+        d_x_expert = d_x_expert.reshape(N, top_k, D)
+        d_x_expert = nx.sum(d_x_expert, axis=1) #(N,D)
+        dx_flat = d_x_expert + d_x_router #(N,D)
 
-        dx = dx_flat.reshape(B,T,D)
+        dx = dx_flat.reshape(B,T,D) 
         return dx, dWcombined, dWout, d_router
 
     def to_dict(self) -> dict:
