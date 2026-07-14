@@ -1,15 +1,14 @@
 import os
-backend = os.environ["BACKEND"] = "auto"
+backend = os.environ["BACKEND"] = "mlx"
 import random
 # import mlx.core as mx
-LR = 1e-3
 EMBED_DIM = 128
-CONTEXT_SIZE = 64
+CONTEXT_SIZE = 32
 BATCH_SIZE = 128
-BASE_WIDTH = 768 #4 * EMBED_DIM 
+BASE_WIDTH = 1024 #4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS// 2
-N_EXPERTS = 4
+N_EXPERTS = 24
 CF = 1.25
 VAL = .9
 
@@ -48,7 +47,8 @@ configs = {
                 "beta2":0.999,
                 "epsilon":1e-8,
                 "weight_decay":0.01
-            }
+            },
+            "using":backend
         }
 
 corpus = ""
@@ -95,7 +95,7 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 # profiler.enable()
 start = time.perf_counter()
 # mx.metal.start_capture("transformer.gputrace")
-session1.benchmark(dataloader, 100)
+session1.benchmark(dataloader, 1)
 end = time.perf_counter()
 # mx.metal.stop_capture()
 print(f"benchmarking finished. time: {end - start:.3f}s")

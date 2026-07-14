@@ -1,7 +1,7 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-EPOCHS = 5
+EPOCHS = 20
 EMBED_DIM = 128
 CONTEXT_SIZE = 32
 BATCH_SIZE = 128
@@ -55,7 +55,8 @@ configs = {
                 "beta2":0.999,
                 "epsilon":1e-8,
                 "weight_decay":0.01
-            }
+            },
+            "using":backend
         }
 
 corpus, files = init_corpus("data")
@@ -74,9 +75,9 @@ tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS,
 tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
 transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
-# transformer.add_block(tblock2)
-# transformer.add_block(tblock3)
-# transformer.add_block(tblock4)
+transformer.add_block(tblock2)
+transformer.add_block(tblock3)
+transformer.add_block(tblock4)
 configs["block_size"] = len(transformer.blocks)
 
 print("loading dataloader", end="\r")
@@ -84,26 +85,26 @@ dataloader = DataLoader(corpus, tokenizer1, configs["context_size"])
 
 corpus_len = len(corpus)
 token_size = dataloader.tokens.size
-ratio = ((corpus_len - token_size )/corpus_len) * 100
+ratio = ((corpus_len - token_size ) / corpus_len) * 100
 configs["corpus char len"] = f"{corpus_len} -> BPE compression ({len(tokenizer1.vocab)} vocab size): {token_size}. ratio = {ratio:.3f}% "
 
 session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)
-# profiler = cProfile.Profile()
-# profiler.enable()
-start = time.perf_counter()
+profiler = cProfile.Profile()
+profiler.enable()
+# start = time.perf_counter()
 session1.train(dataloader, display_message=True)
-end = time.perf_counter()
-print(f"training finished. time: {end - start:.3f}s")
+# end = time.perf_counter()
+# print(f"training finished. time: {end - start:.3f}s")
 
-# profiler.disable()
-# stats = pstats.Stats(profiler)
-# stats.sort_stats("cumtime")
-# stats.print_stats(100)
+profiler.disable()
+stats = pstats.Stats(profiler)
+stats.sort_stats("cumtime")
+stats.print_stats(100)
 
-session1.save(f"{session1.count_params()}_params")
+session1.save(f"{session1.count_params()}_params_{EPOCHS}_epochs")
 
 
 

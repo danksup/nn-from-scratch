@@ -80,7 +80,7 @@ class Transformer:
         for block, masks,caches in zip(self.blocks[::-1], all_masks[::-1],all_caches[::-1]):
             caches_attn, caches_ff, caches_rmsnorm1, caches_rmsnorm2 = caches
             mask1, mask2 = masks
-            moe_configs = block.ff.cf, block.ff.n_experts, block.ff.hidden_width, block.ff.router, LAMBDA
+            moe_configs = block.ff.cf, block.ff.top_k, block.ff.n_experts, block.ff.hidden_width, block.ff.router, LAMBDA
             d_attn_params = (block.n_heads, block.head_dim, block.embed_dim, block.n_kv_heads, block.n_rep,block.attention.Wo, block.freqs, block.attention.Wqkv)
             ff_params = (block.ff.Wout, block.ff.Wcombined)
             dx, dWout, dWcombined, d_router, dWqkv,dWo, d_gamma1, d_gamma2 = block._backward(current_grad, mask1=mask1, mask2=mask2, 

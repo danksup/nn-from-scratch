@@ -7,7 +7,7 @@ import engine.backend as nx
 from typing import Any
 
 class TransformerBlock:
-    def __init__(self,embed_dim,ff_dim, n_heads, n_kv_heads, n_experts=1, cf=1.25) -> None:
+    def __init__(self,embed_dim,ff_dim, n_heads, n_kv_heads, n_experts=1, cf=1.25, top_k =2) -> None:
         self.causal_mask = None
         self.embed_dim = embed_dim
         self.hidden_width = ff_dim
@@ -23,13 +23,13 @@ class TransformerBlock:
         self.freqs = precompute_freqs(self.head_dim, 16384)
 
         self.attention = AttentionLayer(embed_dim, n_heads, n_kv_heads)
-        self.ff = MoE(cf, n_experts, embed_dim, self.hidden_width)
+        self.ff = MoE(cf, top_k, n_experts, embed_dim, self.hidden_width)
         self.rmsnorm1 = RMSNorm(embed_dim)
         self.rmsnorm2 = RMSNorm(embed_dim)
 
-    # @nx.compile
+    @nx.compile
     @staticmethod
-    def _forward(x, causal_mask:Any, embed_dim:int, n_heads:int, n_kv_heads, n_rep, head_dim:int, n_experts, cf,freqs:Any, Wqkv:Any, Wo:Any, Wcombined:Any,router, hidden_width:int, Wout:Any, epsilon:float, gamma1:Any, gamma2:Any, p:float, is_training:bool) -> tuple[Any, Any, Any, Any]:
+    def _forward(x, causal_mask:Any, embed_dim:int, n_heads:int, n_kv_heads, n_rep, head_dim:int, n_experts, cf,freqs:Any,top_k:int, Wqkv:Any, Wo:Any, Wcombined:Any,router, hidden_width:int, Wout:Any, epsilon:float, gamma1:Any, gamma2:Any, p:float, is_training:bool) -> tuple[Any, Any, Any, Any]:
         '''
         flow:
             input = x shape(B,T,D) -> rmsnorm(x) = rmsnorm_out -> attention(rmsnorm_out) + residual = attn_out
@@ -47,7 +47,7 @@ class TransformerBlock:
 
         rmsnorm2_out, caches_rmsnorm2 = RMSNorm._forward(attn_out, gamma2,epsilon)
 
-        ff_out, caches_ff, router_loss = MoE.forward(rmsnorm2_out, cf,router,n_experts,hidden_width,Wcombined, Wout)
+        ff_out, caches_ff, router_loss = MoE.forward(rmsnorm2_out, cf, top_k, router,n_experts,hidden_width,Wcombined, Wout)
         drop_ff_out, mask2 =  Dropout._forward(ff_out, p,is_training)
         ff_out = drop_ff_out + attn_out
         
@@ -70,7 +70,7 @@ class TransformerBlock:
 
         d_rmsn1, d_gamma1 = RMSNorm._backward(d_attn,caches_rmsnorm1,gamma1)
 
-        dx = d_rmsn1 + d_attn_out
+        dx = d_rmsn1 + gradient
 
         return dx, dWout, dWcombined, d_router, dWqkv,dWo, d_gamma1, d_gamma2
     
@@ -84,7 +84,7 @@ class TransformerBlock:
 
         rmsnorm2_out, _ = RMSNorm._forward(attn_out, self.rmsnorm2.gamma, self.rmsnorm2.epsilon)
 
-        ff_out,_,_ = MoE.forward(rmsnorm2_out, self.ff.cf, self.ff.router, self.ff.n_experts, self.ff.hidden_width, self.ff.Wcombined, self.ff.Wout)
+        ff_out,_,_ = MoE.forward(rmsnorm2_out, self.ff.cf, self.ff.top_k,self.ff.router, self.ff.n_experts, self.ff.hidden_width, self.ff.Wcombined, self.ff.Wout)
         ff_out = ff_out + attn_out
         
         return ff_out, cached_k, cached_v

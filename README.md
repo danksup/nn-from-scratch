@@ -45,13 +45,13 @@ logs:
 - jul 13 2026
   - MoE (top-1)
   - MoE load balancing
+- MoE top k jul 15 2026
 
 ## Ongoing:
 - optimizing/cleanup/docs
-- moe top k
 
 ## TODO (not in order):
-- centralizing source of truth
+- centralizing source of truth (D, E, etc)
 - moe noise
 - moe router z loss
 - sliding windows attention

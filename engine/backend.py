@@ -276,7 +276,7 @@ def cumsum(a:ArrayLike, *,axis=None, dtype=None) -> ArrayLike:
         return _nx.cumsum(a, axis=axis)
     return _nx.cumsum(a, axis=axis, dtype=dtype)
 
-def argsort( a:ArrayLike, axis=None) -> Any:
+def argsort( a:ArrayLike, axis:None|int=-1) -> Any:
     # if backend == "MLX":
     #     a = _nx.array(a)
     return _nx.argsort(a, axis=axis)
@@ -338,3 +338,11 @@ def ceil(a):
 
 def floor(a):
     return _nx.floor(a)
+
+def topk(a, k:int, axis:int = -1, return_element:bool=False):
+    top_k = _nx.argpartition(a, kth=-k, axis=axis)[..., -k:]
+    if return_element:
+        if backend == "MLX":
+            return _nx.topk(a, k=k, axis=axis)
+        return _nx.take_along_axis(a, top_k, axis=axis)
+    return top_k
