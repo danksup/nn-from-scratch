@@ -31,6 +31,7 @@ configs = {
             "batch_size": BATCH_SIZE,
             "embed_dim":EMBED_DIM,
             "MoE":{
+                "topk":2,
                 "cf":CF,
                 "n_experts":N_EXPERTS,
                 "ff_width":BASE_WIDTH

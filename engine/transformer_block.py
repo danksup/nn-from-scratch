@@ -70,7 +70,7 @@ class TransformerBlock:
 
         d_rmsn1, d_gamma1 = RMSNorm._backward(d_attn,caches_rmsnorm1,gamma1)
 
-        dx = d_rmsn1 + gradient
+        dx = d_rmsn1 + d_attn_out
 
         return dx, dWout, dWcombined, d_router, dWqkv,dWo, d_gamma1, d_gamma2
     

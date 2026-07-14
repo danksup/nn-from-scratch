@@ -16,6 +16,7 @@ DEFAULT_CONFIGS = {
             "batch_size": 32,
             "embed_dim":8,
             "MoE":{
+                "topk":2,
                 "cf":1.25,
                 "n_experts":4,
                 "ff_width":768

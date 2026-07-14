@@ -1,7 +1,7 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-EPOCHS = 20
+EPOCHS = 10
 EMBED_DIM = 128
 CONTEXT_SIZE = 32
 BATCH_SIZE = 128
@@ -11,6 +11,7 @@ N_KV_HEADS = N_HEADS // 4
 N_EXPERTS = 24
 CF = 1.25
 VAL = .9
+TOP_K = 2
 
 #not hooked yet to session
 PATIENCE = 20
@@ -40,6 +41,7 @@ configs = {
             "embed_dim":EMBED_DIM,
             "MoE":{
                 "cf":CF,
+                "topk":TOP_K,
                 "n_experts":N_EXPERTS,
                 "ff_width":BASE_WIDTH
             },
@@ -69,10 +71,10 @@ real_vocab_size = len(tokenizer1.vocab)
 
 embedding1 = Embedding(real_vocab_size, EMBED_DIM)
 
-tblock = TransformerBlock(EMBED_DIM ,BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
-tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
-tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
-tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
+tblock = TransformerBlock(EMBED_DIM ,BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, TOP_K)
+tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, TOP_K)
+tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, TOP_K)
+tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, TOP_K)
 transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
 transformer.add_block(tblock2)
