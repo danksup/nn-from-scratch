@@ -48,13 +48,13 @@ logs:
 - MoE top k jul 15 2026
 
 ## Ongoing:
+- sliding windows attention
 - optimizing/cleanup/docs
 
 ## TODO (not in order):
 - centralizing source of truth (D, E, etc)
 - moe noise
 - moe router z loss
-- sliding windows attention
 - inference optimization
 - conversation memory
 - more optimization

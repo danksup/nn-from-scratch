@@ -94,10 +94,15 @@ class Session:
             if key != "epochs":
                 t_mess += f"{key}: {val}\n"
         print(t_mess)     
-        bench_loss, loss_times, backward_times, network_optimizer_times = self.transformer.benchmark(dataloader, self.embedding, batch_size=self.configs["batch_size"], pass_=_pass)
+        bench_loss, loss_times, backward_times, network_optimizer_times, total_histograms = self.transformer.benchmark(dataloader, self.embedding, batch_size=self.configs["batch_size"], pass_=_pass)
         print(f"loss time mean: {np.mean(loss_times)} | max times: {np.max(loss_times)} | min times: {np.min(loss_times)}")
         print(f"backward time mean: {np.mean(backward_times)} | max times: {np.max(backward_times)} | min times: {np.min(backward_times)}")
         print(f"netowk optimizer time mean: {np.mean(network_optimizer_times)} | max times: {np.max(network_optimizer_times)} | min times: {np.min(network_optimizer_times)}")
+        if total_histograms:
+            for idx, histogram in enumerate(total_histograms):
+                hmin = nx.min(histogram).item()
+                hmax = nx.max(histogram).item()
+                print(f"block{idx}: ideal: {1/histogram.shape[0]} | spread: {hmax-hmin} | min: {hmin} | max: {hmax}")
 
     def train(self,dataloader:DataLoader,patience:int=10, display_message:bool=True):
         """
@@ -121,7 +126,7 @@ class Session:
             for i in range(self.configs["epochs"]):
                 epoch = i
                 start = time.perf_counter()
-                error = self.transformer.train(dataloader, self.embedding, self.configs["epochs"], batch_size=self.configs["batch_size"])
+                error,total_histograms = self.transformer.train(dataloader, self.embedding, self.configs["epochs"], batch_size=self.configs["batch_size"])
                 val_loss = self.validation(dataloader)
                 end = time.perf_counter()   
                 time_ = end-start
@@ -153,6 +158,12 @@ class Session:
 
                 if display_message and( i % display_every == 0 or i == self.configs["epochs"] - 1):
                     print(f"epoch {epoch} | avg loss: {error} | val: {val_loss} | best val loss: {best_val_loss} | lr: {self.transformer.optimizer.lr} | time: {time_}")
+                    if total_histograms:
+                        for idx, histogram in enumerate(total_histograms):
+                            hmin = nx.min(histogram).item()
+                            hmax = nx.max(histogram).item()
+                            print(f"block{idx}: ideal: {1/histogram.shape[0]} | spread: {hmax-hmin} | min: {hmin} | max: {hmax}")
+
 
             if checkpoint is not None:
                 checkpoint.save("checkpoint_save")

@@ -1,5 +1,5 @@
 import os
-backend = os.environ["BACKEND"] = "mlx"
+backend = os.environ["BACKEND"] = "auto"
 import random
 # import mlx.core as mx
 EMBED_DIM = 128
@@ -96,7 +96,7 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 # profiler.enable()
 start = time.perf_counter()
 # mx.metal.start_capture("transformer.gputrace")
-session1.benchmark(dataloader, 1)
+session1.benchmark(dataloader, 100)
 end = time.perf_counter()
 # mx.metal.stop_capture()
 print(f"benchmarking finished. time: {end - start:.3f}s")

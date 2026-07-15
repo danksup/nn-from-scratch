@@ -1,7 +1,7 @@
 import os
 backend = os.environ["BACKEND"] = "auto"
 import random
-EPOCHS = 10
+EPOCHS = 20
 EMBED_DIM = 128
 CONTEXT_SIZE = 32
 BATCH_SIZE = 128
@@ -94,17 +94,17 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)
-profiler = cProfile.Profile()
-profiler.enable()
-# start = time.perf_counter()
+# profiler = cProfile.Profile()
+# profiler.enable()
+start = time.perf_counter()
 session1.train(dataloader, display_message=True)
-# end = time.perf_counter()
-# print(f"training finished. time: {end - start:.3f}s")
+end = time.perf_counter()
+print(f"training finished. time: {end - start:.3f}s")
 
-profiler.disable()
-stats = pstats.Stats(profiler)
-stats.sort_stats("cumtime")
-stats.print_stats(100)
+# profiler.disable()
+# stats = pstats.Stats(profiler)
+# stats.sort_stats("cumtime")
+# stats.print_stats(100)
 
 session1.save(f"{session1.count_params()}_params_{EPOCHS}_epochs")
 

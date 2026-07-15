@@ -80,7 +80,7 @@ class MoE:
         final_output = final_output.reshape(N,top_k,D)
         final_output = nx.sum(final_output, axis=1).reshape(B,T,D) #check
         cache = (flatten_x, router_prob, top_expert_indices, top_gates, flatten_top_expert_indices, assignement_tokens, valid, safe_slot, expert_input, expert_gate, projected, hidden, raw_output, normalized_histogram)
-        return final_output, cache, router_loss
+        return final_output, cache, router_loss, normalized_histogram
 
     @staticmethod
     def backward(gradient , caches, moe_configs, ff_params):

@@ -43,8 +43,8 @@ class Transformer:
         all_masks = []
         all_caches = []
         total_router_loss = nx.array(0.0, dtype=nx.float32)
-
-        for block in self.blocks:
+        histograms = [None for _ in range(len(self.blocks))]
+        for idx, block in enumerate(self.blocks):
             B,T,_ = output.shape
             Wqkv = block.attention.Wqkv
             Wo = block.attention.Wo
@@ -56,19 +56,21 @@ class Transformer:
             gamma2 = block.rmsnorm2.gamma
             if block.causal_mask is None or block.causal_mask.shape[0] != T:
                 block.causal_mask = nx.triu(nx.ones((T, T), dtype=nx.bool_), k=1)
-            ff_out ,masks, caches, router_loss = block._forward(output, block.causal_mask, self.embed_dim, block.n_heads, block.n_kv_heads, block.n_rep ,block.head_dim, block.n_experts, block.cf, block.ff.top_k,
+            ff_out ,masks, caches, router_loss, normalized_histogram = block._forward(output, block.causal_mask, self.embed_dim, block.n_heads, block.n_kv_heads, block.n_rep ,block.head_dim, block.n_experts, block.cf, block.ff.top_k,
                                                    block.freqs, Wqkv, Wo, Wcombined, router, block.hidden_width, Wout, epsilon, gamma1, gamma2, 0.1, is_training)
 
             total_router_loss += router_loss
             output = ff_out
             all_masks.append(masks)
             all_caches.append(caches)
+            histograms[idx] = nx.zeros_like(normalized_histogram) #type:ignore
+            histograms[idx] += normalized_histogram
 
         last_output =output.astype(nx.float32)
         scores = last_output @ embedding.lookup_table.T
 
         if return_cache:
-            return scores, last_output, all_masks, all_caches, total_router_loss
+            return scores, last_output, all_masks, all_caches, total_router_loss, histograms
         return scores, total_router_loss
     
     def backward(self, err_signal:Any, lookup_table, last_output, all_masks,all_caches) -> Any:
@@ -108,10 +110,17 @@ class Transformer:
             batch_size = number of batch
         '''
         total_loss = nx.float_32(0.0)
+        total_histograms = None
         count = 0
+        batch_counter = 0
         for contexts, next_tokens in dataloader.get_pairs(batch_size):              
             embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
-            batch_scores, last_output, all_masks, all_caches, total_router_loss = self.forward(embedded, embedding)
+            batch_scores, last_output, all_masks, all_caches, total_router_loss, histograms = self.forward(embedded, embedding)
+            if total_histograms is None:
+                total_histograms = histograms
+            else:
+                for i in range(len(self.blocks)):
+                    total_histograms[i] += histograms[i]
             loss = cross_entropy(batch_scores, next_tokens)
             loss = nx.mean(loss) + LAMBDA * total_router_loss
             batch_gradient = cross_entropy_gradient(batch_scores, next_tokens)
@@ -152,9 +161,12 @@ class Transformer:
 
             total_loss += loss.item() * next_tokens.size
             count += next_tokens.size
-            
+            batch_counter += 1
         final_loss = total_loss / count
-        return nx.float_32(final_loss)
+        if total_histograms != None:
+            for i in range(len(total_histograms)):
+                total_histograms[i] /= batch_counter
+        return nx.float_32(final_loss), total_histograms
     
     def benchmark(self, dataloader:DataLoader, embedding:Embedding, batch_size:int=32, pass_ =1):
         total_loss = nx.float_32(0.0)
@@ -165,16 +177,21 @@ class Transformer:
         loss_times = []
         backward_times = []
         network_optimizer_times = []
-
+        total_histograms = None
         for contexts, next_tokens in dataloader.get_pairs(batch_size):  
             if batch_idx == pass_:
                 break            
             embedded = embedding.forward(contexts)  # shape (batch, context_size, embed_dim)
-            batch_scores, last_output, all_masks, all_caches, total_router_loss = self.forward(embedded, embedding)
+            batch_scores, last_output, all_masks, all_caches, total_router_loss, histograms = self.forward(embedded, embedding)
             loss = cross_entropy(batch_scores, next_tokens) 
             loss = nx.mean(loss) + LAMBDA * total_router_loss
             # print("router",self.blocks[0].ff.router)
             # print("lr",self.optimizer.lr)
+            if total_histograms is None:
+                total_histograms = histograms
+            else:
+                for i in range(len(self.blocks)):
+                    total_histograms[i] += histograms[i]
 
             start = time.perf_counter()
             nx.eval(loss)
@@ -245,7 +262,10 @@ class Transformer:
             
             batch_idx += 1
         final_loss = total_loss / count
-        return nx.float_32(final_loss), loss_times, backward_times, network_optimizer_times
+        if total_histograms != None:
+            for i in range(len(total_histograms)):
+                total_histograms[i] /= batch_idx
+        return nx.float_32(final_loss), loss_times, backward_times, network_optimizer_times, total_histograms
     
     def validate(self, embedding,dataloader:DataLoader, batch_size, train_split=.9):
         total_loss = nx.float_32(0.0)
