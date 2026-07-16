@@ -98,7 +98,7 @@ class AttentionLayer:
         dQ = dQ[:,:,:,0,:] #(B, n_heads, T, Dh)
         Q_5d = Q[:,:,:,None,:] #(B,n_heads,T, 1, Dh)
         d_repeatK = d_scores_5d.transpose(0,1,2,4,3) @ Q_5d #(B,n_heads,T, W+1, Dh)
-        d_repeatK = d_repeatK.reshape(B, n_kv_heads, n_rep, T, W+1, head_dim)
+        d_repeatK = d_repeatK.reshape(B, n_kv_heads, n_rep, T, W+1, head_dim) 
         d_windows_K = nx.sum(d_repeatK, axis=2) #(B, n_kv_heads, T , W+1, head_dim)
 
         return 
