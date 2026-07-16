@@ -194,6 +194,9 @@ def permutation(x:Any, axis=0) -> ArrayLike:
     return _nx.random.permutation(x, axis=axis)
 
 def sliding_window_view( x:Any, window_shape:int, axis=None) -> ArrayLike:
+    """
+    for mlx this is hardcoded to match dataloader
+    """
     if backend == "NumPy":
         return _nx.lib.stride_tricks.sliding_window_view(x, window_shape, axis=axis)
     x = _nx.array(x)   

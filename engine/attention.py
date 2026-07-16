@@ -67,7 +67,7 @@ class AttentionLayer:
         output = weights[:,:,:,None,:] @ repeat_V #(B, n_heads, T, 1, Dh)
         output = output[:,:,:,0,:] #(B, n_heads, T, Dh)
         output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
-        output_projected = output_concat @ Wo
+        output_projected = output_concat @ Wo #B,T,D
         cache = (fp16_x, Q, repeat_K, repeat_V, weights, output_concat)
         return output_projected, cache
     
@@ -77,9 +77,29 @@ class AttentionLayer:
         n_heads, head_dim, embed_dim, n_kv_heads, n_rep, W, Wo, freqs, Wqkv = attn_params
 
         scale = nx.float_32(nx.sqrt(head_dim))
-        B, T, _ = fp16_x.shape
-        d_output_concat = gradient @ Wo.T
-        d_output = d_output_concat.reshape(B, T, n_heads, head_dim).transpose(0, 2, 1, 3)
+        B, T, D = fp16_x.shape
+        d_output_concat = gradient @ Wo.T #B,T,D
+        d_output = d_output_concat.reshape(B, T, n_heads, head_dim).transpose(0, 2, 1, 3) #(B, n_heads, T,  Dh)
+        
+        d_output_5d = d_output[:,:,:,None,:] #B, n_heads, T, 1, Dh
+        d_weights =  d_output_5d @ repeat_V.transpose(0,1,2,4,3) #(B, n_heads, T, 1, W+1)
+        d_weights = d_weights[:,:,:,0,:]#(B, n_heads, T, W+1)
+
+                #(B, n_heads, T, W+1, 1)
+        d_repeatV = weights[...,None] @ d_output_5d #(B, n_heads, T, W+1, Dh)
+        d_repeatV = d_repeatV.reshape(B, n_kv_heads, n_rep, T , W+1, head_dim)
+        d_windows_V = nx.sum(d_repeatV, axis=2) #(B, n_kv_heads, T , W+1, head_dim)
+
+        d_scores = softmax_derivative(weights, d_weights) #(B, n_heads, T, W+1)
+        d_scores /= scale
+
+        d_scores_5d = d_scores[:,:,:,None,:] #(B, n_heads, T, 1, W+1)
+        dQ = d_scores_5d @ repeat_K #(B, n_heads, T, 1, Dh)
+        dQ = dQ[:,:,:,0,:] #(B, n_heads, T, Dh)
+        Q_5d = Q[:,:,:,None,:] #(B,n_heads,T, 1, Dh)
+        d_repeatK = d_scores_5d.transpose(0,1,2,4,3) @ Q_5d #(B,n_heads,T, W+1, Dh)
+        d_repeatK = d_repeatK.reshape(B, n_kv_heads, n_rep, T, W+1, head_dim)
+        d_windows_K = nx.sum(d_repeatK, axis=2) #(B, n_kv_heads, T , W+1, head_dim)
 
         return 
     
