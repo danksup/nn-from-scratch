@@ -29,7 +29,7 @@ class TransformerBlock:
 
     @nx.compile
     @staticmethod
-    def _forward(x, causal_mask:Any, embed_dim:int, n_heads:int, n_kv_heads, n_rep, head_dim:int, n_experts, cf, top_k:int,freqs:Any, Wqkv:Any, Wo:Any, Wcombined:Any,router, hidden_width:int, Wout:Any, epsilon:float, gamma1:Any, gamma2:Any, p:float, is_training:bool) -> tuple[Any, Any, Any, Any, Any]:
+    def _forward(x, causal_mask:Any, embed_dim:int, n_heads:int, n_kv_heads, n_rep, W, head_dim:int, n_experts, cf, top_k:int,freqs:Any, Wqkv:Any, Wo:Any, Wcombined:Any,router, hidden_width:int, Wout:Any, epsilon:float, gamma1:Any, gamma2:Any, p:float, is_training:bool) -> tuple[Any, Any, Any, Any, Any]:
         '''
         flow:
             input = x shape(B,T,D) -> rmsnorm(x) = rmsnorm_out -> attention(rmsnorm_out) + residual = attn_out
@@ -41,7 +41,7 @@ class TransformerBlock:
 
         rmsnorm1_out, caches_rmsnorm1 = RMSNorm._forward(x, gamma1,epsilon)
 
-        attn_out, caches_attn = AttentionLayer._forward(rmsnorm1_out,causal_mask, embed_dim, n_kv_heads,n_heads, n_rep, head_dim, freqs, Wqkv, Wo,)
+        attn_out, caches_attn = AttentionLayer._forward(rmsnorm1_out,causal_mask, embed_dim, n_kv_heads,n_heads, n_rep, head_dim, W, freqs, Wqkv, Wo,)
         drop_attn_out, mask1 = Dropout._forward(attn_out, p,is_training)
         attn_out = drop_attn_out + fp16_x
 
@@ -57,7 +57,7 @@ class TransformerBlock:
 
     @nx.compile
     @staticmethod
-    def _backward(gradient:Any, mask1:Any, mask2:Any, caches_attn:tuple[Any,...], caches_ff:tuple[Any,...], caches_rmsnorm1:tuple[Any,...], caches_rmsnorm2:tuple[Any,...], d_attn_params:tuple[Any,...], gamma1:Any, gamma2:Any, ff_params:tuple, moe_configs) -> tuple[Any, Any, Any, Any, Any, Any, Any, Any]:
+    def _backward(gradient:Any, mask1:Any, mask2:Any, caches_attn:tuple[Any,...], caches_ff:tuple[Any,...], caches_rmsnorm1:tuple[Any,...], caches_rmsnorm2:tuple[Any,...], attn_params:tuple[Any,...], gamma1:Any, gamma2:Any, ff_params:tuple, moe_configs) -> tuple[Any, Any, Any, Any, Any, Any, Any, Any]:
         d_ff_drop = Dropout._backward(gradient, mask2, 0.1)
         dx_ff,  dWcombined, dWout, d_router = MoE.backward(d_ff_drop, caches_ff, moe_configs, ff_params)
 
@@ -66,7 +66,7 @@ class TransformerBlock:
         d_attn_out = gradient + d_rmsn2
 
         d_attn_drop = Dropout._backward(d_attn_out, mask1, 0.1)
-        d_attn, dWqkv, dWo = AttentionLayer._backward(d_attn_drop, caches_attn, d_attn_params)
+        d_attn, dWqkv, dWo = AttentionLayer._backward(d_attn_drop, caches_attn, attn_params)
 
         d_rmsn1, d_gamma1 = RMSNorm._backward(d_attn,caches_rmsnorm1,gamma1)
 

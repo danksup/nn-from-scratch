@@ -4,7 +4,7 @@ from engine.rope import rope_forward, rope_inverse
 from typing import Any
 
 class AttentionLayer:
-    def __init__(self,embed_dim:int, n_heads:int, n_kv_heads:int=-1) -> None:
+    def __init__(self,embed_dim:int, n_heads:int, n_kv_heads:int=-1, W=8) -> None:
         self.n_kv_heads = n_kv_heads
 
         if n_kv_heads < 0:
@@ -16,6 +16,7 @@ class AttentionLayer:
         assert embed_dim % n_heads == 0
         assert n_heads % n_kv_heads == 0, "cant have more kv heads than query heads."
         self.head_dim = embed_dim // n_heads
+        self.W = W
 
         self.scale = nx.float_32(nx.sqrt(self.head_dim))
         scale = nx.float_32(1/self.scale)
@@ -27,11 +28,9 @@ class AttentionLayer:
         self.dWo = None
 
     @staticmethod
-    def _forward(fp16_x:nx.ArrayLike, causal_mask:nx.ArrayLike, embed_dim:int, n_kv_heads:int, n_heads:int, n_rep:int, head_dim:int, freqs:int, Wqkv:nx.ArrayLike, Wo:nx.ArrayLike):
-        #temp hardcoded first
-        W = 4
+    def _forward(fp16_x:nx.ArrayLike, causal_mask:nx.ArrayLike, embed_dim:int, n_kv_heads:int, n_heads:int, n_rep:int, head_dim:int, W, freqs:int, Wqkv:nx.ArrayLike, Wo:nx.ArrayLike):
         combined = fp16_x @ Wqkv.T 
-        scale = nx.float_32(nx.sqrt(head_dim))
+        SCALE = nx.float_32(nx.sqrt(head_dim))
 
         Q = combined[..., :embed_dim] #shape: (B, T, D)
         K = combined[..., embed_dim: embed_dim + (n_kv_heads * head_dim)]  #shape: (B, T, n_kv_heads * H)
@@ -41,7 +40,6 @@ class AttentionLayer:
         Q = Q.reshape(B, T, n_heads, head_dim).transpose(0,2,1,3) #(B,n_heads,T, Dh)
         K = K.reshape(B, T, n_kv_heads, head_dim).transpose(0,2,1,3) #(B, n_kv_heads, T, Dh)
         V = V.reshape(B, T, n_kv_heads, head_dim).transpose(0,2,1,3) #(B, n_kv_heads, T, Dh)
-        
 
         Q = rope_forward(Q, freqs)
         K = rope_forward(K, freqs)
@@ -61,92 +59,73 @@ class AttentionLayer:
         repeat_K = nx.repeat(windows_K, n_rep, axis=1) #(B, n_kv_head * n_rep, T, W+1, Dh)
         repeat_V = nx.repeat(windows_V, n_rep, axis=1) #(B, n_kv_head * n_rep, T, W+1, Dh)
 
-        Q = Q[:,:,:,None,:] #(B,n_heads,T, 1, Dh)
-
-
-        
-        return 0
-    
-    # @staticmethod
-    # def _forward(fp16_x:nx.ArrayLike, causal_mask:nx.ArrayLike, embed_dim:int, n_kv_heads:int, n_heads:int, n_rep:int, head_dim:int, freqs:int, Wqkv:nx.ArrayLike, Wo:nx.ArrayLike) -> tuple[nx.ArrayLike, tuple[nx.ArrayLike,...]]:
-    #     #fp_16_x shape = (B,T,D)
-    #     #Wqkv shape = (D + 2 * n_kv_heads * H, D), .T -> (D, D + 2 * n_kv_heads * H)
-    #     #combined shape = (B, T, D + 2 * n_kv_heads * H)
-    #     combined = fp16_x @ Wqkv.T 
-    #     scale = nx.float_32(nx.sqrt(head_dim))
-
-    #     Q = combined[..., :embed_dim] #shape: (B, T, D)
-    #     K = combined[..., embed_dim: embed_dim + (n_kv_heads * head_dim)]  #shape: (B, T, n_kv_heads * H)
-    #     V = combined[..., embed_dim + (n_kv_heads * head_dim):] #shape: (B, T, n_kv_heads * H)
-
-    #     B, T, _ = fp16_x.shape
-    #     Q = Q.reshape(B, T, n_heads, head_dim).transpose(0,2,1,3)
-    #     K = K.reshape(B, T, n_kv_heads, head_dim).transpose(0,2,1,3)
-    #     V = V.reshape(B, T, n_kv_heads, head_dim).transpose(0,2,1,3)
-    #     #each QKV shape = (B, n_heads, T, H)
-
-    #     Q = rope_forward(Q, freqs)
-    #     K = rope_forward(K, freqs)
-
-    #     Q = Q.astype(nx.float32)
-    #     K = K.astype(nx.float32)
-
-    #     repeats_K = nx.repeat(K,n_rep, axis=1 )
-    #     repeats_V = nx.repeat(V,n_rep, axis=1 )
-
-    #     scores = (Q @ repeats_K.transpose(0,1,3,2)) / scale
-    #     #causal mask makes it decoder only. cant look into future contexts.
-    #     scores = nx.where(causal_mask, -1e9, scores)
-    #     weights = softmax(scores)
-    #     output = weights @ repeats_V
-    #     output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
-    #     output_projected = output_concat @ Wo
-    #     cache =  (fp16_x, Q, repeats_K, repeats_V, weights, output_concat)
-    #     return output_projected, cache
+        Q_5d = Q[:,:,:,None,:] #(B,n_heads,T, 1, Dh)
+        scores = (Q_5d @ repeat_K.transpose(0,1,2,4,3)) / SCALE #(B, n_heads, T, 1, W+1)
+        scores = scores[:,:,:,0,:] #(B, n_heads, T, W+1)
+        scores = nx.where(causal_mask, -1e9, scores)
+        weights = softmax(scores) #(B, n_heads, T, W+1)
+        output = weights[:,:,:,None,:] @ repeat_V #(B, n_heads, T, 1, Dh)
+        output = output[:,:,:,0,:] #(B, n_heads, T, Dh)
+        output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
+        output_projected = output_concat @ Wo
+        cache = (fp16_x, Q, repeat_K, repeat_V, weights, output_concat)
+        return output_projected, cache
     
     @staticmethod
     def _backward(gradient:nx.ArrayLike, caches:tuple[Any,...], attn_params: tuple[Any,...]) -> tuple[nx.ArrayLike,...]:
-        fp16_x, Q,repeats_K, repeats_V, weights, output_concat = caches
-        n_heads, head_dim, embed_dim, n_kv_heads, n_rep, Wo, freqs, Wqkv = attn_params
+        fp16_x, Q, repeat_K, repeat_V, weights, output_concat = caches
+        n_heads, head_dim, embed_dim, n_kv_heads, n_rep, W, Wo, freqs, Wqkv = attn_params
 
         scale = nx.float_32(nx.sqrt(head_dim))
         B, T, _ = fp16_x.shape
         d_output_concat = gradient @ Wo.T
         d_output = d_output_concat.reshape(B, T, n_heads, head_dim).transpose(0, 2, 1, 3)
 
-        dweights = d_output @ repeats_V.transpose(0, 1, 3, 2)
-        d_repeatsV = weights.transpose(0, 1, 3, 2) @ d_output
-        d_repeatsV = d_repeatsV.reshape(B, n_kv_heads, n_rep, T, head_dim)
-        dV = d_repeatsV.sum(axis=2)
+        return 
+    
+    # @staticmethod
+    # def _backward(gradient:nx.ArrayLike, caches:tuple[Any,...], attn_params: tuple[Any,...]) -> tuple[nx.ArrayLike,...]:
+    #     fp16_x, Q,repeats_K, repeats_V, weights, output_concat = caches
+    #     n_heads, head_dim, embed_dim, n_kv_heads, n_rep, Wo, freqs, Wqkv = attn_params
 
-        dscores = softmax_derivative(weights, dweights)
-        dscores /= scale
+    #     scale = nx.float_32(nx.sqrt(head_dim))
+    #     B, T, _ = fp16_x.shape
+    #     d_output_concat = gradient @ Wo.T
+    #     d_output = d_output_concat.reshape(B, T, n_heads, head_dim).transpose(0, 2, 1, 3)
+
+    #     dweights = d_output @ repeats_V.transpose(0, 1, 3, 2)
+    #     d_repeatsV = weights.transpose(0, 1, 3, 2) @ d_output
+    #     d_repeatsV = d_repeatsV.reshape(B, n_kv_heads, n_rep, T, head_dim)
+    #     dV = d_repeatsV.sum(axis=2)
+
+    #     dscores = softmax_derivative(weights, dweights)
+    #     dscores /= scale
         
-        dQ = dscores @ repeats_K
-        d_repeatsK = dscores.transpose(0, 1, 3, 2) @ Q
-        d_repeatsK = d_repeatsK.reshape(B, n_kv_heads, n_rep, T, head_dim)
-        dK = d_repeatsK.sum(axis=2)
+    #     dQ = dscores @ repeats_K
+    #     d_repeatsK = dscores.transpose(0, 1, 3, 2) @ Q
+    #     d_repeatsK = d_repeatsK.reshape(B, n_kv_heads, n_rep, T, head_dim)
+    #     dK = d_repeatsK.sum(axis=2)
 
-        dQ = rope_inverse(dQ, freqs)
-        dK = rope_inverse(dK, freqs)
+    #     dQ = rope_inverse(dQ, freqs)
+    #     dK = rope_inverse(dK, freqs)
 
-        dQ = dQ.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
-        dK = dK.transpose(0, 2, 1, 3).reshape(B, T, n_kv_heads * head_dim)
-        dV = dV.transpose(0, 2, 1, 3).reshape(B, T,  n_kv_heads * head_dim)
+    #     dQ = dQ.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
+    #     dK = dK.transpose(0, 2, 1, 3).reshape(B, T, n_kv_heads * head_dim)
+    #     dV = dV.transpose(0, 2, 1, 3).reshape(B, T,  n_kv_heads * head_dim)
 
-        dQKV = nx.concatenate([dQ, dK,dV], axis=-1)
-        DQKV = dQKV.reshape(-1, embed_dim + 2 * (n_kv_heads * head_dim))
+    #     dQKV = nx.concatenate([dQ, dK,dV], axis=-1)
+    #     DQKV = dQKV.reshape(-1, embed_dim + 2 * (n_kv_heads * head_dim))
 
-        X = fp16_x.astype(nx.float32).reshape(-1, embed_dim)
-        dWqkv = DQKV.T @ X
+    #     X = fp16_x.astype(nx.float32).reshape(-1, embed_dim)
+    #     dWqkv = DQKV.T @ X
 
-        H = output_concat.reshape(-1, embed_dim)
-        G = gradient.reshape(-1, embed_dim)
+    #     H = output_concat.reshape(-1, embed_dim)
+    #     G = gradient.reshape(-1, embed_dim)
 
-        dWo = H.T @ G
-        dx = dQKV @ Wqkv
+    #     dWo = H.T @ G
+    #     dx = dQKV @ Wqkv
 
-        return dx,dWqkv,dWo
+    #     return dx,dWqkv,dWo
         
     def inference_forward(self, x, max_cache_len, freqs, cached_k=None, cached_v=None, position = 0):
         scale = nx.float_32(nx.sqrt(self.head_dim))
