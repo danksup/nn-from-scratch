@@ -340,3 +340,6 @@ def topk(a, k:int, axis:int = -1, return_element:bool=False):
 
 def tile(a, reps:int):
     return _nx.tile(a, reps)
+
+def broadcast_to(a, shape):
+    return _nx.broadcast_to(a, shape=shape)

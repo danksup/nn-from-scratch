@@ -49,6 +49,7 @@ logs:
 - sliding windows attention jul 17 2026
 
 ## Ongoing:
+- optimizing attention
 - optimizing/cleanup/docs
 
 ## TODO (not in order):
@@ -75,6 +76,7 @@ logs:
   - ~~fix: removed @nx.compile decorator from AdamW._step (jul 7 2026)~~
   - fix: initializing `t` as an mlx array.
 ### Open
+- overall training time and ram usage is even more than non sliding attention jul 17 2026
 - inference breaks when token length is too large -> generate freqs on demand when needed (jun 29 2026)
   
 # Performance Logs

@@ -2,13 +2,13 @@ import os
 backend = os.environ["BACKEND"] = "auto"
 import random
 EPOCHS = 1
-EMBED_DIM = 64
-CONTEXT_SIZE = 64
-BATCH_SIZE = 256
+EMBED_DIM = 128
+CONTEXT_SIZE = 128
+BATCH_SIZE = 128
 BASE_WIDTH = 1024#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS // 2
-WINDOWS = CONTEXT_SIZE // 2
+WINDOWS = CONTEXT_SIZE // 8
 N_EXPERTS = 24
 CF = 1.25
 VAL = .9
@@ -74,14 +74,14 @@ real_vocab_size = len(tokenizer1.vocab)
 embedding1 = Embedding(real_vocab_size, EMBED_DIM)
 
 tblock = TransformerBlock(EMBED_DIM ,BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
-# tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
-# tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
-# tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
+tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
+tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
+tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
 transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
-# transformer.add_block(tblock2)
-# transformer.add_block(tblock3)
-# transformer.add_block(tblock4)
+transformer.add_block(tblock2)
+transformer.add_block(tblock3)
+transformer.add_block(tblock4)
 configs["block_size"] = len(transformer.blocks)
 
 print("loading dataloader", end="\r")
@@ -96,19 +96,16 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 
 a = random.randint(1,9999999999999)
 a = str(a)
-profiler = cProfile.Profile()
-profiler.enable()
+# profiler = cProfile.Profile()
+# profiler.enable()
 start = time.perf_counter()
 session1.train(dataloader, display_message=True)
 end = time.perf_counter()
 print(f"training finished. time: {end - start:.3f}s")
 
-profiler.disable()
-stats = pstats.Stats(profiler)
-stats.sort_stats("cumtime")
-stats.print_stats(100)
+# profiler.disable()
+# stats = pstats.Stats(profiler)
+# stats.sort_stats("cumtime")
+# stats.print_stats(100)
 
 session1.save(f"{session1.count_params()}_params_{EPOCHS}_epochs")
-
-
-

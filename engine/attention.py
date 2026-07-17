@@ -56,8 +56,15 @@ class AttentionLayer:
         windows_K = nx.as_strided(padded_K, shape=shape,strides=stride) #shape=shape
         windows_V = nx.as_strided(padded_V, shape=shape,strides=stride) #shape=shape
 
-        repeat_K = nx.repeat(windows_K, n_rep, axis=1) #(B, n_kv_head * n_rep, T, W+1, Dh)
-        repeat_V = nx.repeat(windows_V, n_rep, axis=1) #(B, n_kv_head * n_rep, T, W+1, Dh)
+        repeat_K = windows_K[:,:,None,:,:,:]
+        repeat_K = nx.broadcast_to(repeat_K, (B, n_kv_heads,n_rep, T, W+1, head_dim))
+        repeat_K = repeat_K.reshape(B, -1, T, W+1, head_dim)
+
+        repeat_V = windows_V[:,:,None,:,:,:]
+        repeat_V = nx.broadcast_to(repeat_V, (B, n_kv_heads,n_rep, T, W+1, head_dim))
+        repeat_V = repeat_V.reshape(B, -1, T, W+1, head_dim)
+        # repeat_K = nx.repeat(windows_K, n_rep, axis=1) #(B, n_kv_head * n_rep, T, W+1, Dh)
+        # repeat_V = nx.repeat(windows_V, n_rep, axis=1) #(B, n_kv_head * n_rep, T, W+1, Dh)
 
         Q_5d = Q[:,:,:,None,:] #(B,n_heads,T, 1, Dh)
         scores = (Q_5d @ repeat_K.transpose(0,1,2,4,3)) / SCALE #(B, n_heads, T, 1, W+1)
