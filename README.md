@@ -53,6 +53,7 @@ logs:
 
 ## TODO (not in order):
 - centralizing source of truth (D, E, etc)
+- broadcast instead of repeat in attention
 - moe noise
 - moe router z loss
 - inference optimization
