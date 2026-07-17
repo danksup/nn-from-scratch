@@ -54,9 +54,11 @@ class Transformer:
             epsilon = block.rmsnorm1.epsilon
             gamma1 = block.rmsnorm1.gamma
             gamma2 = block.rmsnorm2.gamma
-            W = block.attention.W + 1
-            if block.causal_mask is None or block.causal_mask.shape[0] != T:
-                block.causal_mask = nx.triu(nx.ones((T, W), dtype=nx.bool_), k=1)
+            W = block.W
+            W = min(W, T-1)
+            if block.causal_mask is None or block.causal_mask.shape != (T,W+1):
+                #TODO
+                block.causal_mask = nx.triu(nx.ones((T, W+1), dtype=nx.bool_), k=1)
             ff_out ,masks, caches, router_loss, normalized_histogram = block._forward(output, block.causal_mask, self.embed_dim, block.n_heads, block.n_kv_heads, block.n_rep, W,block.head_dim, block.n_experts, block.cf, block.ff.top_k,
                                                    block.freqs, Wqkv, Wo, Wcombined, router, block.hidden_width, Wout, epsilon, gamma1, gamma2, 0.1, is_training)
 
@@ -81,10 +83,13 @@ class Transformer:
         '''
         current_grad = err_signal
         for block, masks,caches in zip(self.blocks[::-1], all_masks[::-1],all_caches[::-1]):
+            _,T,_ = current_grad.shape
             caches_attn, caches_ff, caches_rmsnorm1, caches_rmsnorm2 = caches
             mask1, mask2 = masks
             moe_configs = block.ff.cf, block.ff.n_experts, block.ff.hidden_width, block.ff.router, LAMBDA
-            attn_params = (block.n_heads, block.head_dim, block.embed_dim, block.n_kv_heads, block.n_rep,block.attention.Wo, block.attention.W, block.freqs, block.attention.Wqkv)
+            W = block.W
+            W = min(W, T-1)
+            attn_params = (block.n_heads, block.head_dim, block.embed_dim, block.n_kv_heads, block.n_rep,W, block.attention.Wo, block.freqs, block.attention.Wqkv)
             ff_params = (block.ff.Wout, block.ff.Wcombined)
             dx, dWout, dWcombined, d_router, dWqkv,dWo, d_gamma1, d_gamma2 = block._backward(current_grad, mask1=mask1, mask2=mask2, 
                                                                 caches_attn=caches_attn, caches_ff=caches_ff, caches_rmsnorm1=caches_rmsnorm1, caches_rmsnorm2=caches_rmsnorm2, 

@@ -46,9 +46,9 @@ logs:
   - MoE (top-1)
   - MoE load balancing
 - MoE top k jul 15 2026
+- sliding windows attention jul 17 2026
 
 ## Ongoing:
-- sliding windows attention
 - optimizing/cleanup/docs
 
 ## TODO (not in order):

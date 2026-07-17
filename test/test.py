@@ -46,8 +46,18 @@ P = T + w - 1
 shape = a.shape[0], a.shape[1], a.shape[2], w, a.shape[3]
 stride = a.shape[-1] * n_kv_heads * P, a.shape[-1] * P, a.shape[-1], a.shape[-1], 1
 c = mx.as_strided(b, shape=shape, strides= stride)
-print(b)
-print("\n")
-print(c)
-print(c.shape)
-print(stride)
+# print(b)
+# print("\n")
+# print(c)
+# print(c.shape)
+# print(stride)
+
+T = 3
+w = 2
+a = mx.arange(T)
+g = mx.repeat(a, w+1)
+print(g)
+
+a = mx.arange(w+1)
+d = mx.tile(a, T)
+print(d)

@@ -7,13 +7,14 @@ import engine.backend as nx
 from typing import Any
 
 class TransformerBlock:
-    def __init__(self,embed_dim,ff_dim, n_heads, n_kv_heads, n_experts=1, cf=1.25, top_k =2) -> None:
+    def __init__(self,embed_dim,ff_dim, n_heads, n_kv_heads, n_experts=1, cf=1.25, top_k =2, W=8) -> None:
         self.causal_mask = None
         self.embed_dim = embed_dim
         self.hidden_width = ff_dim
         self.n_heads = n_heads
         self.n_kv_heads = n_kv_heads
         self.n_rep = self.n_heads // self.n_kv_heads 
+        self.W = W
         assert embed_dim % n_heads == 0
         self.head_dim = embed_dim // n_heads
         self.n_experts = n_experts

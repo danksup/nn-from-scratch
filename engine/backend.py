@@ -82,8 +82,6 @@ def zeros(size:Any, dtype=None) -> ArrayLike:
 def ones_like( a:ArrayLike, dtype=None) -> ArrayLike:
     if dtype is None:
         dtype = _nx.float32
-    if backend == "MLX":
-        a = _nx.array(a)
     return _nx.ones_like(a, dtype=dtype)
 
 def ones( size:Any, dtype=None) -> ArrayLike:
@@ -94,21 +92,13 @@ def ones( size:Any, dtype=None) -> ArrayLike:
 def where( condition:Any,x:Any,y:Any) -> ArrayLike:
     return _nx.where(condition,x,y)
 
-def triu( x:ArrayLike, k=0, dtype=None) -> ArrayLike:
-    if dtype is None:
-        dtype = _nx.float32
-    if backend == "MLX":
-        x = _nx.array(x, dtype=dtype)
+def triu( x:ArrayLike, k=0) -> ArrayLike:
     return _nx.triu(x, k=k)
 
 def max( x:ArrayLike, axis=None, keepdims:bool=False) -> ArrayLike:
-    if backend == "MLX":
-        x = _nx.array(x)
     return _nx.max(x, axis=axis, keepdims=keepdims)
 
 def min( x:ArrayLike, axis=None, keepdims:bool=False) -> ArrayLike:
-    if backend == "MLX":
-        x = _nx.array(x)
     return _nx.min(x,axis=axis, keepdims=keepdims)
 
 def exp( x:ArrayLike, out=None, dtype=None) -> ArrayLike:
@@ -142,11 +132,10 @@ def log( a:Any, dtype:Any=None) -> ArrayLike:
 
 def arange(x:Any, y:Any=None, z:Any=None, dtype=None) -> ArrayLike:
     if dtype is None:
-        dtype = _nx.float32
+        dtype = _nx.int32
     if backend == "MLX":
         return _nx.array(_nx.arange(x,y,z), dtype=dtype)
     return _nx.arange(x,y,z, dtype=dtype)
-
 
 def indices( x:Any) -> Any:
     if backend == "NumPy":
@@ -285,18 +274,12 @@ def cumsum(a:ArrayLike, *,axis=None, dtype=None) -> ArrayLike:
     return _nx.cumsum(a, axis=axis, dtype=dtype)
 
 def argsort( a:ArrayLike, axis:None|int=-1) -> Any:
-    # if backend == "MLX":
-    #     a = _nx.array(a)
     return _nx.argsort(a, axis=axis)
 
 def all( a:ArrayLike, *,axis=None, keepdims:bool=False) -> ArrayLike:
-    # if backend == "MLX":
-    #     a = _nx.array(a)
     return _nx.all(a, axis=axis, keepdims=keepdims)
 
 def argmax( a:ArrayLike, axis=None, keepdims:bool=False) -> Any:
-    # if backend == "MLX":
-    #     a = _nx.array(a)
     return _nx.argmax(a, axis=axis, keepdims=keepdims)
 
 def abs( a:Any) -> Any:
@@ -339,7 +322,7 @@ def pad(a:ArrayLike, pad_width:int| tuple[int]| tuple[int,int]|list[tuple[int,in
     return _nx.pad(a, pad_width=pad_width, mode=mode, constant_values=constant_value)
 
 def split(a:ArrayLike,indices_or_sections, axis=None)-> list[ArrayLike]:
-    return _nx.split(a, indices_or_sections, axis=0) #type:ignore
+    return _nx.split(a, indices_or_sections, axis=None) #type:ignore
 
 def ceil(a):
     return _nx.ceil(a)
@@ -354,3 +337,6 @@ def topk(a, k:int, axis:int = -1, return_element:bool=False):
             return _nx.topk(a, k=k, axis=axis)
         return _nx.take_along_axis(a, top_k, axis=axis)
     return top_k
+
+def tile(a, reps:int):
+    return _nx.tile(a, reps)

@@ -9,6 +9,7 @@ BASE_WIDTH = 1024 #4 * EMBED_DIM
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS// 2
 N_EXPERTS = 24
+WINDOWS = CONTEXT_SIZE // 4
 CF = 1.25
 VAL = .9
 
@@ -40,6 +41,7 @@ configs = {
             "train_split":.9,
             "n_heads": N_HEADS,
             "n_kv_heads":N_KV_HEADS,
+            "windows":WINDOWS,
             "train_split":VAL,
             "optimizer_args":{
                 "min_lr":1e-4,
@@ -71,10 +73,10 @@ weight_n = CONTEXT_SIZE * EMBED_DIM
 real_vocab_size = len(tokenizer1.vocab)
 
 embedding1 = Embedding(real_vocab_size, EMBED_DIM)
-tblock = TransformerBlock(EMBED_DIM ,BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
-tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
-tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
-tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF)
+tblock = TransformerBlock(EMBED_DIM ,BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
+tblock2 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
+tblock3 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
+tblock4 = TransformerBlock(EMBED_DIM, BASE_WIDTH,N_HEADS, N_KV_HEADS, N_EXPERTS, CF, W=WINDOWS)
 transformer = Transformer(real_vocab_size,EMBED_DIM, "adamw")
 transformer.add_block(tblock)
 transformer.add_block(tblock2)
