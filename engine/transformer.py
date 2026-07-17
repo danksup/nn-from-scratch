@@ -57,8 +57,10 @@ class Transformer:
             W = block.W
             W = min(W, T-1)
             if block.causal_mask is None or block.causal_mask.shape != (T,W+1):
-                #TODO
-                block.causal_mask = nx.triu(nx.ones((T, W+1), dtype=nx.bool_), k=1)
+                window_idx = nx.arange(W + 1).reshape((1, W + 1))
+                time_idx = nx.arange(T).reshape((T, 1))
+                padded_position = time_idx + window_idx
+                block.causal_mask = padded_position < W
             ff_out ,masks, caches, router_loss, normalized_histogram = block._forward(output, block.causal_mask, self.embed_dim, block.n_heads, block.n_kv_heads, block.n_rep, W,block.head_dim, block.n_experts, block.cf, block.ff.top_k,
                                                    block.freqs, Wqkv, Wo, Wcombined, router, block.hidden_width, Wout, epsilon, gamma1, gamma2, 0.1, is_training)
 
