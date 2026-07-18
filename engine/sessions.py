@@ -87,22 +87,28 @@ class Session:
     def validation(self, dataloader:DataLoader) -> Any:
         return self.transformer.validate(self.embedding, dataloader, self.configs["batch_size"], train_split=self.configs["train_split"])
     
-    def benchmark(self, dataloader:DataLoader, _pass=1):
+    def benchmark(self, dataloader:DataLoader, _pass=1, epoch=10):
         t_mess = f"[BENCHMARKING]param: {self.count_params()} "
         t_mess += f"passes: {_pass}\n"
         for key,val in self.configs.items():
             if key != "epochs":
                 t_mess += f"{key}: {val}\n"
         print(t_mess)     
-        bench_loss, loss_times, backward_times, network_optimizer_times, total_histograms = self.transformer.benchmark(dataloader, self.embedding, batch_size=self.configs["batch_size"], pass_=_pass)
-        print(f"loss time mean: {np.mean(loss_times)} | max times: {np.max(loss_times)} | min times: {np.min(loss_times)}")
-        print(f"backward time mean: {np.mean(backward_times)} | max times: {np.max(backward_times)} | min times: {np.min(backward_times)}")
-        print(f"netowk optimizer time mean: {np.mean(network_optimizer_times)} | max times: {np.max(network_optimizer_times)} | min times: {np.min(network_optimizer_times)}")
-        if total_histograms:
-            for idx, histogram in enumerate(total_histograms):
-                hmin = nx.min(histogram).item()
-                hmax = nx.max(histogram).item()
-                print(f"block{idx}: ideal: {1/histogram.shape[0]} | spread: {hmax-hmin} | min: {hmin} | max: {hmax}")
+        for i in range(epoch):
+            start_per = time.perf_counter()
+            bench_loss, loss_times, backward_times, network_optimizer_times, total_histograms = self.transformer.benchmark(dataloader, self.embedding, batch_size=self.configs["batch_size"], pass_=_pass)
+            end_per = time.perf_counter()
+            print("loss ",bench_loss)
+            print(f"loss time mean: {np.mean(loss_times)} | max times: {np.max(loss_times)} | min times: {np.min(loss_times)}")
+            print(f"backward time mean: {np.mean(backward_times)} | max times: {np.max(backward_times)} | min times: {np.min(backward_times)}")
+            print(f"netowk optimizer time mean: {np.mean(network_optimizer_times)} | max times: {np.max(network_optimizer_times)} | min times: {np.min(network_optimizer_times)}")
+            print(f"benchmarking {i}. time: {end_per - start_per:.3f}s")
+
+        # if total_histograms:
+        #     for idx, histogram in enumerate(total_histograms):
+        #         hmin = nx.min(histogram).item()
+        #         hmax = nx.max(histogram).item()
+        #         print(f"block{idx}: ideal: {1/histogram.shape[0]} | spread: {hmax-hmin} | min: {hmin} | max: {hmax}")
 
     def train(self,dataloader:DataLoader,patience:int=10, display_message:bool=True):
         """

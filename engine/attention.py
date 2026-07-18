@@ -107,27 +107,38 @@ class AttentionLayer:
         d_repeatK = d_scores_5d.transpose(0,1,2,4,3) @ Q_5d #(B,n_heads,T, W+1, Dh)
         d_repeatK = d_repeatK.reshape(B, n_kv_heads, n_rep, T, W+1, head_dim) 
         d_windows_K = nx.sum(d_repeatK, axis=2) #(B, n_kv_heads, T , W+1, head_dim)
+        
+        # query_idx= nx.arange(T)
+        # query_idx = nx.repeat(query_idx, W+1)
+        # slot_idx= nx.arange(W+1)
 
-        query_idx= nx.arange(T)
-        query_idx = nx.repeat(query_idx, W+1)
-        slot_idx= nx.arange(W+1)
+        # slot_idx = nx.tile(slot_idx, T)
+        # padded_idx = query_idx+slot_idx
+        # padded_idx = padded_idx[None,None,:,None]
+        # batch_idx = nx.arange(B)[:,None,None,None]
+        # n_kv_heads_idx = nx.arange(n_kv_heads)[None,:,None,None]
+        # head_dim_idx = nx.arange(head_dim)[None,None,None,:]
 
-        slot_idx = nx.tile(slot_idx, T)
-        padded_idx = query_idx+slot_idx
-        padded_idx = padded_idx[None,None,:,None]
-        batch_idx = nx.arange(B)[:,None,None,None]
-        n_kv_heads_idx = nx.arange(n_kv_heads)[None,:,None,None]
-        head_dim_idx = nx.arange(head_dim)[None,None,None,:]
+        # d_padded_K = nx.zeros((B, n_kv_heads, T+W, head_dim))
+        # flatten_d_windows_K = d_windows_K.reshape(B, n_kv_heads,-1, head_dim)
+        # d_padded_K = nx.add_at(d_padded_K, (batch_idx,n_kv_heads_idx,padded_idx,head_dim_idx), flatten_d_windows_K)
+        # dK = d_padded_K[:, :, W:, :] #(B, n_kv_heads, T, Dh)
 
-        d_padded_K = nx.zeros((B, n_kv_heads, T+W, head_dim))
-        flatten_d_windows_K = d_windows_K.reshape(B, n_kv_heads,-1, head_dim)
-        d_padded_K = nx.add_at(d_padded_K, (batch_idx,n_kv_heads_idx,padded_idx,head_dim_idx), flatten_d_windows_K)
-        dK = d_padded_K[:, :, W:, :] #(B, n_kv_heads, T, Dh)
+        # d_padded_V = nx.zeros((B, n_kv_heads, T+W, head_dim))
+        # flatten_d_windows_V = d_windows_V.reshape(B, n_kv_heads,-1, head_dim)
+        # d_padded_V = nx.add_at(d_padded_V, (batch_idx,n_kv_heads_idx,padded_idx,head_dim_idx), flatten_d_windows_V)
+        # dV = d_padded_V[:, :, W:, :] #(B, n_kv_heads, T, Dh)
 
-        d_padded_V = nx.zeros((B, n_kv_heads, T+W, head_dim))
-        flatten_d_windows_V = d_windows_V.reshape(B, n_kv_heads,-1, head_dim)
-        d_padded_V = nx.add_at(d_padded_V, (batch_idx,n_kv_heads_idx,padded_idx,head_dim_idx), flatten_d_windows_V)
-        dV = d_padded_V[:, :, W:, :] #(B, n_kv_heads, T, Dh)
+        d_padded_K = nx.zeros((B, n_kv_heads, T + W, head_dim),dtype=d_windows_K.dtype,)
+        d_padded_V = nx.zeros((B, n_kv_heads, T + W, head_dim),dtype=d_windows_V.dtype,)
+        for slot in range(W + 1):
+            d_padded_K[:, :, slot:slot + T, :] += d_windows_K[:, :, :, slot, :]
+            d_padded_V[:, :, slot:slot + T, :] += d_windows_V[:, :, :, slot, :]
+            # idx = (slice(None), slice(None), slice(slot, slot + T), slice(None))
+            # d_padded_K = nx.add_at(d_padded_K, idx, d_windows_K[:, :, :, slot, :])
+            # d_padded_V = nx.add_at(d_padded_V, idx, d_windows_V[:, :, :, slot, :])
+        dK = d_padded_K[:, :, W:, :]
+        dV = d_padded_V[:, :, W:, :]
 
         dQ = rope_inverse(dQ, freqs)
         dK = rope_inverse(dK, freqs)
@@ -164,8 +175,6 @@ class AttentionLayer:
             cached_k = nx.concatenate([cached_k, K], axis = 2)
         else:
             cached_k = K
-
-        # print(max(abs(K - cached_k[:, :, -1:, :])))
        
         V = combined[..., self.embed_dim + (self.n_kv_heads * self.head_dim):]
         V = V.reshape(B, T, self.n_kv_heads, self.head_dim).transpose(0,2,1,3)

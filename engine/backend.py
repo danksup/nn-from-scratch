@@ -56,7 +56,11 @@ def float_32(x:list | ArrayLike | float) -> Any:
 def add_at(a:Any, idx:Any, values:Any) -> Any:
     if backend == "MLX":
         return a.at[idx].add(values)
-    _nx.add.at(a, idx, values)
+    if backend == "NumPy":
+        if isinstance(idx, slice) or (isinstance(idx, tuple) and any(isinstance(i, slice) for i in idx)):
+            a[idx] += values
+            return a
+        _nx.add.at(a, idx, values)
     return a
 
 def unique(a:ArrayLike, return_counts:bool=False ) -> Any:
@@ -196,7 +200,10 @@ def sliding_window_view( x:Any, window_shape:int, axis=None) -> ArrayLike:
 
 def as_strided(x, shape, strides):
     if backend == 'NumPy':
-        return _nx.lib.stride_tricks.as_strided(x, shape=shape, strides=strides)
+        x = _nx.asarray(x)
+        itemsize = x.dtype.itemsize
+        np_stride = tuple(s * itemsize for s in strides)
+        return _nx.lib.stride_tricks.as_strided(x, shape=shape, strides=np_stride)
     return _nx.as_strided(x,shape, strides)
 
 def mean(x:ArrayLike, *,axis=None, keepdims:bool=False,dtype=None) -> ArrayLike:
@@ -311,8 +318,13 @@ def repeat(a, repeats:int, axis:int=None):
 
 def logsumexp(a:ArrayLike,*,axis=None,keepdims=False) -> ArrayLike:
     if backend == "NumPy":
-        m = _nx.max(a, axis=axis, keepdims=keepdims)
-        return m + _nx.log(_nx.sum(_nx.exp(a - m), axis=axis, keepdims=keepdims))
+        m = _nx.max(a, axis=axis, keepdims=True)
+        out = m + _nx.log(
+            _nx.sum(_nx.exp(a - m), axis=axis, keepdims=True)
+        )
+        if not keepdims and axis is not None:
+            out = _nx.squeeze(out, axis=axis)
+        return out
     return _nx.logsumexp(a, axis=axis, keepdims=keepdims)
 
 def norm(a:ArrayLike, ord:Any=None, axis=None, keepdims:bool=False) -> Any:
@@ -343,3 +355,6 @@ def tile(a, reps:int):
 
 def broadcast_to(a, shape):
     return _nx.broadcast_to(a, shape=shape)
+
+def einsum(subscripts, *operands):
+    return _nx.einsum(subscripts, *operands)

@@ -57,6 +57,7 @@ class Transformer:
             W = block.W
             W = min(W, T-1)
             if block.causal_mask is None or block.causal_mask.shape != (T,W+1):
+                # block.causal_mask = nx.triu(nx.ones((T, T), dtype=nx.bool_), k=1)
                 window_idx = nx.arange(W + 1).reshape((1, W + 1))
                 time_idx = nx.arange(T).reshape((T, 1))
                 padded_position = time_idx + window_idx

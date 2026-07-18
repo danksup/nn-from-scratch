@@ -3,12 +3,12 @@ backend = os.environ["BACKEND"] = "auto"
 import random
 # import mlx.core as mx
 EMBED_DIM = 128
-CONTEXT_SIZE = 128
-BATCH_SIZE = 128
+CONTEXT_SIZE = 256
+BATCH_SIZE = 32
 BASE_WIDTH = 1024#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS // 2
-WINDOWS = CONTEXT_SIZE // 8
+WINDOWS = CONTEXT_SIZE // 16
 N_EXPERTS = 24
 CF = 1.25
 VAL = .9
@@ -99,7 +99,7 @@ session1 = Session(transformer,tokenizer1,embedding1, configs)
 # profiler.enable()
 start = time.perf_counter()
 # mx.metal.start_capture("transformer.gputrace")
-session1.benchmark(dataloader, 10)
+session1.benchmark(dataloader, 5)
 end = time.perf_counter()
 # mx.metal.stop_capture()
 print(f"benchmarking finished. time: {end - start:.3f}s")

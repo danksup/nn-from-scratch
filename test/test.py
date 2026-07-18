@@ -1,9 +1,11 @@
 import numpy as np
 import mlx.core as mx
 from typing import Any
+import inspect
+
 E = 4
 top_k = 2
-a =[
+ba =[
   [  # Batch 0
 
     [  # Head 0
@@ -36,7 +38,7 @@ a =[
 
   ]
 ]
-a = mx.array(a)
+a = mx.array(ba)
 B,n_kv_heads,T,_ = a.shape
 w = 2
 n = a.shape[-1]
@@ -45,19 +47,26 @@ b = mx.pad(a, pad)
 P = T + w - 1
 shape = a.shape[0], a.shape[1], a.shape[2], w, a.shape[3]
 stride = a.shape[-1] * n_kv_heads * P, a.shape[-1] * P, a.shape[-1], a.shape[-1], 1
+
 c = mx.as_strided(b, shape=shape, strides= stride)
-# print(b)
-# print("\n")
+a = np.asarray(a)
+itemsize = a.dtype.itemsize
+np_stride = tuple(s * itemsize for s in stride)
+z = np.lib.stride_tricks.as_strided(b, shape=shape, strides= np_stride)
 # print(c)
-# print(c.shape)
-# print(stride)
+# print(z)
+# # print(b)
+# # print("\n")
+# # print(c)
+# # print(c.shape)
+# # print(stride)
 
-T = 3
-w = 2
-a = mx.arange(T)
-g = mx.repeat(a, w+1)
-print(g)
+# T = 3
+# w = 2
+# a = mx.arange(T)
+# g = mx.repeat(a, w+1)
+# print(g)
 
-a = mx.arange(w+1)
-d = mx.tile(a, T)
-print(d)
+# a = mx.arange(w+1)
+# d = mx.tile(a, T)
+# print(d)
