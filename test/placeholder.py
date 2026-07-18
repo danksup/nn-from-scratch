@@ -56,52 +56,47 @@ class AttentionLayer:
         windows_K = nx.as_strided(padded_K, shape=shape,strides=stride) #shape=shape
         windows_V = nx.as_strided(padded_V, shape=shape,strides=stride) #shape=shape
 
-        repeat_K = windows_K[:,:,None,:,:,:]
-        repeat_K = nx.broadcast_to(repeat_K, (B, n_kv_heads,n_rep, T, W+1, head_dim))
-        repeat_K = repeat_K.reshape(B, -1, T, W+1, head_dim)
+        Q_split = Q.reshape(B, n_kv_heads, n_rep, T, head_dim) 
 
-        repeat_V = windows_V[:,:,None,:,:,:]
-        repeat_V = nx.broadcast_to(repeat_V, (B, n_kv_heads,n_rep, T, W+1, head_dim))
-        repeat_V = repeat_V.reshape(B, -1, T, W+1, head_dim)
-
-        scores = nx.einsum("bhtd,bhtwd->bhtw",Q, repeat_K) / SCALE
+        scores = nx.einsum("bkrtd,bktwd->bkrtw",Q_split, windows_K) / SCALE
         scores = nx.where(causal_mask, -1e9, scores)
-        weights = softmax(scores) #(B, n_heads, T, W+1)
-        output = nx.einsum("bhtw,bhtwd->bhtd", weights, repeat_V) #(B, n_heads, T, Dh)
+
+        weights = softmax(scores) #(B, n_kv_heads, n_rep, T, W+1)
+
+        output = nx.einsum("bkrtw,bktwd->bkrtd", weights, windows_V) #(B, n_kv_heads, n_rep, T, Dh)
+        output = output.reshape(B,-1, T, head_dim)
         output_concat = output.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
         output_projected = output_concat @ Wo #B,T,D
-        cache = (fp16_x, Q, repeat_K, repeat_V, weights, output_concat)
+
+        cache = (fp16_x, Q, windows_K, windows_V, weights, output_concat)
         return output_projected, cache
     
     @staticmethod
     def _backward(gradient:nx.ArrayLike, caches:tuple[Any,...], attn_params: tuple[Any,...]) -> tuple[nx.ArrayLike,...]:
-        fp16_x, Q, repeat_K, repeat_V, weights, output_concat = caches
+        fp16_x, Q, windows_K, windows_V, weights, output_concat = caches
         n_heads, head_dim, embed_dim, n_kv_heads, n_rep, W, Wo, freqs, Wqkv = attn_params
 
         scale = nx.float_32(nx.sqrt(head_dim))
         B, T, D = fp16_x.shape
         d_output_concat = nx.einsum("btd,fd->btf",gradient, Wo) #(B,T,D)
         d_output = d_output_concat.reshape(B, T, n_heads, head_dim).transpose(0, 2, 1, 3) #(B, n_heads, T,  Dh)
+        d_output_split = d_output.reshape(B, n_kv_heads,n_rep,T, head_dim)
 
-        d_weights = nx.einsum("bhtd,bhtwd->bhtw", d_output, repeat_V) #(B, n_heads, T, W+1)
+        d_weights = nx.einsum("bkrtd,bktwd->bkrtw", d_output_split, windows_V) #(B, n_kv_heads, n_rep, T, W+1)
 
-        d_repeatV = nx.einsum("bhtw,bhtd->bhtwd", weights, d_output) #(B, n_heads, T , W+1, Dh)
-        d_repeatV = d_repeatV.reshape(B, n_kv_heads, n_rep, T , W+1, head_dim)
-        d_windows_V = nx.sum(d_repeatV, axis=2) #(B, n_kv_heads, T , W+1, head_dim)
+        d_windows_V = nx.einsum("bkrtw,bkrtd->bktwd", weights, d_output_split) #(B, n_kv_head, T , W+1, Dh)
 
-        d_scores = softmax_derivative(weights, d_weights) #(B, n_heads, T, W+1)
+        d_scores = softmax_derivative(weights, d_weights) #(B, n_kv_heads, n_rep, T, W+1)
         d_scores /= scale
 
-        dQ = nx.einsum("bhtw,bhtwd->bhtd", d_scores, repeat_K)#(B, n_heads, T, Dh)
-        # d_repeatK = d_scores_5d.transpose(0,1,2,4,3) @ Q_5d #(B,n_heads,T, W+1, Dh)
-        d_repeatK = nx.einsum("bhtw,bhtd->bhtwd", d_scores, Q) #(B,n_heads,T, W+1, Dh)
-        d_repeatK = d_repeatK.reshape(B, n_kv_heads, n_rep, T, W+1, head_dim) 
-        d_windows_K = nx.sum(d_repeatK, axis=2) #(B, n_kv_heads, T , W+1, head_dim) 
+        dQ = nx.einsum("bkrtw,bktwd->bkrtd", d_scores, windows_K)#(B, n_kv_heads, n_rep, T, Dh)
+        dQ = dQ.reshape(B, -1, T, head_dim)
+
+        Q_split = Q.reshape(B, n_kv_heads, n_rep, T, head_dim)
+        d_windows_K = nx.einsum("bkrtw,bkrtd->bktwd", d_scores, Q_split) #(B,n_kv_heads,T, W+1, Dh)
 
         d_padded_K = nx.zeros((B, n_kv_heads, T+W, head_dim))
-
         d_padded_V = nx.zeros((B, n_kv_heads, T+W, head_dim))
-
         for slot in range(W + 1):
             d_padded_K[:, :, slot:slot + T, :] += d_windows_K[:, :, :, slot, :]
             d_padded_V[:, :, slot:slot + T, :] += d_windows_V[:, :, :, slot, :]
