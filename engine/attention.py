@@ -85,26 +85,21 @@ class AttentionLayer:
 
         scale = nx.float_32(nx.sqrt(head_dim))
         B, T, D = fp16_x.shape
-        d_output_concat = gradient @ Wo.T #B,T,D
+        d_output_concat = nx.einsum("btd,fd->btf",gradient, Wo) #(B,T,D)
         d_output = d_output_concat.reshape(B, T, n_heads, head_dim).transpose(0, 2, 1, 3) #(B, n_heads, T,  Dh)
-        
-        d_output_5d = d_output[:,:,:,None,:] #B, n_heads, T, 1, Dh
-        d_weights =  d_output_5d @ repeat_V.transpose(0,1,2,4,3) #(B, n_heads, T, 1, W+1)
-        d_weights = d_weights[:,:,:,0,:]#(B, n_heads, T, W+1)
 
-                #(B, n_heads, T, W+1, 1)
-        d_repeatV = weights[...,None] @ d_output_5d #(B, n_heads, T, W+1, Dh)
+        d_weights = nx.einsum("bhtd,bhtwd->bhtw", d_output, repeat_V) #(B, n_heads, T, W+1)
+
+        d_repeatV = nx.einsum("bhtw,bhtd->bhtwd", weights, d_output) #(B, n_heads, T , W+1, Dh)
         d_repeatV = d_repeatV.reshape(B, n_kv_heads, n_rep, T , W+1, head_dim)
         d_windows_V = nx.sum(d_repeatV, axis=2) #(B, n_kv_heads, T , W+1, head_dim)
 
         d_scores = softmax_derivative(weights, d_weights) #(B, n_heads, T, W+1)
         d_scores /= scale
 
-        d_scores_5d = d_scores[:,:,:,None,:] #(B, n_heads, T, 1, W+1)
-        dQ = d_scores_5d @ repeat_K #(B, n_heads, T, 1, Dh)
-        dQ = dQ[:,:,:,0,:] #(B, n_heads, T, Dh)
-        Q_5d = Q[:,:,:,None,:] #(B,n_heads,T, 1, Dh)
-        d_repeatK = d_scores_5d.transpose(0,1,2,4,3) @ Q_5d #(B,n_heads,T, W+1, Dh)
+        dQ = nx.einsum("bhtw,bhtwd->bhtd", d_scores, repeat_K)#(B, n_heads, T, Dh)
+        # d_repeatK = d_scores_5d.transpose(0,1,2,4,3) @ Q_5d #(B,n_heads,T, W+1, Dh)
+        d_repeatK = nx.einsum("bhtw,bhtd->bhtwd", d_scores, Q) #(B,n_heads,T, W+1, Dh)
         d_repeatK = d_repeatK.reshape(B, n_kv_heads, n_rep, T, W+1, head_dim) 
         d_windows_K = nx.sum(d_repeatK, axis=2) #(B, n_kv_heads, T , W+1, head_dim)
         
@@ -119,24 +114,20 @@ class AttentionLayer:
         # n_kv_heads_idx = nx.arange(n_kv_heads)[None,:,None,None]
         # head_dim_idx = nx.arange(head_dim)[None,None,None,:]
 
-        # d_padded_K = nx.zeros((B, n_kv_heads, T+W, head_dim))
+        d_padded_K = nx.zeros((B, n_kv_heads, T+W, head_dim))
         # flatten_d_windows_K = d_windows_K.reshape(B, n_kv_heads,-1, head_dim)
         # d_padded_K = nx.add_at(d_padded_K, (batch_idx,n_kv_heads_idx,padded_idx,head_dim_idx), flatten_d_windows_K)
         # dK = d_padded_K[:, :, W:, :] #(B, n_kv_heads, T, Dh)
 
-        # d_padded_V = nx.zeros((B, n_kv_heads, T+W, head_dim))
+        d_padded_V = nx.zeros((B, n_kv_heads, T+W, head_dim))
         # flatten_d_windows_V = d_windows_V.reshape(B, n_kv_heads,-1, head_dim)
         # d_padded_V = nx.add_at(d_padded_V, (batch_idx,n_kv_heads_idx,padded_idx,head_dim_idx), flatten_d_windows_V)
         # dV = d_padded_V[:, :, W:, :] #(B, n_kv_heads, T, Dh)
 
-        d_padded_K = nx.zeros((B, n_kv_heads, T + W, head_dim),dtype=d_windows_K.dtype,)
-        d_padded_V = nx.zeros((B, n_kv_heads, T + W, head_dim),dtype=d_windows_V.dtype,)
         for slot in range(W + 1):
             d_padded_K[:, :, slot:slot + T, :] += d_windows_K[:, :, :, slot, :]
             d_padded_V[:, :, slot:slot + T, :] += d_windows_V[:, :, :, slot, :]
-            # idx = (slice(None), slice(None), slice(slot, slot + T), slice(None))
-            # d_padded_K = nx.add_at(d_padded_K, idx, d_windows_K[:, :, :, slot, :])
-            # d_padded_V = nx.add_at(d_padded_V, idx, d_windows_V[:, :, :, slot, :])
+            
         dK = d_padded_K[:, :, W:, :]
         dV = d_padded_V[:, :, W:, :]
 
@@ -147,7 +138,7 @@ class AttentionLayer:
         dK = dK.transpose(0, 2, 1, 3).reshape(B, T, n_kv_heads * head_dim)
         dV = dV.transpose(0, 2, 1, 3).reshape(B, T,  n_kv_heads * head_dim)
 
-        dQKV = nx.concatenate([dQ, dK,dV], axis=-1)
+        dQKV = nx.concatenate([dQ, dK,dV], axis=-1) #(B,T, D + 2 * (n_kv_heads * Dh))
         DQKV = dQKV.reshape(-1, embed_dim + 2 * (n_kv_heads * head_dim))
 
         X = fp16_x.astype(nx.float32).reshape(-1, embed_dim)
@@ -158,7 +149,6 @@ class AttentionLayer:
 
         dWo = H.T @ G
         dx = dQKV @ Wqkv
-
         return dx,dWqkv,dWo
     
     def inference_forward(self, x, max_cache_len, freqs, cached_k=None, cached_v=None, position = 0):

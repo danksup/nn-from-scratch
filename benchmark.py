@@ -4,7 +4,7 @@ import random
 # import mlx.core as mx
 EMBED_DIM = 128
 CONTEXT_SIZE = 256
-BATCH_SIZE = 32
+BATCH_SIZE = 64
 BASE_WIDTH = 1024#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 8
 N_KV_HEADS = N_HEADS // 2
