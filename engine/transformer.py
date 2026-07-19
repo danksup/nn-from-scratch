@@ -7,6 +7,7 @@ import engine.backend as nx
 from typing import Any
 import time
 LAMBDA = 1e-2
+import gc
 
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
@@ -146,6 +147,7 @@ class Transformer:
             total_embedding_gradient = embedding_gradient + d_table
 
             all_network_params = []
+            
             for i,block in enumerate(self.blocks):
                 all_network_params.extend(
                     [(f"Wqkv_{i}", block.attention.Wqkv, block.attention.dWqkv),
@@ -158,6 +160,7 @@ class Transformer:
             all_network_params.extend([("embedding",embedding.lookup_table, total_embedding_gradient)])
             
             optimized = self.optimizer.step_many(all_network_params, dataloader.train_contexts, batch_size, total_epoch)
+            nx.eval(*optimized.values())
             for i,block in enumerate(self.blocks):
                 block.attention.Wqkv = optimized[f"Wqkv_{i}"]
                 block.attention.Wo = optimized[f"Wo_{i}"]
@@ -171,6 +174,12 @@ class Transformer:
             total_loss += loss.item() * next_tokens.size
             count += next_tokens.size
             batch_counter += 1
+
+            del (embedded,batch_scores,last_output,all_masks,all_caches,total_router_loss,loss,batch_gradient,block_gradient,d_table,current_grad,
+                    embedding_gradient,total_embedding_gradient,all_network_params,optimized,)
+            if batch_counter % 10 == 0:
+                gc.collect()
+
         final_loss = total_loss / count
         if total_histograms != None:
             for i in range(len(total_histograms)):
@@ -266,10 +275,16 @@ class Transformer:
 
             total_loss += loss.item() * next_tokens.size
             count += next_tokens.size
-
-            del embedded, batch_scores, all_caches,all_masks, last_output, current_grad, d_table, all_network_params, optimized
-            
             batch_idx += 1
+
+            print("active mem gb", nx.get_active_memory() / 1_000_000_000)
+            print("cache mem gb",nx.get_cache_memory() / 1_000_000_000)
+            del (embedded,batch_scores,last_output,all_masks,all_caches,total_router_loss,loss,batch_gradient,block_gradient,d_table,current_grad,
+                    embedding_gradient,total_embedding_gradient,all_network_params,optimized,)
+            # print("after del active mem gb", nx.get_active_memory() / 1_000_000_000)
+            # print("after del cache mem gb",nx.get_cache_memory() / 1_000_000_000)
+            gc.collect()
+            
         final_loss = total_loss / count
         if total_histograms != None:
             for i in range(len(total_histograms)):

@@ -9,6 +9,7 @@ from typing import Any
 import time
 import pickle
 import numpy as np
+import gc
 
 DEFAULT_CONFIGS = {
             "epochs": 100,
@@ -169,7 +170,6 @@ class Session:
                             hmin = nx.min(histogram).item()
                             hmax = nx.max(histogram).item()
                             print(f"block{idx}: ideal: {1/histogram.shape[0]} | spread: {hmax-hmin} | min: {hmin} | max: {hmax}")
-
 
             if checkpoint is not None:
                 checkpoint.save("checkpoint_save")

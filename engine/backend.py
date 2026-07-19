@@ -358,3 +358,13 @@ def broadcast_to(a, shape):
 
 def einsum(subscripts, *operands):
     return _nx.einsum(subscripts, *operands)
+
+def get_active_memory() -> int:
+    if backend == "NumPy":
+        return 0
+    return _nx.get_active_memory()
+
+def get_cache_memory() -> int:
+    if backend == "NumPy":
+        return 0
+    return _nx.get_cache_memory()
