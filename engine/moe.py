@@ -1,12 +1,13 @@
 import engine.backend as nx
 from engine.activations import softmax, softmax_derivative
 from engine.activations import swish,swish_derivative
+import time
 import math
 
 class MoE:
     def __init__(self, capacity_factor, top_k, n_experts, embed_dim, hidden_width) -> None:
-        self.hidden_width = hidden_width
-        self.embed_dim = embed_dim
+        self.hidden_width = hidden_width 
+        self.embed_dim = embed_dim #D
         self.n_experts = n_experts #E
         self.cf = capacity_factor
         self.top_k = top_k
@@ -65,9 +66,13 @@ class MoE:
         expert_input = nx.zeros((n_expert, capacity, D))
         expert_input = nx.add_at(expert_input, (flatten_top_expert_indices, safe_slot), masked_tokens)
 
+        # start = time.perf_counter()
         expert_gate = nx.zeros((n_expert, capacity))
         safe_gates = nx.where(valid, flatten_top_gates, 0.0)
         expert_gate = nx.add_at(expert_gate, (flatten_top_expert_indices, safe_slot), safe_gates)
+        # nx.eval(expert_gate)
+        # end = time.perf_counter()
+        # print(f"gate {end-start}")
 
         projected = expert_input @ Wcombined.transpose(0,2,1) #(E, capacity, 2H)
         gate_half = projected[..., :H]
@@ -98,12 +103,23 @@ class MoE:
         d_masked_output = assignment_gradient * num_valid[...,None]
 
         d_gated_output = nx.zeros((n_experts, capacity, D))
+        start = time.perf_counter()
         d_gated_output = nx.add_at(d_gated_output, (flatten_top_expert_indices, safe_slot), d_masked_output)
+        nx.eval(d_gated_output)
+        end = time.perf_counter()
+        print("d_gated_output", end-start)
+
+
         d_raw_output = d_gated_output * expert_gate[..., None] #(E, capacity, D)
         d_expert_gate = nx.sum(d_gated_output * raw_output, axis=-1) #(E, capacity)
        
         dWout = hidden.transpose(0, 2, 1) @ d_raw_output
+        
+        start = time.perf_counter()
         d_hidden = d_raw_output @ Wout.transpose(0, 2, 1) #(E,C,H)
+        nx.eval(d_hidden)
+        end = time.perf_counter()
+        print("d_hidden", end-start)
 
         gate_half = projected[..., :hidden_width]
         value_half = projected[..., hidden_width:]
@@ -111,17 +127,27 @@ class MoE:
         d_gate_half = d_hidden * value_half * swish_derivative(gate_half)
         d_value_half = d_hidden * swish(gate_half)
         d_projected = nx.concatenate([d_gate_half, d_value_half], axis=-1) #(E, C, 2H)
-        dWcombined = d_projected.transpose(0, 2, 1) @ expert_input #(E, 2H, D)
-        d_expert_input = d_projected @ Wcombined #(E, C, D)
 
-        row_idx = nx.arange(M, dtype=nx.int32) #(M,)
-        d_x_expert = nx.zeros((M,D))
-        d_x_expert[row_idx] = d_expert_input[flatten_top_expert_indices[row_idx], safe_slot[row_idx]]
+        start = time.perf_counter()
+        #expertinput = (E, C, D)
+        dWcombined = d_projected.transpose(0, 2, 1) @ expert_input #(E, 2H, D)
+        # dWcombined = nx.einsum("ech,ecd->ehd", d_projected, expert_input)
+        nx.eval(dWcombined)
+        end = time.perf_counter()
+        print("dWcombined", end-start)
+
+        start = time.perf_counter()
+        d_expert_input = d_projected @ Wcombined #(E, C, D)
+        nx.eval(d_expert_input)
+        end = time.perf_counter()
+        print("d_expert_input", end-start)
+
+        d_x_expert = d_expert_input[flatten_top_expert_indices, safe_slot]
         d_x_expert *= num_valid[...,None]
 
-        d_chosen_gate = nx.zeros((M,))
-        d_chosen_gate[row_idx] = d_expert_gate[flatten_top_expert_indices[row_idx], safe_slot[row_idx]]
+        d_chosen_gate = d_expert_gate[flatten_top_expert_indices, safe_slot]
         d_chosen_gate *= num_valid
+
         d_chosen_gate = d_chosen_gate.reshape(N,top_k)
         token_rows = nx.arange(N, dtype=nx.int32)[:,None]
         selected_prob = router_prob[token_rows, top_expert_indices] #N,K

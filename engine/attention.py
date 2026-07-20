@@ -61,17 +61,21 @@ class AttentionLayer:
         Q_6d = Q[:,:,:,:,None,:] #(B, n_kv_heads, n_rep, T,1, Dh)
         windows_K_6d = windows_K[:,:,None,:,:,:] #(B, n_kv_head, 1, T, W+1, Dh)
         scores = Q_6d @ windows_K_6d.transpose(0,1,2,3,5,4) #B, n_kv_heads, n_rep, T, 1, W+1
-        # scores = nx.einsum("bkrtd,bktwd->bkrtw",Q, windows_K) #(B, n_kv_heads, n_rep, T, W+1)
         # nx.eval(scores)  
         # end = time.perf_counter()
         # print(f"scores {end-start:.5f}")
 
+        # start = time.perf_counter()
         # print("swa scores unscaled",scores.dtype)
         scores = scores[:,:,:,:,0,:].reshape(B, -1, T, W+1)
+        scores = scores.reshape(B, -1, T, W+1)
         scores /= SCALE
         scores = nx.where(causal_mask, -1e9, scores)
         weights = softmax(scores) #(B, n_heads, T, W+1)
         weights = weights.reshape(B, n_kv_heads, n_rep, T, W+1)
+        # nx.eval(weights)  
+        # end = time.perf_counter()
+        # print(f"scores {end-start:.5f}")
 
         # start = time.perf_counter()
         weights_6d = weights[:,:,:,:,None,:]     #(B, n_kv_head, n_rep, T, 1, W+1)
@@ -102,17 +106,13 @@ class AttentionLayer:
         # start = time.perf_counter()
         d_output_split_6d = d_output_split[:,:,:,:,None,:] #B, n_kv_heads, n_rep, T, 1, Dh
         windows_V_6d = windows_V[:,:,None,:,:,:] #(B, n_kv_head, 1, T, W+1, Dh)
-        # d_weights = nx.einsum("bkrtd,bktwd->bkrtw", d_output_split, windows_V) #(B, n_kv_heads, n_rep, T, W+1)
         d_weights = d_output_split_6d @ windows_V_6d.transpose(0,1,2,3,5,4) #B, n_kv_heads, n_rep,T, 1, W+1
         # nx.eval(d_weights)  
         # end = time.perf_counter()
         # print(f"d_weights {end-start:.5f}")
 
         # start = time.perf_counter()
-        # weights_6d = weights[:,:,:,:,:,None]     #(B, n_kv_head, n_rep, T, W+1, 1)
         d_windows_V = nx.einsum("bkrtw,bkrtd->bktwd", weights, d_output_split) #(B, n_kv_head, T , W+1, Dh)
-        # d_windows_V = weights_6d @ d_output_split_6d #B, n_kv_heads, n_rep, T, W+1, Dh)
-        # d_windows_V = nx.sum(d_windows_V, axis=2)
         # nx.eval(d_windows_V)  
         # end = time.perf_counter()
         # print(f"d_windows_V {end-start:.5f}")
@@ -124,7 +124,6 @@ class AttentionLayer:
         # start = time.perf_counter()
         d_scores_6d = d_scores[:,:,:,:,None,:] #(B, n_kv_heads, n_rep, T, 1,W+1)
         windows_K_6d = windows_K[:,:,None,:,:,:] #(B, n_kv_head, 1, T, W+1, Dh)
-        # dQ = nx.einsum("bkrtw,bktwd->bkrtd", d_scores, windows_K)#(B, n_kv_heads, n_rep, T, Dh)
         dQ = d_scores_6d @ windows_K_6d
         # nx.eval(dQ)  
         # end = time.perf_counter()
@@ -147,7 +146,7 @@ class AttentionLayer:
         # nx.eval(d_padded_K, d_padded_V)  
         # end = time.perf_counter()
         # print(f"padded loop {end-start:.5f}")
-            
+
         dK = d_padded_K[:, :, W:, :]
         dV = d_padded_V[:, :, W:, :]
 

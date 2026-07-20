@@ -198,13 +198,13 @@ def sliding_window_view( x:Any, window_shape:int, axis=None) -> ArrayLike:
     strides = (1,1)
     return _nx.as_strided(x,shape, strides)
 
-def as_strided(x, shape, strides):
+def as_strided(x, shape, strides, offset=0):
     if backend == 'NumPy':
         x = _nx.asarray(x)
         itemsize = x.dtype.itemsize
         np_stride = tuple(s * itemsize for s in strides)
         return _nx.lib.stride_tricks.as_strided(x, shape=shape, strides=np_stride)
-    return _nx.as_strided(x,shape, strides)
+    return _nx.as_strided(x,shape, strides, offset=offset)
 
 def mean(x:ArrayLike, *,axis=None, keepdims:bool=False,dtype=None) -> ArrayLike:
     if dtype is None:
@@ -368,3 +368,15 @@ def get_cache_memory() -> int:
     if backend == "NumPy":
         return 0
     return _nx.get_cache_memory()
+
+def eye(n,m=None,k=0,dtype=None):
+    if dtype is None:
+        dtype = _nx.float32
+    if m is None:
+        m = n
+    return _nx.eye(n, m, k, dtype=dtype)
+
+def full(shape, vals, dtype=None):
+    if dtype is None:
+        dtype = _nx.float32
+    return _nx.full(shape, vals, dtype=dtype)

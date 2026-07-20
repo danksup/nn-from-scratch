@@ -1,5 +1,5 @@
 import os
-backend = os.environ["BACKEND"] = "NumPy"
+backend = os.environ["BACKEND"] = "auto"
 import random
 # import mlx.core as mx
 EMBED_DIM = 128

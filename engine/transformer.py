@@ -277,8 +277,8 @@ class Transformer:
             count += next_tokens.size
             batch_idx += 1
 
-            print("active mem gb", nx.get_active_memory() / 1_000_000_000)
-            print("cache mem gb",nx.get_cache_memory() / 1_000_000_000)
+            # print("active mem gb", nx.get_active_memory() / 1_000_000_000)
+            # print("cache mem gb",nx.get_cache_memory() / 1_000_000_000)
             del (embedded,batch_scores,last_output,all_masks,all_caches,total_router_loss,loss,batch_gradient,block_gradient,d_table,current_grad,
                     embedding_gradient,total_embedding_gradient,all_network_params,optimized,)
             # print("after del active mem gb", nx.get_active_memory() / 1_000_000_000)
