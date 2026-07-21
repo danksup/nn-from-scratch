@@ -5,7 +5,7 @@ from typing import Any
 import time
 
 class AttentionLayer:
-    def __init__(self,embed_dim:int, n_heads:int, n_kv_heads:int=-1, W=8) -> None:
+    def __init__(self,embed_dim:int, n_heads:int, n_kv_heads:int=-1, W=8, dtype=nx.float16) -> None:
         self.n_kv_heads = n_kv_heads
 
         if n_kv_heads < 0:
@@ -19,19 +19,18 @@ class AttentionLayer:
         self.head_dim = embed_dim // n_heads
         self.W = W
 
-        self.scale = nx.float_32(nx.sqrt(self.head_dim))
-        scale = nx.float_32(1/self.scale)
+        scale = 1 / nx.sqrt(self.head_dim, dtype=dtype)
         self.n_rep = self.n_heads // self.n_kv_heads 
 
-        self.Wqkv = nx.uniform(-scale, scale, (embed_dim + 2 * n_kv_heads * self.head_dim, embed_dim), dtype=nx.float16) 
-        self.Wo = nx.uniform(-scale,scale, (embed_dim,embed_dim), dtype=nx.float16) #projection
+        self.Wqkv = nx.uniform(-scale, scale, (embed_dim + 2 * n_kv_heads * self.head_dim, embed_dim), dtype=dtype) 
+        self.Wo = nx.uniform(-scale,scale, (embed_dim,embed_dim), dtype=dtype) #projection
         self.dWqkv = None
         self.dWo = None
 
     @staticmethod
     def _forward(x:nx.ArrayLike, causal_mask:nx.ArrayLike, embed_dim:int, n_kv_heads:int, n_heads:int, n_rep:int, head_dim:int, W, freqs:int, Wqkv:nx.ArrayLike, Wo:nx.ArrayLike):
         combined = x @ Wqkv.T 
-        SCALE = nx.float_32(nx.sqrt(head_dim))
+        SCALE = nx.sqrt(head_dim, dtype=x.dtype)
 
         Q = combined[..., :embed_dim] #shape: (B, T, D)
         K = combined[..., embed_dim: embed_dim + (n_kv_heads * head_dim)]  #shape: (B, T, n_kv_heads * H)
@@ -52,15 +51,16 @@ class AttentionLayer:
         padded_V = nx.pad(V, pad, constant_value=0) #(B,n_kv_head,T+W, Dh)
         shape = (padded_K.shape[0], padded_K.shape[1], T, W + 1, head_dim) #(B, n_kv_head, T, W+1, Dh)
 
-        windows_K = nx.as_strided(padded_K, shape=shape,strides=stride) #shape=shape
-        windows_V = nx.as_strided(padded_V, shape=shape,strides=stride) #shape=shape
+        windows_K = nx.as_strided(padded_K, shape=shape,strides=stride) #shape=shape dtype
+        windows_V = nx.as_strided(padded_V, shape=shape,strides=stride) #shape=shape dtype
 
         Q = Q.reshape(B, n_kv_heads, n_rep, T, head_dim)
 
         # start = time.perf_counter()
         Q_6d = Q[:,:,:,:,None,:] #(B, n_kv_heads, n_rep, T,1, Dh)
         windows_K_6d = windows_K[:,:,None,:,:,:] #(B, n_kv_head, 1, T, W+1, Dh)
-        scores = Q_6d @ windows_K_6d.transpose(0,1,2,3,5,4) #B, n_kv_heads, n_rep, T, 1, W+1
+        scores = Q_6d @ windows_K_6d.transpose(0,1,2,3,5,4) #B, n_kv_heads, n_rep, T, 1, W+1 #dtype
+
         # nx.eval(scores)  
         # end = time.perf_counter()
         # print(f"scores {end-start:.5f}")
@@ -71,8 +71,12 @@ class AttentionLayer:
         scores = scores.reshape(B, -1, T, W+1)
         scores /= SCALE
         scores = nx.where(causal_mask, -1e9, scores)
-        weights = softmax(scores) #(B, n_heads, T, W+1)
+        weights = softmax(scores) #(B, n_heads, T, W+1) #fp32
+        # print("weights softmax", weights.dtype)
+        weights = weights.astype(scores.dtype)
         weights = weights.reshape(B, n_kv_heads, n_rep, T, W+1)
+        # print("weights after cast", weights.dtype)
+
         # nx.eval(weights)  
         # end = time.perf_counter()
         # print(f"scores {end-start:.5f}")
@@ -88,7 +92,8 @@ class AttentionLayer:
         
         output = output[:,:,:,:,0,:]
         output_concat = output.transpose(0, 3, 1, 2, 4).reshape(B, T, embed_dim)
-        output_projected = output_concat @ Wo #B,T,D
+        output_projected = output_concat @ Wo #B,T,D #dtype
+        # print("output projected" , output_projected.dtype)
         cache = (x, Q, windows_K, windows_V, weights, output_concat)
         return output_projected, cache
     
@@ -97,7 +102,7 @@ class AttentionLayer:
         fp16_x, Q, windows_K, windows_V, weights, output_concat = caches
         n_heads, head_dim, embed_dim, n_kv_heads, n_rep, W, Wo, freqs, Wqkv = attn_params
 
-        scale = nx.float_32(nx.sqrt(head_dim))
+        scale = nx.sqrt(head_dim)
         B, T, D = fp16_x.shape
         d_output_concat = nx.einsum("btd,fd->btf",gradient, Wo) #(B,T,D)
         d_output = d_output_concat.reshape(B, T, n_heads, head_dim).transpose(0, 2, 1, 3) #(B, n_heads, T,  Dh)
@@ -179,7 +184,6 @@ class AttentionLayer:
 
         K = K.reshape(B, T, self.n_kv_heads, self.head_dim).transpose(0,2,1,3)
         K = rope_forward(K, freqs, position) 
-        K = K.astype(nx.float32)
         if cached_k is not None :
             cached_k = nx.concatenate([cached_k, K], axis = 2)
         else:

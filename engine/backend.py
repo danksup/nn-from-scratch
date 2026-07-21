@@ -40,10 +40,10 @@ def array(x:Any, dtype=None) -> ArrayLike:
 
 def sum(a:ArrayLike, axis:Any=None, keepdims:bool=False, dtype=None) -> Any:
     if dtype is None:
-        dtype = _nx.float32
+        dtype = a.dtype
     if backend == "MLX":
         if dtype is not None:
-            a = _nx.array(a, dtype=dtype)
+            a = a.astype(dtype)
         return _nx.sum(a, axis=axis, keepdims=keepdims)
     
     return _nx.sum(a,axis=axis,keepdims=keepdims,dtype=dtype)
@@ -105,41 +105,35 @@ def max( x:ArrayLike, axis=None, keepdims:bool=False) -> ArrayLike:
 def min( x:ArrayLike, axis=None, keepdims:bool=False) -> ArrayLike:
     return _nx.min(x,axis=axis, keepdims=keepdims)
 
-def exp( x:ArrayLike, out=None, dtype=None) -> ArrayLike:
-    if dtype is None: 
-        dtype = _nx.float32
-    if backend == "MLX":
-        x = _nx.array(x, dtype=dtype)
-    if backend == "NumPy":
-        return _nx.exp(x, out=out, dtype=dtype)
-    if out is not None:
-        raise NotImplementedError("out is a no for mlx")
+def exp(x:ArrayLike, dtype=None) -> ArrayLike:
+    if dtype is not None and dtype != x.dtype:
+        x = x.astype(dtype)
     return _nx.exp(x)
 
 def clip( a:Any, a_min:Any, a_max:Any, dtype:Any=None) -> ArrayLike:
     if dtype is None: 
-        dtype = _nx.float32
+        dtype = a.dtype
     if backend == "MLX":
-        a = _nx.array(a, dtype=dtype)
         a_min = _nx.array(a_min, dtype=dtype)
         a_max = _nx.array(a_max, dtype=dtype)
         return _nx.clip(a,a_min, a_max)
     return _nx.clip(a,a_min, a_max,dtype=dtype)
 
-def log( a:Any, dtype:Any=None) -> ArrayLike:
-    if dtype == None:
-        dtype = _nx.float32
+def log(x:ArrayLike, *,axis=None, keepdims:bool=False,dtype=None) -> ArrayLike:
+    if dtype is not None and dtype != x.dtype:
+        x = x.astype(dtype)
     if backend == "MLX":
-        a = _nx.array(a, dtype)
-        return _nx.log(a)
-    return _nx.log(a, dtype=dtype)
+        return _nx.log(x, axis=axis,keepdims=keepdims)
+    return _nx.log(x, axis=axis,keepdims=keepdims, dtype=dtype)
 
-def arange(x:Any, y:Any=None, z:Any=None, dtype=None) -> ArrayLike:
-    if dtype is None:
-        dtype = _nx.int32
-    if backend == "MLX":
-        return _nx.array(_nx.arange(x,y,z), dtype=dtype)
-    return _nx.arange(x,y,z, dtype=dtype)
+def arange(start:Union[int,float], stop:Union[None,int,float]=None, step:Union[None,int,float]=None, *,dtype=None) -> ArrayLike:
+    if stop is None:
+        return _nx.arange(start, dtype=dtype)
+    else:
+        if step is None:
+             return _nx.arange(start,stop, dtype=dtype)
+
+    return _nx.arange(start, stop, step, dtype=dtype)
 
 def indices( x:Any) -> Any:
     if backend == "NumPy":
@@ -156,10 +150,12 @@ def indices( x:Any) -> Any:
     return _nx.stack(result)
 
 def sqrt(x:Any, dtype=None) -> Any:
-    if dtype is None:
-        dtype = _nx.float32
     if backend == "MLX":
-        x = _nx.array(x, dtype=dtype)
+        if hasattr(x, "dtype"): 
+            if dtype is not None and x.dtype != dtype:
+                x = x.astype(dtype)
+        else: 
+            x = _nx.array(x, dtype)
         return _nx.sqrt(x)
     return _nx.sqrt(x,dtype=dtype)   
 
@@ -207,45 +203,45 @@ def as_strided(x, shape, strides, offset=0):
     return _nx.as_strided(x,shape, strides, offset=offset)
 
 def mean(x:ArrayLike, *,axis=None, keepdims:bool=False,dtype=None) -> ArrayLike:
-    if dtype is None:
-        dtype = _nx.float32
-
+    if dtype is not None and dtype != x.dtype:
+        x = x.astype(dtype)
     if backend == "MLX":
-        x = _nx.array(x, dtype=dtype)
         return _nx.mean(x, axis=axis,keepdims=keepdims)
     return _nx.mean(x, axis=axis,keepdims=keepdims, dtype=dtype)
 
 def var( x:ArrayLike,*,axis=None,keepdims=False,dtype=None) -> ArrayLike:
-    if dtype is None:
-        dtype = _nx.float32
-
+    if dtype is not None and dtype != x.dtype:
+        x = x.astype(dtype)
     if backend == "MLX":
-        x = _nx.array(x, dtype=dtype)
         return _nx.var(x, axis=axis,keepdims=keepdims)
     return _nx.var(x, axis=axis,keepdims=keepdims, dtype=dtype)
 
 def dot(u:ArrayLike,v:ArrayLike) -> Any:
     return u @ v
 
-def sin(a:Any,dtype=None) -> Any:
-    if dtype is None:
-        dtype = _nx.float32
+def sin(x:Any,dtype=None) -> Any:
+    if dtype is not None and dtype != x.dtype:
+        x = x.astype(dtype)
     if backend =="MLX":
-        return _nx.sin(_nx.array(a, dtype=dtype))
-    return _nx.sin(a, dtype=dtype)
+        return _nx.sin(x)
+    return _nx.sin(x, dtype=dtype)
     
-def cos(a:Any,dtype=None) -> Any:
-    if dtype is None:
-        dtype = _nx.float32
+def cos(x:Any,dtype=None) -> Any:
+    if dtype is not None and dtype != x.dtype:
+        x = x.astype(dtype)
     if backend =="MLX":
-        return _nx.cos(_nx.array(a, dtype=dtype))
-    return _nx.cos(a, dtype=dtype)
+        return _nx.cos(x)
+    return _nx.cos(x, dtype=dtype)
 
 def power(a,b, dtype=None) -> Any:
     if dtype is None:
         dtype = _nx.float32
     if backend =="MLX":
-        return _nx.power(_nx.array(a, dtype=dtype), _nx.array(b,dtype=dtype))
+        a_arr = a if hasattr(a, "dtype") else _nx.array(a, dtype)
+        b_arr = b if hasattr(b, "dtype") else _nx.array(b, dtype)
+        if a_arr.dtype != dtype: a_arr = a_arr.astype(dtype)
+        if b_arr.dtype != dtype: b_arr = b_arr.astype(dtype)
+        return _nx.power(a_arr, b_arr)
     return _nx.power(a,b,dtype=dtype)
 
 def argpartition(x:ArrayLike, kth, axis=None) -> ArrayLike:
@@ -380,3 +376,6 @@ def full(shape, vals, dtype=None):
     if dtype is None:
         dtype = _nx.float32
     return _nx.full(shape, vals, dtype=dtype)
+
+def isfinite(a):
+    return _nx.isfinite(a)

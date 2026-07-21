@@ -49,8 +49,8 @@ shape = a.shape[0], a.shape[1], a.shape[2], w, a.shape[3]
 stride = a.shape[-1] * n_kv_heads * P, a.shape[-1] * P, a.shape[-1], a.shape[-1], 1
 
 c = mx.as_strided(b, shape=shape, strides= stride)
-a = np.asarray(a)
-itemsize = a.dtype.itemsize
+an = np.asarray(a)
+itemsize = an.dtype.itemsize
 np_stride = tuple(s * itemsize for s in stride)
 z = np.lib.stride_tricks.as_strided(b, shape=shape, strides= np_stride)
 # print(c)
@@ -70,3 +70,15 @@ z = np.lib.stride_tricks.as_strided(b, shape=shape, strides= np_stride)
 # a = mx.arange(w+1)
 # d = mx.tile(a, T)
 # print(d)
+
+# a = mx.array(3)
+# b = mx.array(False)
+# print(a)
+# print(b)
+# print(a*b)
+print(a.dtype)
+g = mx.log(a.astype(mx.bfloat16))
+print(g.dtype)
+
+a = np.sqrt(a, dtype=np.longdouble)
+print(a)

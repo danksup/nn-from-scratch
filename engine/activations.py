@@ -31,29 +31,35 @@ def softmax_derivative(s:Any, grad:Any) -> Any:
     """
     return  s * (grad -nx.sum(grad * s, axis=-1, keepdims=True,dtype=nx.float32))
 
-def sigmoid(x:Any) -> Any:
+def sigmoid(x:Any, dtype=None) -> Any:
     """
     turns x into value between 0 and 1 \n
     f(x) = 1 / (1 + e**(-x))
     """
-    one = 1.0
-    return one / (one + nx.exp(-x))
+    if dtype is None:
+        dtype = x.dtype
+    z = nx.exp(-nx.abs(x), dtype=dtype)
+    return nx.where(x>=0, 1.0 / (1.0 + z), z / (1.0 + z))
 
 def sigmoid_derivative(x:Any):
     s = sigmoid(x)
     return s * (1.0 - s)
 
-def swish(x:Any) -> Any:
+def swish(x:Any, dtype=None) -> Any:
     """
     f(x) = x * sigmoid(Bx)\n
     B, beta, is 1 by default.
     """
-    return x * sigmoid(x)
+    if dtype is None:
+        dtype = x.dtype
+    return x * sigmoid(x, dtype)
 
-def swish_derivative(x: Any) -> Any:
+def swish_derivative(x: Any, dtype=None) -> Any:
     """
     derivative of swish
     f(x) = σ(x) + x * σ(x) * (1 - σ)
     """
-    s = sigmoid(x)
+    if dtype is None:
+        dtype = x.dtype
+    s = sigmoid(x, dtype=dtype)
     return s + x * s * (1.0 - s)

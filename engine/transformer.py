@@ -8,6 +8,7 @@ from typing import Any
 import time
 LAMBDA = 1e-2
 import gc
+DTYPE = nx.float16
 
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
@@ -57,6 +58,7 @@ class Transformer:
             gamma2 = block.rmsnorm2.gamma
             W = block.W
             W = min(W, T-1)
+            P = nx.array(0.1, dtype=nx.float16)
             if block.causal_mask is None or block.causal_mask.shape != (T,W+1):
                 # block.causal_mask = nx.triu(nx.ones((T, T), dtype=nx.bool_), k=1)
                 window_idx = nx.arange(W + 1).reshape((1, W + 1))
@@ -64,7 +66,7 @@ class Transformer:
                 padded_position = time_idx + window_idx
                 block.causal_mask = padded_position < W
             ff_out ,masks, caches, router_loss, normalized_histogram = block._forward(output, block.causal_mask, self.embed_dim, block.n_heads, block.n_kv_heads, block.n_rep, W,block.head_dim, block.n_experts, block.cf, block.ff.top_k,
-                                                   block.freqs, Wqkv, Wo, Wcombined, router, block.hidden_width, Wout, epsilon, gamma1, gamma2, 0.1, is_training)
+                                                   block.freqs, Wqkv, Wo, Wcombined, router, block.hidden_width, Wout, epsilon, gamma1, gamma2, P, is_training)
 
             total_router_loss += router_loss
             output = ff_out
@@ -93,9 +95,10 @@ class Transformer:
             moe_configs = block.ff.cf, block.ff.n_experts, block.ff.hidden_width, block.ff.router, LAMBDA
             W = block.W
             W = min(W, T-1)
+            P = nx.array(0.1, dtype=nx.float16)
             attn_params = (block.n_heads, block.head_dim, block.embed_dim, block.n_kv_heads, block.n_rep,W, block.attention.Wo, block.freqs, block.attention.Wqkv)
             ff_params = (block.ff.Wout, block.ff.Wcombined)
-            dx, dWout, dWcombined, d_router, dWqkv,dWo, d_gamma1, d_gamma2 = block._backward(current_grad, mask1=mask1, mask2=mask2, 
+            dx, dWout, dWcombined, d_router, dWqkv,dWo, d_gamma1, d_gamma2 = block._backward(current_grad, mask1=mask1, mask2=mask2, p=P,
                                                                 caches_attn=caches_attn, caches_ff=caches_ff, caches_rmsnorm1=caches_rmsnorm1, caches_rmsnorm2=caches_rmsnorm2, 
                                                                 attn_params=attn_params, gamma1=block.rmsnorm1.gamma, gamma2=block.rmsnorm2.gamma, ff_params=ff_params, moe_configs=moe_configs)
             
@@ -162,14 +165,16 @@ class Transformer:
             optimized = self.optimizer.step_many(all_network_params, dataloader.train_contexts, batch_size, total_epoch)
             nx.eval(*optimized.values())
             for i,block in enumerate(self.blocks):
-                block.attention.Wqkv = optimized[f"Wqkv_{i}"]
-                block.attention.Wo = optimized[f"Wo_{i}"]
-                block.ff.Wcombined = optimized[f"ff_wcombined_{i}"]
-                block.ff.Wout = optimized[f"ff_wout_{i}"]
-                block.ff.router = optimized[f"ff_router_{i}"]
+                block.attention.Wqkv = optimized[f"Wqkv_{i}"].astype(DTYPE)
+                block.attention.Wo = optimized[f"Wo_{i}"].astype(DTYPE)
+
+                block.ff.Wcombined = optimized[f"ff_wcombined_{i}"].astype(DTYPE)
+                block.ff.Wout = optimized[f"ff_wout_{i}"].astype(DTYPE)
+                block.ff.router = optimized[f"ff_router_{i}"].astype(DTYPE)
+
                 block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
                 block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
-            embedding.lookup_table = optimized["embedding"]
+            embedding.lookup_table = optimized["embedding"].astype(DTYPE)
 
             total_loss += loss.item() * next_tokens.size
             count += next_tokens.size
@@ -177,8 +182,8 @@ class Transformer:
 
             del (embedded,batch_scores,last_output,all_masks,all_caches,total_router_loss,loss,batch_gradient,block_gradient,d_table,current_grad,
                     embedding_gradient,total_embedding_gradient,all_network_params,optimized,)
-            if batch_counter % 10 == 0:
-                gc.collect()
+            # if batch_counter % 10 == 0:
+            #     gc.collect()
 
         final_loss = total_loss / count
         if total_histograms != None:
@@ -248,14 +253,14 @@ class Transformer:
             
             optimized = self.optimizer.step_many(all_network_params,dataloader.train_contexts, batch_size, total_epoch)
             for i,block in enumerate(self.blocks):
-                block.attention.Wqkv = optimized[f"Wqkv_{i}"]
-                block.attention.Wo = optimized[f"Wo_{i}"]
-                block.ff.Wcombined = optimized[f"ff_wcombined_{i}"]
-                block.ff.Wout = optimized[f"ff_wout_{i}"]
+                block.attention.Wqkv = optimized[f"Wqkv_{i}"].astype(DTYPE)
+                block.attention.Wo = optimized[f"Wo_{i}"].astype(DTYPE)
+                block.ff.Wcombined = optimized[f"ff_wcombined_{i}"].astype(DTYPE)
+                block.ff.Wout = optimized[f"ff_wout_{i}"].astype(DTYPE)
                 block.ff.router = optimized[f"ff_router_{i}"]
                 block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
                 block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
-            embedding.lookup_table = optimized["embedding"]
+            embedding.lookup_table = optimized["embedding"].astype(DTYPE)
 
             to_eval = []
             for block in self.blocks:
@@ -283,7 +288,6 @@ class Transformer:
                     embedding_gradient,total_embedding_gradient,all_network_params,optimized,)
             # print("after del active mem gb", nx.get_active_memory() / 1_000_000_000)
             # print("after del cache mem gb",nx.get_cache_memory() / 1_000_000_000)
-            gc.collect()
             
         final_loss = total_loss / count
         if total_histograms != None:
