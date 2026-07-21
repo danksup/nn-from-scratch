@@ -5,7 +5,7 @@ from typing import Any
 import time
 
 class AttentionLayer:
-    def __init__(self,embed_dim:int, n_heads:int, n_kv_heads:int=-1, W=8, dtype=nx.float16) -> None:
+    def __init__(self,embed_dim:int, n_heads:int, n_kv_heads:int=-1, W=8, dtype:Any=nx.float16) -> None:
         self.n_kv_heads = n_kv_heads
 
         if n_kv_heads < 0:
@@ -99,19 +99,26 @@ class AttentionLayer:
     
     @staticmethod
     def _backward(gradient:nx.ArrayLike, caches:tuple[Any,...], attn_params: tuple[Any,...]) :#-> tuple[nx.ArrayLike,...]:
-        fp16_x, Q, windows_K, windows_V, weights, output_concat = caches
+        x, Q, windows_K, windows_V, weights, output_concat = caches
         n_heads, head_dim, embed_dim, n_kv_heads, n_rep, W, Wo, freqs, Wqkv = attn_params
 
-        scale = nx.sqrt(head_dim)
-        B, T, D = fp16_x.shape
+        scale = nx.sqrt(head_dim, dtype=nx.float16)
+        B, T, D = x.shape
         d_output_concat = nx.einsum("btd,fd->btf",gradient, Wo) #(B,T,D)
+        # print("doutput", d_output_concat.dtype)
+        # print("wo", Wo.dtype)
         d_output = d_output_concat.reshape(B, T, n_heads, head_dim).transpose(0, 2, 1, 3) #(B, n_heads, T,  Dh)
         d_output_split = d_output.reshape(B, n_kv_heads,n_rep,T, head_dim)
-
+        # print("d_output_split",d_output_split.dtype)
         # start = time.perf_counter()
         d_output_split_6d = d_output_split[:,:,:,:,None,:] #B, n_kv_heads, n_rep, T, 1, Dh
         windows_V_6d = windows_V[:,:,None,:,:,:] #(B, n_kv_head, 1, T, W+1, Dh)
         d_weights = d_output_split_6d @ windows_V_6d.transpose(0,1,2,3,5,4) #B, n_kv_heads, n_rep,T, 1, W+1
+        
+        # print("dweights",d_weights.dtype)
+        # print("winv",windows_V.dtype)
+
+
         # nx.eval(d_weights)  
         # end = time.perf_counter()
         # print(f"d_weights {end-start:.5f}")
@@ -123,8 +130,8 @@ class AttentionLayer:
         # print(f"d_windows_V {end-start:.5f}")
 
         d_weights = d_weights[:,:,:,:,0,:]
-        d_scores = softmax_derivative(weights, d_weights) #(B, n_kv_heads, n_rep, T, W+1)
-        d_scores /= scale
+        d_scores = softmax_derivative(weights, d_weights) / scale #(B, n_kv_heads, n_rep, T, W+1)
+        d_scores = d_scores.astype(nx.float16)
 
         # start = time.perf_counter()
         d_scores_6d = d_scores[:,:,:,:,None,:] #(B, n_kv_heads, n_rep, T, 1,W+1)
@@ -143,8 +150,8 @@ class AttentionLayer:
         # print(f"d_windows_K {end-start:.5f}")
 
         # start = time.perf_counter()
-        d_padded_K = nx.zeros((B, n_kv_heads, T+W, head_dim))
-        d_padded_V = nx.zeros((B, n_kv_heads, T+W, head_dim))
+        d_padded_K = nx.zeros((B, n_kv_heads, T+W, head_dim), dtype=d_windows_K.dtype)
+        d_padded_V = nx.zeros((B, n_kv_heads, T+W, head_dim), dtype=d_windows_V.dtype)
         for slot in range(W + 1):
             d_padded_K[:, :, slot:slot + T, :] += d_windows_K[:, :, :, slot, :]
             d_padded_V[:, :, slot:slot + T, :] += d_windows_V[:, :, :, slot, :]
@@ -155,24 +162,34 @@ class AttentionLayer:
         dK = d_padded_K[:, :, W:, :]
         dV = d_padded_V[:, :, W:, :]
 
-        dQ = rope_inverse(dQ, freqs)
-        dK = rope_inverse(dK, freqs)
+        dQ = rope_inverse(dQ, freqs) #grad dtype
+        dK = rope_inverse(dK, freqs) #grad dtype
 
         dQ = dQ.transpose(0, 2, 1, 3).reshape(B, T, embed_dim)
         dK = dK.transpose(0, 2, 1, 3).reshape(B, T, n_kv_heads * head_dim)
         dV = dV.transpose(0, 2, 1, 3).reshape(B, T,  n_kv_heads * head_dim)
 
+        # print("dq after rope", dQ.dtype)
+        # print("dv", dV.dtype)
+        # print("dk", dK.dtype)
+
+
         dQKV = nx.concatenate([dQ, dK,dV], axis=-1) #(B,T, D + 2 * (n_kv_heads * Dh))
         DQKV = dQKV.reshape(-1, embed_dim + 2 * (n_kv_heads * head_dim))
 
-        X = fp16_x.astype(nx.float32).reshape(-1, embed_dim)
+        X = x.reshape(-1, embed_dim)
         dWqkv = DQKV.T @ X
+        # print("dwqkv",dWqkv.dtype)
+        # print("x", X.dtype)
+        # dWqkv = dWqkv.astype(nx.float32)
 
         H = output_concat.reshape(-1, embed_dim)
         G = gradient.reshape(-1, embed_dim)
 
         dWo = H.T @ G
         dx = dQKV @ Wqkv
+        # print("dwo", dWo.dtype)
+        # print("dx", dx.dtype)
         return dx,dWqkv,dWo
     
     def inference_forward(self, x, max_cache_len, freqs, cached_k=None, cached_v=None, position = 0):

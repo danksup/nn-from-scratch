@@ -4,8 +4,6 @@ from typing import Any
 class Dropout:
     @staticmethod
     def _forward(x, p, is_training):
-        assert 0 <= p < 1
-
         if not is_training:
             return x, None
 
@@ -19,8 +17,6 @@ class Dropout:
 
     @staticmethod
     def _backward(gradient, mask, p):
-        assert 0 <= p < 1
-
         if mask is None:
             return gradient
 

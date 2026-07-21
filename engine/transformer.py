@@ -8,7 +8,7 @@ from typing import Any
 import time
 LAMBDA = 1e-2
 import gc
-DTYPE = nx.float16
+DTYPE = nx.float32
 
 class Transformer:
     def __init__(self, vocab_size:int, embed_dim:int,optimizer=None) -> None:
@@ -98,20 +98,20 @@ class Transformer:
             P = nx.array(0.1, dtype=nx.float16)
             attn_params = (block.n_heads, block.head_dim, block.embed_dim, block.n_kv_heads, block.n_rep,W, block.attention.Wo, block.freqs, block.attention.Wqkv)
             ff_params = (block.ff.Wout, block.ff.Wcombined)
-            dx, dWout, dWcombined, d_router, dWqkv,dWo, d_gamma1, d_gamma2 = block._backward(current_grad, mask1=mask1, mask2=mask2, p=P,
+            dx, dWout, dWcombined, d_router, dWqkv, dWo, d_gamma1, d_gamma2 = block._backward(current_grad, mask1=mask1, mask2=mask2, p=P,
                                                                 caches_attn=caches_attn, caches_ff=caches_ff, caches_rmsnorm1=caches_rmsnorm1, caches_rmsnorm2=caches_rmsnorm2, 
                                                                 attn_params=attn_params, gamma1=block.rmsnorm1.gamma, gamma2=block.rmsnorm2.gamma, ff_params=ff_params, moe_configs=moe_configs)
             
-            block.ff.dWout = dWout
-            block.ff.dWcombined = dWcombined
-            block.ff.d_router = d_router
+            block.ff.dWout = dWout.astype(nx.float32)
+            block.ff.dWcombined = dWcombined.astype(nx.float32)
+            block.ff.d_router = d_router.astype(nx.float32)
             
-            block.attention.dWqkv=dWqkv
-            block.attention.dWo = dWo
+            block.attention.dWqkv=dWqkv.astype(nx.float32)
+            block.attention.dWo = dWo.astype(nx.float32)
 
             block.rmsnorm1.d_gamma = d_gamma1
             block.rmsnorm2.d_gamma = d_gamma2
-            current_grad = dx
+            current_grad = dx.astype(nx.float32)
         
         return current_grad
     
@@ -257,7 +257,7 @@ class Transformer:
                 block.attention.Wo = optimized[f"Wo_{i}"].astype(DTYPE)
                 block.ff.Wcombined = optimized[f"ff_wcombined_{i}"].astype(DTYPE)
                 block.ff.Wout = optimized[f"ff_wout_{i}"].astype(DTYPE)
-                block.ff.router = optimized[f"ff_router_{i}"]
+                block.ff.router = optimized[f"ff_router_{i}"].astype(DTYPE)
                 block.rmsnorm1.gamma = optimized[f"rmsnorm1_gamma_{i}"]
                 block.rmsnorm2.gamma = optimized[f"rmsnorm2_gamma_{i}"]
             embedding.lookup_table = optimized["embedding"].astype(DTYPE)

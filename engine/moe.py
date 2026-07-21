@@ -3,9 +3,10 @@ from engine.activations import softmax, softmax_derivative
 from engine.activations import swish,swish_derivative
 import time
 import math
+from typing import Any
 
 class MoE:
-    def __init__(self, capacity_factor, top_k, n_experts, embed_dim, hidden_width, dtype=nx.float16) -> None:
+    def __init__(self, capacity_factor, top_k, n_experts, embed_dim, hidden_width, dtype:Any=nx.float16) -> None:
         self.hidden_width = hidden_width 
         self.embed_dim = embed_dim #D
         self.n_experts = n_experts #E
@@ -86,11 +87,12 @@ class MoE:
         final_output = final_output * valid[..., None]
         final_output = final_output.reshape(N,top_k,D)
         final_output = nx.sum(final_output, axis=1, dtype=nx.float32,).reshape(B,T,D) #check
-        print("final output", final_output.dtype)
-        print("expert_input",expert_input.dtype)
-        print("gate",expert_gate.dtype)
-        print("projected",projected.dtype)
-        print("hidden",hidden.dtype)
+        # print("final output", final_output.dtype)
+        # print("expert_input",expert_input.dtype)
+        # print("gate",expert_gate.dtype)
+        # print("projected",projected.dtype)
+        # print("hidden",hidden.dtype)
+        # print("router forward", router.dtype)
         cache = (flatten_x, router_prob, top_expert_indices, top_gates, flatten_top_expert_indices, assignement_tokens, valid, safe_slot, expert_input, expert_gate, projected, hidden, raw_output, normalized_histogram)
         return final_output, cache, router_loss, normalized_histogram
 
@@ -156,23 +158,29 @@ class MoE:
         d_chosen_gate = d_chosen_gate.reshape(N,top_k)
         token_rows = nx.arange(N, dtype=nx.int32)[:,None]
         selected_prob = router_prob[token_rows, top_expert_indices] #N,K
-        gate_sum = nx.sum(selected_prob, -1, keepdims=True) #(N,1)
-        coupling = nx.sum(d_chosen_gate * top_gates, -1, keepdims=True) #(N,1)
+        gate_sum = nx.sum(selected_prob, -1, keepdims=True, dtype=nx.float32) #(N,1)
+        coupling = nx.sum(d_chosen_gate * top_gates, -1, keepdims=True, dtype=nx.float32) #(N,1)
         d_selected_prob = (d_chosen_gate - coupling)/gate_sum #(N,K)
         d_selected_prob = d_selected_prob.reshape(-1,)
 
-        d_router_prob = nx.zeros((N,n_experts))
+        d_router_prob = nx.zeros((N,n_experts), dtype=d_selected_prob.dtype)
         d_router_prob[assignement_tokens, flatten_top_expert_indices] = d_selected_prob
 
         d_avg_prob = n_experts * normalized_histogram
         d_router_prob += LAMBDA * (d_avg_prob / N)
 
         d_scores = softmax_derivative(router_prob, d_router_prob) #(N,E)
+        d_scores = d_scores.astype(gradient.dtype)
+        # print("d_scores", d_scores.dtype)
 
-        d_router = flatten_x.T @ d_scores #(D,E)
+        d_router = flatten_x.T @ d_scores #(D,E) #grad dtype
+        # print("droter", d_router.dtype)
         d_x_router = d_scores @ router.T #(N, D)
+        # print("router", router.dtype)
+        # print("dxrouter", d_x_router.dtype)
         d_x_expert = d_x_expert.reshape(N, top_k, D)
-        d_x_expert = nx.sum(d_x_expert, axis=1) #(N,D)
+        d_x_expert = nx.sum(d_x_expert, axis=1, dtype=nx.float32) #(N,D)
+        # print("dxpert", d_x_expert.dtype)
         dx_flat = d_x_expert + d_x_router #(N,D)
 
         dx = dx_flat.reshape(B,T,D) 
