@@ -76,9 +76,13 @@ z = np.lib.stride_tricks.as_strided(b, shape=shape, strides= np_stride)
 # print(a)
 # print(b)
 # print(a*b)
-print(a.dtype)
-g = mx.log(a.astype(mx.bfloat16))
-print(g.dtype)
+# print(a.dtype)
+# g = mx.log(a.astype(mx.bfloat16))
+# print(g.dtype)
 
-a = np.sqrt(a, dtype=np.longdouble)
+# a = np.sqrt(a, dtype=np.longdouble)
+# print(a)
+a = {"transformer_configs":{}}
+transformer = a["transformer_configs"]
+transformer["vocab_size"] = 2
 print(a)

@@ -6,11 +6,9 @@ from engine.rope import precompute_freqs
 import engine.backend as nx
 from typing import Any
 import time
-DTYPE = nx.float32
-print(f"block using {DTYPE}")
 
 class TransformerBlock:
-    def __init__(self,embed_dim,ff_dim, n_heads, n_kv_heads, n_experts=1, cf=1.25, top_k =2, W=8) -> None:
+    def __init__(self,embed_dim,ff_dim, n_heads, n_kv_heads, n_experts=1, cf=1.25, top_k =2, W=8, dtype=nx.float16) -> None:
         self.causal_mask = None
         self.embed_dim = embed_dim
         self.hidden_width = ff_dim
@@ -22,12 +20,13 @@ class TransformerBlock:
         self.head_dim = embed_dim // n_heads
         self.n_experts = n_experts
         self.cf = cf
+        self.dtype = dtype
 
         assert self.head_dim % 2 == 0, "head dim !% 2"
         self.freqs = precompute_freqs(self.head_dim, 16384)
 
-        self.attention = AttentionLayer(embed_dim, n_heads, n_kv_heads, dtype=DTYPE)
-        self.ff = MoE(cf, top_k, n_experts, embed_dim, self.hidden_width, dtype=DTYPE)
+        self.attention = AttentionLayer(embed_dim, n_heads, n_kv_heads, dtype=dtype)
+        self.ff = MoE(cf, top_k, n_experts, embed_dim, self.hidden_width, dtype=dtype)
         self.rmsnorm1 = RMSNorm(embed_dim)
         self.rmsnorm2 = RMSNorm(embed_dim)
 
@@ -40,31 +39,32 @@ class TransformerBlock:
             \n
             -> rmsnorm(attn_out) = rmsnorm_out -> swiglu(rmsnorm_out)  -> ff_out + resudial = ff_out shape(B,T,D)
         '''
+        print("x block",x.dtype)
         rmsnorm1_out, caches_rmsnorm1 = RMSNorm._forward(x, gamma1,epsilon)
 
-        rmsnorm1_out = rmsnorm1_out.astype(DTYPE) #type:ignore
+        rmsnorm1_out = rmsnorm1_out.astype(x.dtype) 
 
         attn_out, caches_attn = AttentionLayer._forward(rmsnorm1_out,causal_mask, embed_dim, n_kv_heads,n_heads, n_rep, head_dim, W, freqs, Wqkv, Wo,)
-        # print("attn", attn_out.dtype)
+        print("attn forward", attn_out.dtype)
 
         drop_attn_out, mask1 = Dropout._forward(attn_out, p,is_training)
-        # print("drop attn out", drop_attn_out.dtype)
+        print("drop attn out", drop_attn_out.dtype)
 
         attn_out = drop_attn_out + x
-        # print("attn out", attn_out.dtype)
+        print("attn out", attn_out.dtype)
 
         rmsnorm2_out, caches_rmsnorm2 = RMSNorm._forward(attn_out, gamma2,epsilon)
 
-        rmsnorm2_out = rmsnorm2_out.astype(DTYPE) #type:ignore
+        rmsnorm2_out = rmsnorm2_out.astype(x.dtype) 
 
         ff_out, caches_ff, router_loss, normalized_histogram = MoE.forward(rmsnorm2_out, cf, top_k, router,n_experts,hidden_width,Wcombined, Wout)
-        # print("ff_out", ff_out.dtype)
+        print("ff_out", ff_out.dtype)
         
         drop_ff_out, mask2 =  Dropout._forward(ff_out, p,is_training)
-        # print("drop ff out", drop_ff_out.dtype)
+        print("drop ff out", drop_ff_out.dtype)
 
         ff_out = drop_ff_out + attn_out
-        # print("FINAL BLOCK OUTPUT", ff_out.dtype)
+        print("FINAL BLOCK OUTPUT", ff_out.dtype)
         
         masks = (mask1, mask2)
         caches = (caches_attn, caches_ff, caches_rmsnorm1, caches_rmsnorm2)
@@ -73,13 +73,13 @@ class TransformerBlock:
     @nx.compile
     @staticmethod
     def _backward(gradient:Any, mask1:Any, mask2:Any, p, caches_attn:tuple[Any,...], caches_ff:tuple[Any,...], caches_rmsnorm1:tuple[Any,...], caches_rmsnorm2:tuple[Any,...], attn_params:tuple[Any,...], gamma1:Any, gamma2:Any, ff_params:tuple, moe_configs) -> tuple[Any, Any, Any, Any, Any, Any, Any, Any]:
-        gradient = gradient.astype(DTYPE)
+        gradient = gradient.astype(gradient.dtype)
         d_ff_drop = Dropout._backward(gradient, mask2, 0.1) #grad dtype
         dx_ff,  dWcombined, dWout, d_router = MoE.backward(d_ff_drop, caches_ff, moe_configs, ff_params) #out:fp32
         d_rmsn2,d_gamma2 = RMSNorm._backward(dx_ff, caches_rmsnorm2 ,gamma2)
 
         d_attn_out = gradient + d_rmsn2
-        d_attn_out = d_attn_out.astype(DTYPE)
+        d_attn_out = d_attn_out.astype(gradient.dtype)
         d_attn_drop = Dropout._backward(d_attn_out, mask1, p)
         # print("d_attn_drop", d_attn_drop.dtype)
         d_attn, dWqkv, dWo = AttentionLayer._backward(d_attn_drop, caches_attn, attn_params)
@@ -94,7 +94,7 @@ class TransformerBlock:
     
     def inference_forward(self, x, max_cache_len, cached_k=None, cached_v=None,  position=0):
         rmsnorm1_out, _ = RMSNorm._forward(x, self.rmsnorm1.gamma, self.rmsnorm1.epsilon)
-        x = x.astype(DTYPE)
+        x = x.astype(x.dtype)
 
         attn_out, cached_k, cached_v = self.attention.inference_forward(rmsnorm1_out,max_cache_len, self.freqs, cached_k, cached_v, position)
         attn_out = attn_out + x
@@ -108,13 +108,14 @@ class TransformerBlock:
 
     def to_dict(self) -> dict:
         return {
-            "configs": {
+            "block_configs": {
                 "cf":self.cf,
                 "n_experts" :self.n_experts,
                 "n_heads": self.n_heads,
                 "hidden_width":self.hidden_width,
                 "embed_dim":self.embed_dim,
-                "n_kv_heads": self.n_kv_heads
+                "n_kv_heads": self.n_kv_heads,
+                "dtype":self.dtype
             },
             "attention":self.attention.to_dict(),
             "ff":self.ff.to_dict(),
@@ -125,8 +126,8 @@ class TransformerBlock:
     
     @classmethod
     def from_dict(cls,thing:dict) -> "TransformerBlock":
-        configs = thing["configs"]
-        transformer_block = cls(configs["embed_dim"], configs["hidden_width"], configs["n_heads"], configs["n_kv_heads"], configs["n_experts"],configs["cf"])
+        configs = thing["block_configs"]
+        transformer_block = cls(configs["embed_dim"], configs["hidden_width"], configs["n_heads"], configs["n_kv_heads"], configs["n_experts"],configs["cf"], dtype = configs["dtype"])
         transformer_block.attention = AttentionLayer.from_dict(thing["attention"])
         transformer_block.ff = MoE.from_dict(thing["ff"])
         transformer_block.rmsnorm1 = RMSNorm.from_dict(thing["rmsnorm1"])

@@ -94,6 +94,10 @@ class AttentionLayer:
         output_concat = output.transpose(0, 3, 1, 2, 4).reshape(B, T, embed_dim)
         output_projected = output_concat @ Wo #B,T,D #dtype
         # print("output projected" , output_projected.dtype)
+        # print("x forward", x.dtype)
+        # print("wink forward", windows_K.dtype)
+        # print("winv forward", windows_V.dtype)
+        # print("weights forward", weights.dtype)
         cache = (x, Q, windows_K, windows_V, weights, output_concat)
         return output_projected, cache
     

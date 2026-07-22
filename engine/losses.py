@@ -9,6 +9,7 @@ def cross_entropy(logits:Any, target_idx):
 
     ||   |_
     '''
+    logits = logits.astype(nx.float32)
     flat_logits = logits.reshape(-1, logits.shape[-1])
     rows = nx.arange(flat_logits.shape[0], dtype=nx.int32)
     flat_target = target_idx.reshape(-1)#.astype(nx.int32)

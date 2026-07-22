@@ -5,9 +5,9 @@ from typing import Any
 
 
 class Embedding:
-    def __init__(self, n:int, embed_dim:int) -> None:
+    def __init__(self, n:int, embed_dim:int, dtype=nx.float16) -> None:
         self.embed_dim = embed_dim
-        self.lookup_table = nx.uniform(low=-0.1, high=0.1, size=(n, self.embed_dim), dtype=nx.float16)
+        self.lookup_table = nx.uniform(low=-0.1, high=0.1, size=(n, self.embed_dim), dtype=dtype)
     
     def __eq__(self, value: object) -> bool:
         if not isinstance(value, Embedding):

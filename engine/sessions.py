@@ -5,7 +5,7 @@ from engine.dataloader import DataLoader
 from engine.activations import softmax
 from engine.optimizer import AdamW
 import engine.backend as nx
-from typing import Any
+from typing import Any,Union
 import time
 import pickle
 import numpy as np
@@ -15,16 +15,7 @@ DEFAULT_CONFIGS = {
             "epochs": 100,
             "context_size": 64,
             "batch_size": 32,
-            "embed_dim":8,
-            "MoE":{
-                "topk":2,
-                "cf":1.25,
-                "n_experts":4,
-                "ff_width":768
-            },
             "optimizer":"adamw",
-            "train_split":.9,
-            "n_heads": 4,
             "optimizer_args":{
                 "min_lr":0.05,
                 "max_lr":0.05,
@@ -32,7 +23,8 @@ DEFAULT_CONFIGS = {
                 "beta2":0.999,
                 "epsilon":1e-8,
                 "weight_decay":0.01
-            }
+            },
+            "train_split":.9,
         }
 
 OPTIMIZERS = {
@@ -43,24 +35,21 @@ OPTIMIZERS = {
 }
 
 class Session:
-    def __init__(self, transformer:Transformer,  tokenizer:Tokenizer, embedding:Embedding, configs:dict | None = None,init_optimizer:bool=True):
+    def __init__(self, transformer:Transformer, tokenizer:Tokenizer, init_optimizer:bool | AdamW = True, configs:dict | None = None):
         self.transformer = transformer
         self.tokenizer = tokenizer
-        self.embedding = embedding
+
         if configs is None:
             configs = {}
 
         self.configs = DEFAULT_CONFIGS | configs
         self.configs["optimizer_args"] = DEFAULT_CONFIGS["optimizer_args"] | configs.get("optimizer_args", {})
 
-        if init_optimizer: #if the optimizers need to be optimized first, otherwise from_dict params would get overridden
+        if isinstance(init_optimizer, bool) and init_optimizer: 
             optimizer_class = OPTIMIZERS[self.configs["optimizer"]]
-            transformer.optimizer = optimizer_class(**self.configs["optimizer_args"])
-
-    def __eq__(self, value: object) -> bool:
-        if not isinstance(value, Session):
-            return NotImplemented
-        return self.tokenizer == value.tokenizer and self.embedding == value.embedding
+            self.optimizer = optimizer_class(**self.configs["optimizer_args"])
+        elif isinstance(init_optimizer, dict):
+            self.optimizer = init_optimizer
 
     @classmethod
     def build_from_files(cls):
@@ -82,11 +71,11 @@ class Session:
             total += i.attention.Wo.size
             total += i.rmsnorm1.gamma.size
             total += i.rmsnorm2.gamma.size
-        total += self.embedding.lookup_table.size
+        total += self.transformer.embedding.lookup_table.size
         return total
 
     def validation(self, dataloader:DataLoader) -> Any:
-        return self.transformer.validate(self.embedding, dataloader, self.configs["batch_size"], train_split=self.configs["train_split"])
+        return self.transformer.validate(dataloader, self.configs["batch_size"], train_split=self.configs["train_split"])
     
     def benchmark(self, dataloader:DataLoader, _pass=1, epoch=10):
         t_mess = f"[BENCHMARKING]param: {self.count_params()} "
@@ -97,7 +86,7 @@ class Session:
         print(t_mess)     
         for i in range(epoch):
             start_per = time.perf_counter()
-            bench_loss, loss_times, backward_times, network_optimizer_times, total_histograms = self.transformer.benchmark(dataloader, self.embedding, batch_size=self.configs["batch_size"], pass_=_pass)
+            bench_loss, loss_times, backward_times, network_optimizer_times, total_histograms = self.transformer.benchmark(dataloader, self.optimizer, batch_size=self.configs["batch_size"], pass_=_pass)
             end_per = time.perf_counter()
             print("loss ",bench_loss)
             print(f"loss time mean: {np.mean(loss_times)} | max times: {np.max(loss_times)} | min times: {np.min(loss_times)}")
@@ -133,7 +122,7 @@ class Session:
             for i in range(self.configs["epochs"]):
                 epoch = i
                 start = time.perf_counter()
-                error,total_histograms = self.transformer.train(dataloader, self.embedding, self.configs["epochs"], batch_size=self.configs["batch_size"])
+                error,total_histograms = self.transformer.train(dataloader, self.optimizer, self.configs["epochs"], batch_size=self.configs["batch_size"])
                 val_loss = self.validation(dataloader)
                 end = time.perf_counter()   
                 time_ = end-start
@@ -164,7 +153,7 @@ class Session:
                 display_every = max(1, self.configs["epochs"] // 10)
 
                 if display_message and( i % display_every == 0 or i == self.configs["epochs"] - 1):
-                    print(f"epoch {epoch} | avg loss: {error} | val: {val_loss} | best val loss: {best_val_loss} | lr: {self.transformer.optimizer.lr} | time: {time_}")
+                    print(f"epoch {epoch} | avg loss: {error} | val: {val_loss} | best val loss: {best_val_loss} | lr: {self.optimizer.lr} | time: {time_}")
                     if total_histograms:
                         for idx, histogram in enumerate(total_histograms):
                             hmin = nx.min(histogram).item()
@@ -192,7 +181,7 @@ class Session:
         all_caches = None
         position = 0
         memory = []
-        logits, all_caches = self.transformer.inference(context,self.configs["context_size"], self.embedding, all_caches, position)
+        logits, all_caches = self.transformer.inference(context,self.configs["context_size"], all_caches, position)
         position = context.shape[1]
 
         raw_token = self._sample(logits, memory,  temperature, top_k, top_p)
@@ -206,7 +195,7 @@ class Session:
         next_token = nx.array([[token]], dtype=nx.int32)
 
         for i in range(n-1):
-            logits, all_caches = self.transformer.inference(next_token,self.configs["context_size"], self.embedding ,all_caches, position)
+            logits, all_caches = self.transformer.inference(next_token,self.configs["context_size"], all_caches, position)
             raw_token = self._sample(logits, memory, temperature, top_k, top_p, penalty)
 
             if len(memory) >= mem_size:
@@ -269,14 +258,12 @@ class Session:
 
         transformer_dict = self.transformer.to_dict()
         tokenizer_dict = self.tokenizer.to_dict()
-        embedding_dict = self.embedding.to_dict()
 
         session = {
             "configs":self.configs,
             "transformer":transformer_dict,
             "tokenizer":tokenizer_dict,
-            "embedding":embedding_dict,
-            "optimizer_states":self.transformer.optimizer.to_dict()
+            "optimizer_states":self.optimizer.to_dict()
         }
 
         filename = f"session_{filename}.ram2n"
@@ -298,19 +285,17 @@ class Session:
             session = pickle.load(f)
 
         transformer = Transformer.from_dict(session["transformer"])
-        embedding = Embedding.from_dict(session["embedding"])
         tokenizer = Tokenizer.from_dict(session["tokenizer"])
         configs = session["configs"]
         optimizer_class = OPTIMIZERS[configs["optimizer"]]
-        transformer.optimizer = optimizer_class.from_dict(session["optimizer_states"])
+        optimizer = optimizer_class.from_dict(session["optimizer_states"])
         
-        return  cls(transformer,tokenizer,embedding, configs=configs, init_optimizer=False)
+        return  cls(transformer, tokenizer, optimizer, configs=configs)
     
     @classmethod
     def create_checkpoint(cls, to_checkpoint:"Session") -> "Session":
         transformer_checkpoint = Transformer.from_dict(to_checkpoint.transformer.to_dict())
         tokenizer_checkpoint = Tokenizer.from_dict(to_checkpoint.tokenizer.to_dict())
-        embedding_checkpoint = Embedding.from_dict(to_checkpoint.embedding.to_dict())
-        checkpoint = cls(transformer_checkpoint, tokenizer_checkpoint, embedding_checkpoint)
-
+        optimizer = to_checkpoint.optimizer.from_dict(to_checkpoint.optimizer.to_dict())        
+        checkpoint = cls(transformer_checkpoint, tokenizer_checkpoint, optimizer)
         return checkpoint

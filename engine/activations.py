@@ -21,9 +21,10 @@ def softmax(x:Any, axis:Any=-1) -> Any:
     turns logit into probability distribution that sums into 1.\n
     f(x) = exp(x - max(x)) / sum(exp(x - max(x)))
     """
+    x = x.astype(nx.float32)
     max_x = nx.max(x, axis=axis, keepdims=True)
-    exp_x = nx.exp(x - max_x)
-    return exp_x / nx.sum(exp_x, axis=axis, keepdims=True)
+    exp_x = nx.exp(x - max_x, dtype=nx.float32)
+    return exp_x / nx.sum(exp_x, axis=axis, keepdims=True, dtype=nx.float32)
 
 def softmax_derivative(s:Any, grad:Any) -> Any:
     """
