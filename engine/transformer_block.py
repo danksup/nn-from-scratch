@@ -39,32 +39,32 @@ class TransformerBlock:
             \n
             -> rmsnorm(attn_out) = rmsnorm_out -> swiglu(rmsnorm_out)  -> ff_out + resudial = ff_out shape(B,T,D)
         '''
-        print("x block",x.dtype)
+        # print("x block",x.dtype)
         rmsnorm1_out, caches_rmsnorm1 = RMSNorm._forward(x, gamma1,epsilon)
 
         rmsnorm1_out = rmsnorm1_out.astype(x.dtype) 
 
         attn_out, caches_attn = AttentionLayer._forward(rmsnorm1_out,causal_mask, embed_dim, n_kv_heads,n_heads, n_rep, head_dim, W, freqs, Wqkv, Wo,)
-        print("attn forward", attn_out.dtype)
+        # print("attn forward", attn_out.dtype)
 
         drop_attn_out, mask1 = Dropout._forward(attn_out, p,is_training)
-        print("drop attn out", drop_attn_out.dtype)
+        # print("drop attn out", drop_attn_out.dtype)
 
         attn_out = drop_attn_out + x
-        print("attn out", attn_out.dtype)
+        # print("attn out", attn_out.dtype)
 
         rmsnorm2_out, caches_rmsnorm2 = RMSNorm._forward(attn_out, gamma2,epsilon)
 
         rmsnorm2_out = rmsnorm2_out.astype(x.dtype) 
 
         ff_out, caches_ff, router_loss, normalized_histogram = MoE.forward(rmsnorm2_out, cf, top_k, router,n_experts,hidden_width,Wcombined, Wout)
-        print("ff_out", ff_out.dtype)
+        # print("ff_out", ff_out.dtype)
         
         drop_ff_out, mask2 =  Dropout._forward(ff_out, p,is_training)
-        print("drop ff out", drop_ff_out.dtype)
+        # print("drop ff out", drop_ff_out.dtype)
 
         ff_out = drop_ff_out + attn_out
-        print("FINAL BLOCK OUTPUT", ff_out.dtype)
+        # print("FINAL BLOCK OUTPUT", ff_out.dtype)
         
         masks = (mask1, mask2)
         caches = (caches_attn, caches_ff, caches_rmsnorm1, caches_rmsnorm2)

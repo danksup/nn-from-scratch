@@ -20,7 +20,7 @@ default_block_configs = {
 }
 
 class Transformer:
-    def __init__(self, configs: dict[str, Any] | None = None, blocks:list|None=None, init_embedding:bool=True):
+    def __init__(self, configs: dict[str, Any] | None = None, blocks:list|None=None):
         #transformer_block:  
         # def __init__(self,embed_dim,ff_dim, n_heads, n_kv_heads, n_experts=1, cf=1.25, top_k =2, W=8, dtype=nx.float16) 
         self.blocks = []
@@ -29,6 +29,7 @@ class Transformer:
         self.embed_dim = configs.get("embed_dim", 128)
         self.dtype = configs.get("dtype", nx.float32)
         self.embedding = Embedding(self.vocab_size, self.embed_dim, self.dtype)
+        block_configs =  default_block_configs | configs.get("block_configs", {})
 
         if blocks is None:
             n_blocks =  configs.get("n_blocks",4)
@@ -40,7 +41,7 @@ class Transformer:
 
             for i in range(n_blocks):
                 override = block_overrides.get(i, {})
-                overrided = default_block_configs | override
+                overrided = block_configs | override
                 D = self.embed_dim
                 H = overrided["ff_hidden_width"]
                 n_heads = overrided["attn_n_heads"]
@@ -56,6 +57,10 @@ class Transformer:
             self.blocks = blocks
             if not self.blocks:
                 raise ValueError("lol")
+            
+            for i, block in enumerate(self.blocks):
+                if block.embed_dim != self.embed_dim:
+                    raise ValueError(f"block {i} embed dimension of {block.embed_dim} does not match the transformer's embed dimension of {self.embed_dim}")
             
     @classmethod
     def build(cls, input_size:int, output_size:int, hidden_layer_size:int=1, base_width:int=512) -> "Transformer":
@@ -171,7 +176,7 @@ class Transformer:
             loss = nx.mean(loss) + LAMBDA * total_router_loss
 
             if not nx.isfinite(loss):
-                raise FloatingPointError("nan/inf")
+                raise FloatingPointError("inf")
             
             batch_gradient = cross_entropy_gradient(batch_scores, next_tokens)
             batch_gradient /= (batch_gradient.shape[0] * batch_gradient.shape[1])
@@ -379,11 +384,12 @@ class Transformer:
             a = TransformerBlock.from_dict(block)
             blocks.append(a)
         
-
-        transformer = cls(blocks=blocks)
-        transformer.vocab_size = vocab_size
-        transformer.embed_dim = embed_dim
-        transformer.dtype = dtype
+        configs ={
+            "vocab_size":vocab_size,
+            "embed_dim":embed_dim,
+            "dtype":dtype
+        }
+        transformer = cls(configs, blocks=blocks)
         
         return transformer
        
@@ -399,3 +405,21 @@ class Transformer:
 
         scores = output @ self.embedding.lookup_table.T
         return scores, all_caches
+    
+    def get_configs_str(self):
+        configs = ""
+        configs += f"vocab_size: {str(self.vocab_size)}" + "\n"
+        configs += f"embed_dim: {str(self.embed_dim)}" + "\n"
+        configs += "precision: float32" if self.dtype == nx.float32 else f"precision: mixed precision ({self.dtype})" 
+        configs += "\n"
+
+        for i,block in enumerate(self.blocks):
+            H = block.hidden_width
+            n_heads = block.n_heads
+            Ne = block.n_experts
+            n_kv_heads = block.n_kv_heads
+            topk = block.ff.top_k
+            W = block.W
+            configs += f"block {i}: n_heads: {n_heads} | n_kv_heads: {n_kv_heads} | attn_windows: {W} | n_experts: {Ne} | hidden_width: {H} | topk: {topk}\n"
+
+        return configs

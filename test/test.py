@@ -86,3 +86,4 @@ a = {"transformer_configs":{}}
 transformer = a["transformer_configs"]
 transformer["vocab_size"] = 2
 print(a)
+

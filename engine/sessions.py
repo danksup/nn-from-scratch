@@ -48,7 +48,7 @@ class Session:
         if isinstance(init_optimizer, bool) and init_optimizer: 
             optimizer_class = OPTIMIZERS[self.configs["optimizer"]]
             self.optimizer = optimizer_class(**self.configs["optimizer_args"])
-        elif isinstance(init_optimizer, dict):
+        elif isinstance(init_optimizer, AdamW):
             self.optimizer = init_optimizer
 
     @classmethod
@@ -83,6 +83,7 @@ class Session:
         for key,val in self.configs.items():
             if key != "epochs":
                 t_mess += f"{key}: {val}\n"
+        t_mess += self.transformer.get_configs_str()
         print(t_mess)     
         for i in range(epoch):
             start_per = time.perf_counter()
@@ -111,6 +112,7 @@ class Session:
             t_mess = f"[TRAINING]param: {self.count_params()} "
             for key,val in self.configs.items():
                 t_mess += f"{key}: {val}\n"
+            t_mess += self.transformer.get_configs_str()
             print(t_mess)        
         epoch = 0
         checkpoint = None
@@ -255,15 +257,11 @@ class Session:
             filename: the name the save file will have. session_{filename}.json
             save_artifacts: also save artifacts seperately (not implemented yet)
         '''
-
-        transformer_dict = self.transformer.to_dict()
-        tokenizer_dict = self.tokenizer.to_dict()
-
         session = {
             "configs":self.configs,
-            "transformer":transformer_dict,
-            "tokenizer":tokenizer_dict,
-            "optimizer_states":self.optimizer.to_dict()
+            "transformer":self.transformer.to_dict(),
+            "tokenizer":self.tokenizer.to_dict(),
+            "optimizer_states": self.optimizer.to_dict()
         }
 
         filename = f"session_{filename}.ram2n"
@@ -297,5 +295,5 @@ class Session:
         transformer_checkpoint = Transformer.from_dict(to_checkpoint.transformer.to_dict())
         tokenizer_checkpoint = Tokenizer.from_dict(to_checkpoint.tokenizer.to_dict())
         optimizer = to_checkpoint.optimizer.from_dict(to_checkpoint.optimizer.to_dict())        
-        checkpoint = cls(transformer_checkpoint, tokenizer_checkpoint, optimizer)
+        checkpoint = cls(transformer=transformer_checkpoint, tokenizer = tokenizer_checkpoint, init_optimizer=optimizer)
         return checkpoint

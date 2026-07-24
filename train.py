@@ -2,14 +2,14 @@ import os
 backend = os.environ["BACKEND"] = "auto"
 import random
 EPOCHS = 1
-EMBED_DIM = 128
-CONTEXT_SIZE = 128
-BATCH_SIZE = 64
+EMBED_DIM = 64
+CONTEXT_SIZE = 64
+BATCH_SIZE = 128
 BASE_WIDTH = 1024#4 * EMBED_DIM 
 N_HEADS = EMBED_DIM // 16
 N_KV_HEADS = N_HEADS // 4
 WINDOWS = CONTEXT_SIZE // 2
-N_EXPERTS = 32
+N_EXPERTS = 24
 CF = 1.25
 VAL = .9
 TOP_K = 2
@@ -37,6 +37,7 @@ import engine.backend as nx
 from helper.singleton import init_corpus
 
 session_configs = {
+    "epochs":1,
     "context_size": CONTEXT_SIZE,
     "batch_size": BATCH_SIZE,
     "optimizer":"adamw",
@@ -56,7 +57,7 @@ session_configs = {
 model_configs = {
     "n_blocks":4,
     "embed_dim":EMBED_DIM,
-    "dtype": nx.float32,
+    "dtype": nx.float16,
     "block_overrides":{
         1:{}, 2:{}
     }
@@ -69,7 +70,7 @@ tokenizer1 = Tokenizer.load(TOKENIZER_PATH)
 session_configs["dataset"] = f"{len(files)} files"
 real_vocab_size = len(tokenizer1.vocab)
 
-transformer = Transformer()
+transformer = Transformer(model_configs)
 
 session_configs["block_size"] = len(transformer.blocks)
 
